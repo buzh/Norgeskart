@@ -162,13 +162,14 @@ export const getWMSLayer = (
     });
   }
 
-  return new TileLayer({
-    source: new TileWMS({
-      url: layerConfig.url,
-      params: { ...layerConfig.props, SRS: projection },
-    }),
-    properties,
+  const source = new TileWMS({
+    url: layerConfig.url,
+    params: { ...layerConfig.props, SRS: projection },
   });
+  if (layerConfig.tileLoadFunction) {
+    source.setTileLoadFunction(layerConfig.tileLoadFunction);
+  }
+  return new TileLayer({ source, properties });
 };
 
 export const getLayerFromConfig = async (
