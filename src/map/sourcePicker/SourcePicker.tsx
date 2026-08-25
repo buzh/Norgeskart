@@ -10,6 +10,7 @@ import {
   LidarProject,
   lidarProjectTileStatsAtom,
 } from '../layers/config/backgroundLayers/lidarProjects';
+import { probeCoverage, readCoverage } from './coverageProbe';
 
 export const SourcePicker = () => {
   const map = useAtomValue(mapAtom);
@@ -20,9 +21,17 @@ export const SourcePicker = () => {
   const tileStats = useAtomValue(lidarProjectTileStatsAtom);
 
   const [projects, setProjects] = useState<LidarProject[]>([]);
-  const [viewExtentLonLat, setViewExtentLonLat] = useState<
-    [number, number, number, number] | null
-  >(null);
+  const [viewState, setViewState] = useState<{
+    extentLonLat: [number, number, number, number];
+    center: [number, number];
+    resolution: number;
+    zoom: number;
+    projection: string;
+  } | null>(null);
+  // Bumped every time a coverage probe resolves; the setState alone
+  // triggers a re-render that re-reads the probe cache. The value itself
+  // is never read.
+  const [, setProbeVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +49,10 @@ export const SourcePicker = () => {
     const view = map.getView();
     const compute = () => {
       const extent = view.calculateExtent(map.getSize());
-      if (!extent) return;
+      const center = view.getCenter();
+      const resolution = view.getResolution();
+      const zoom = view.getZoom();
+      if (!extent || !center || resolution == null || zoom == null) return;
       const proj = view.getProjection().getCode();
       const lonLat = transformExtent(extent, proj, 'EPSG:4326') as [
         number,
@@ -48,7 +60,13 @@ export const SourcePicker = () => {
         number,
         number,
       ];
-      setViewExtentLonLat(lonLat);
+      setViewState({
+        extentLonLat: lonLat,
+        center: [center[0], center[1]],
+        resolution,
+        zoom,
+        projection: proj,
+      });
     };
     compute();
     map.on('moveend', compute);
@@ -57,10 +75,47 @@ export const SourcePicker = () => {
     };
   }, [map]);
 
-  const visibleProjects = viewExtentLonLat
+  const candidateProjects = viewState
     ? projects
-        .filter((p) => intersects(p.bboxLonLat, viewExtentLonLat))
+        .filter((p) => intersects(p.bboxLonLat, viewState.extentLonLat))
         .sort(byRecency)
+    : [];
+
+  // Fire a probe for every candidate that hasn't been probed at this
+  // bucket yet; on each response bump probeVersion so we re-render.
+  useEffect(() => {
+    if (!viewState) return;
+    const { center, resolution, zoom, projection } = viewState;
+    for (const p of candidateProjects) {
+      if (readCoverage(p.id, center[0], center[1], zoom) != null) continue;
+      probeCoverage(
+        p.id,
+        center[0],
+        center[1],
+        resolution,
+        zoom,
+        projection,
+      ).then(() => setProbeVersion((v) => v + 1));
+    }
+    // candidateProjects identity changes every render, but we only care
+    // about its content — key on ids to avoid a re-run every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    viewState,
+    candidateProjects.map((p) => p.id).join(','),
+  ]);
+
+  const visibleProjects = viewState
+    ? candidateProjects.filter((p) => {
+        const cov = readCoverage(
+          p.id,
+          viewState.center[0],
+          viewState.center[1],
+          viewState.zoom,
+        );
+        // Keep 'covered' and not-yet-probed (undefined); drop 'blank'.
+        return cov !== 'blank';
+      })
     : [];
 
   const isLidarProjectActive = backgroundLayer === 'lidarProject';
