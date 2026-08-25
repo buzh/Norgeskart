@@ -28,16 +28,9 @@ export const retryBlankTileLoadFunction: LoadFunction = (
   imageTile: Tile,
   src: string,
 ) => {
-  console.log('[retryBlankTile] load', src.slice(0, 200));
-  if (!(imageTile instanceof ImageTile)) {
-    console.warn('[retryBlankTile] not ImageTile', imageTile);
-    return;
-  }
+  if (!(imageTile instanceof ImageTile)) return;
   const image = imageTile.getImage();
-  if (!(image instanceof HTMLImageElement)) {
-    console.warn('[retryBlankTile] not HTMLImageElement', image);
-    return;
-  }
+  if (!(image instanceof HTMLImageElement)) return;
 
   const setBlobSrc = (blob: Blob) => {
     const blobUrl = URL.createObjectURL(blob);

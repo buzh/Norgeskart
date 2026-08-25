@@ -61,7 +61,8 @@ export const SourcePicker = () => {
         .sort(byRecency)
     : [];
 
-  const isLidarActive = backgroundLayer === 'lidarProject';
+  const isLidarProjectActive = backgroundLayer === 'lidarProject';
+  const isLidarMosaicActive = backgroundLayer === 'lidarHillshade';
 
   const activateProject = (project: LidarProject) => {
     setActiveLidarProject(project);
@@ -70,6 +71,10 @@ export const SourcePicker = () => {
 
   const activateStandardMap = () => {
     setBackgroundLayer('topo');
+  };
+
+  const activateLidarMosaic = () => {
+    setBackgroundLayer('lidarHillshade');
   };
 
   return (
@@ -90,13 +95,20 @@ export const SourcePicker = () => {
       <VStack align="stretch" gap={1}>
         <SourceRow
           label="Standardkart (topo)"
-          active={!isLidarActive && backgroundLayer === 'topo'}
+          active={backgroundLayer === 'topo'}
           onClick={activateStandardMap}
         />
 
         <Text fontSize="xs" color="gray.500" mt={2}>
           LiDAR ({visibleProjects.length})
         </Text>
+
+        <SourceRow
+          label="Nasjonal mosaikk"
+          badges={['blended']}
+          active={isLidarMosaicActive}
+          onClick={activateLidarMosaic}
+        />
 
         {visibleProjects.length === 0 && (
           <Text fontSize="xs" color="gray.500">
@@ -112,7 +124,7 @@ export const SourcePicker = () => {
               p.year != null ? String(p.year) : null,
               p.pointDensity,
             ].filter((x): x is string => x != null)}
-            active={isLidarActive && activeLidarProject?.id === p.id}
+            active={isLidarProjectActive && activeLidarProject?.id === p.id}
             onClick={() => activateProject(p)}
           />
         ))}
