@@ -8,6 +8,7 @@ import {
   activeLidarProjectAtom,
   fetchLidarProjects,
   LidarProject,
+  lidarProjectTileStatsAtom,
 } from '../layers/config/backgroundLayers/lidarProjects';
 
 export const SourcePicker = () => {
@@ -16,6 +17,7 @@ export const SourcePicker = () => {
   const activeLidarProject = useAtomValue(activeLidarProjectAtom);
   const setBackgroundLayer = useSetAtom(backgroundLayerAtom);
   const setActiveLidarProject = useSetAtom(activeLidarProjectAtom);
+  const tileStats = useAtomValue(lidarProjectTileStatsAtom);
 
   const [projects, setProjects] = useState<LidarProject[]>([]);
   const [viewExtentLonLat, setViewExtentLonLat] = useState<
@@ -77,6 +79,17 @@ export const SourcePicker = () => {
     setBackgroundLayer('lidarHillshade');
   };
 
+  // Kartverket's per-project renderer sometimes returns only blank PNGs
+  // below a zoom threshold that varies per dataset. If we've observed at
+  // least a handful of tiles for the current project and most were blank,
+  // surface a warning so the user knows to zoom out or pick another one.
+  const showBlankWarning =
+    isLidarProjectActive &&
+    activeLidarProject != null &&
+    tileStats.projectId === activeLidarProject.id &&
+    tileStats.total >= 4 &&
+    tileStats.blank / tileStats.total >= 0.75;
+
   return (
     <Box
       bg="white"
@@ -91,6 +104,24 @@ export const SourcePicker = () => {
       <Text fontSize="sm" fontWeight="semibold" mb={2}>
         Kilder for kartutsnittet
       </Text>
+
+      {showBlankWarning && (
+        <Box
+          bg="orange.50"
+          borderLeft="3px solid"
+          borderColor="orange.400"
+          px={2}
+          py={1.5}
+          mb={2}
+          borderRadius="sm"
+        >
+          <Text fontSize="xs" color="orange.800">
+            Ingen dekning på dette zoomnivået for «
+            {activeLidarProject?.projectName}». Zoom ut eller velg et annet
+            prosjekt.
+          </Text>
+        </Box>
+      )}
 
       <VStack align="stretch" gap={1}>
         <SourceRow

@@ -18,8 +18,9 @@ import {
   activeLidarProjectAtom,
   DEFAULT_LIDAR_PROJECT_STYLE,
   LIDAR_PROJECT_WMS_URL,
+  lidarProjectTileStatsAtom,
 } from './lidarProjects';
-import { retryBlankTileLoadFunction } from './loadFunctions';
+import { makeRetryBlankTileLoadFunction } from './loadFunctions';
 import { nauticalBackgroundLayers } from './nautical';
 import { nibBackgroundLayers } from './nib';
 import { npolarBackgroundLayers } from './npolar';
@@ -63,16 +64,37 @@ export const backgroundLayerAtom = atom<BackgroundLayerName>(
   getDefaultBackgroundLayer(),
 );
 
-const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => ({
-  type: 'WMS',
-  layerName: 'lidarProject',
-  url: LIDAR_PROJECT_WMS_URL,
-  props: {
-    LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
-    VERSION: '1.3.0',
-  },
-  tileLoadFunction: retryBlankTileLoadFunction,
-});
+const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
+  const store = getDefaultStore();
+  store.set(lidarProjectTileStatsAtom, {
+    projectId,
+    blank: 0,
+    total: 0,
+  });
+  return {
+    type: 'WMS',
+    layerName: 'lidarProject',
+    url: LIDAR_PROJECT_WMS_URL,
+    props: {
+      LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
+      VERSION: '1.3.0',
+    },
+    tileLoadFunction: makeRetryBlankTileLoadFunction({
+      onSettled: ({ blank, failed }) => {
+        if (failed) return;
+        const s = store.get(lidarProjectTileStatsAtom);
+        // Only count for the currently-active project — a lingering load
+        // from an old project must not skew the new project's stats.
+        if (s.projectId !== projectId) return;
+        store.set(lidarProjectTileStatsAtom, {
+          projectId,
+          blank: s.blank + (blank ? 1 : 0),
+          total: s.total + 1,
+        });
+      },
+    }),
+  };
+};
 
 export const backgroundLayerAtomEffect = atomEffect((get, set) => {
   const layerName = get(backgroundLayerAtom);
