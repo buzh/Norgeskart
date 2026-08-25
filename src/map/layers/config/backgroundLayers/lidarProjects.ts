@@ -21,7 +21,7 @@ const CAPS_URL =
   '/wms/hoyde-dtm-prosjekt?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0';
 // Bump when the parser output shape or filtering changes so cached
 // entries from an older schema are ignored.
-const STORAGE_KEY = 'lidarProjects.v2';
+const STORAGE_KEY = 'lidarProjects.v3';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // The project the picker most recently activated as the background source.
@@ -86,11 +86,11 @@ function parseCapabilities(xmlText: string): LidarProject[] {
   for (const [projectName, { styles, bboxes }] of grouped) {
     const bboxLonLat = unionBbox(bboxes);
     if (!bboxLonLat) continue;
-    // Skip projects that don't publish a hillshade style — the WMS also
-    // hosts photogrammetry-derived DTMs (typically prefixed "Bilde…") that
-    // only expose height/slope variants, so requesting :skyggerelieff for
-    // those returns blank tiles.
-    if (!styles.has('skyggerelieff')) continue;
+    // Skip photogrammetry-derived DTMs. They advertise the same styles as
+    // the real lidar projects (skyggerelieff etc.) but render blank tiles
+    // in this WMS. The "Bilde" ("image") prefix is Kartverket's naming
+    // convention that distinguishes them from actual lidar acquisitions.
+    if (/^Bilde\b/i.test(projectName)) continue;
     out.push({
       id: projectName,
       projectName,
