@@ -48,6 +48,11 @@ route {
                 rewrite * /skwms1/wms.hoyde-dtm-nhm-topobathy-25833
                 reverse_proxy http://wmscache
         }
+
+        handle /wms/hoyde-dtm-prosjekt {
+                rewrite * /skwms1/wms.hoyde-dtm-prosjekt
+                reverse_proxy http://wmscache
+        }
 }
 
 root * /var/www
