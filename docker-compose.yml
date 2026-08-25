@@ -10,8 +10,24 @@ services:
       - ./config.js:/var/www/config.js:ro
       # Optional: override the baked-in Caddyfile without rebuilding.
       # - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - wmscache
+
+  # Caching reverse proxy for the Kartverket LiDAR hillshade WMS. Caddy
+  # forwards /wms/hoyde-dtm to this service, which caches successful
+  # tile responses on disk (25 GB LRU). Not exposed on the host — only
+  # reachable from the norgeskart container on the compose network.
+  wmscache:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./nginx/wms-cache.conf:/etc/nginx/conf.d/default.conf:ro
+      - wmscache:/var/cache/nginx/wms
 
   # If you want Caddy to terminate TLS itself instead of sitting behind
   # another reverse proxy, change the ":3000" line in Caddyfile to your
   # hostname (e.g. "maps.example.com") and expose 80/443 here instead of
   # 3030. Caddy will provision Let's Encrypt certs automatically.
+
+volumes:
+  wmscache:

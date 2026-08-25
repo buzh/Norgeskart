@@ -47,12 +47,11 @@ export const retryBlankTileLoadFunction: LoadFunction = (
   };
 
   const attemptLoad = async (attempt: number) => {
-    const url =
-      attempt === 0
-        ? src
-        : `${src}${src.includes('?') ? '&' : '?'}_retry=${attempt}`;
     try {
-      const response = await fetch(url);
+      // cache: 'no-store' bypasses the browser HTTP cache so a blank
+      // response can't be reused on retry. The upstream nginx cache does
+      // the real caching and only stores successful, non-blank responses.
+      const response = await fetch(src, { cache: 'no-store' });
       if (!response.ok) throw new Error(String(response.status));
       const blob = await response.blob();
       if (blob.size < BLANK_THRESHOLD_BYTES && attempt < MAX_RETRIES) {
