@@ -1,0 +1,36 @@
+// Runtime configuration for a self-hosted deployment.
+// Copy this file to /config.js at the site root (docker-compose mounts
+// ./config.js from the repo root into /var/www/config.js).
+//
+// Anything you set here overrides the compiled-in defaults from src/env.ts.
+// Omit a field to keep the default.
+window.__NK_CONFIG__ = {
+  envName: 'selfhost',
+  usePostHog: false,
+
+  // Drawing save/load, cadastral property lookup, print job submission.
+  // These endpoints are Kartverket-hosted and CORS-locked to their own
+  // domains — expect them to fail from a private server until you stand
+  // up your own backend or a permitted proxy.
+  apiUrl: 'https://api.norgeskart.no',
+  printApiUrl: 'https://api.norgeskart.no',
+
+  // Public services that work directly from the browser.
+  geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
+  heightDataApiUrl: 'https://hoydedata.no/arcgis/rest',
+
+  layerProviderParameters: {
+    norgeIBilder: {
+      baseUrl: 'https://tilecache.norgeibilder.no',
+      // The key baked into the repo is domain-locked to norgeskart.no.
+      // Aerial imagery layer will 401 until you get your own key.
+      apiKey: 'REPLACE_ME',
+    },
+    kartverketCache: { baseUrl: 'https://cache.kartverket.no' },
+    geoNorgeWMS: { baseUrl: 'https://wms.geonorge.no/skwms1/wms' },
+    eccProxy: {
+      wmsUrl: 'https://tnt-proxy.atkv3-prod.kartverket.cloud/wms',
+    },
+    npolar: { baseUrl: 'https://geodata.npolar.no' },
+  },
+};

@@ -116,7 +116,15 @@ const getEnvName = (): EnvName => {
   return getEnv().envName;
 };
 
-const getEnv = (): Env => {
+declare global {
+  interface Window {
+    __NK_CONFIG__?: Partial<Env> & {
+      layerProviderParameters?: Partial<layerProviderParameters>;
+    };
+  }
+}
+
+const getEnvByHostname = (): Env => {
   const domain = document.location.hostname;
   const previewRegex =
     /norgeskart-preview-.+\.atkv3-dev\.kartverket(?:-intern)?\.cloud/m;
@@ -141,6 +149,20 @@ const getEnv = (): Env => {
   }
   console.error(`Unknown domain: ${domain}`);
   return DEV_ENV;
+};
+
+const getEnv = (): Env => {
+  const base = getEnvByHostname();
+  const override = typeof window !== 'undefined' ? window.__NK_CONFIG__ : undefined;
+  if (!override) return base;
+  return {
+    ...base,
+    ...override,
+    layerProviderParameters: {
+      ...base.layerProviderParameters,
+      ...(override.layerProviderParameters ?? {}),
+    },
+  };
 };
 
 export { getEnv, getEnvName };

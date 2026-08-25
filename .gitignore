@@ -13,6 +13,10 @@ dist-ssr
 *.local
 .vite
 
+# Runtime config for a self-hosted deployment. See config.example.js.
+/config.js
+/public/config.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

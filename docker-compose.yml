@@ -1,0 +1,17 @@
+services:
+  norgeskart:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Runtime config injected into the SPA. Copy config.example.js to
+      # config.js and edit for your deployment.
+      - ./config.js:/var/www/config.js:ro
+      # Optional: override the baked-in Caddyfile without rebuilding.
+      # - ./Caddyfile:/etc/caddy/Caddyfile:ro
+
+  # If you want Caddy to terminate TLS itself instead of sitting behind
+  # another reverse proxy, change the ":3000" line in Caddyfile to your
+  # hostname (e.g. "maps.example.com") and expose 80/443 here instead of
+  # 3000. Caddy will provision Let's Encrypt certs automatically.
