@@ -71,6 +71,21 @@ const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
     blank: 0,
     total: 0,
   });
+  const inner = makeRetryBlankTileLoadFunction({
+    onSettled: ({ blank, failed }) => {
+      if (failed) return;
+      const s = store.get(lidarProjectTileStatsAtom);
+      // Only count for the currently-active project — a lingering load
+      // from an old project must not skew the new project's stats.
+      if (s.projectId !== projectId) return;
+      store.set(lidarProjectTileStatsAtom, {
+        projectId,
+        blank: s.blank + (blank ? 1 : 0),
+        total: s.total + 1,
+      });
+    },
+  });
+  let firstLogged = false;
   return {
     type: 'WMS',
     layerName: 'lidarProject',
@@ -79,20 +94,14 @@ const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
       LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
       VERSION: '1.3.0',
     },
-    tileLoadFunction: makeRetryBlankTileLoadFunction({
-      onSettled: ({ blank, failed }) => {
-        if (failed) return;
-        const s = store.get(lidarProjectTileStatsAtom);
-        // Only count for the currently-active project — a lingering load
-        // from an old project must not skew the new project's stats.
-        if (s.projectId !== projectId) return;
-        store.set(lidarProjectTileStatsAtom, {
-          projectId,
-          blank: s.blank + (blank ? 1 : 0),
-          total: s.total + 1,
-        });
-      },
-    }),
+    tileLoadFunction: (imageTile, src) => {
+      if (!firstLogged) {
+        firstLogged = true;
+        // eslint-disable-next-line no-console
+        console.debug('[actual]', projectId, src);
+      }
+      inner(imageTile, src);
+    },
   };
 };
 

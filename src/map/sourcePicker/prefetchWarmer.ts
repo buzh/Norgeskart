@@ -79,6 +79,14 @@ export const warmLidarProjectTiles = (
       (Math.abs(b[0] - cx) + Math.abs(b[1] - cy)),
   );
 
+  // Match OL's runtime pixel ratio: on a hi-DPI display OL doubles WIDTH
+  // and HEIGHT (and may add DPI/MAP_RESOLUTION), so warming at pixelRatio=1
+  // stores tiles under a completely different cache key than the ones the
+  // real layer later requests.
+  const pixelRatio = typeof window !== 'undefined'
+    ? window.devicePixelRatio || 1
+    : 1;
+
   let count = 0;
   for (const [x, y] of coords) {
     if (count >= MAX_TILES_PER_PROJECT) return;
@@ -86,8 +94,12 @@ export const warmLidarProjectTiles = (
     if (warmed.has(key)) continue;
     warmed.add(key);
     count++;
-    const url = tileUrlFunction([z, x, y], 1, projection);
+    const url = tileUrlFunction([z, x, y], pixelRatio, projection);
     if (!url) continue;
+    if (count === 1) {
+      // eslint-disable-next-line no-console
+      console.debug('[warm]', projectId, url);
+    }
     queue.push(() =>
       fetch(url)
         .then(() => undefined)
