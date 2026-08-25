@@ -144,7 +144,7 @@ export const SourcePicker = () => {
     if (!viewState) return;
     const { extent, resolution, projection } = viewState;
     const activeId = activeLidarProject?.id;
-    for (const p of visibleProjects.filter((p) => p.id !== activeId).slice(0, 4)) {
+    for (const p of visibleProjects.filter((p) => p.id !== activeId).slice(0, 3)) {
       warmLidarProjectTiles(p.id, extent, resolution, projection);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
