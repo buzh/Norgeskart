@@ -73,6 +73,12 @@ type OutdoorsLifeLayerName =
   | 'waterTrails';
 type FactsLayerName = 'osloMarkaBorder';
 
+type CulturalHeritageLayerName =
+  | 'culturalEnvironments'
+  | 'sefrakBuildings'
+  | 'protectedBuildings'
+  | 'userReportedHeritage';
+
 type SjoLayerName =
   | 'sjoDybdedatakvalitetSjokart'
   | 'sjoIkkeSjomalt'
@@ -120,7 +126,8 @@ export type ThemeLayerName =
   | HistoricalMapsLayerName
   | StedsnavnLayerName
   | ConfigThemeLayerName
-  | SjoLayerName;
+  | SjoLayerName
+  | CulturalHeritageLayerName;
 
 export const QUERYABLE_LAYERS: ThemeLayerName[] = [
   'adresses',

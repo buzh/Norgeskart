@@ -1,4 +1,5 @@
 import { borderConfig } from './config/themeLayers/borders';
+import { culturalHeritageConfig } from './config/themeLayers/culturalHeritage';
 import { dekningConfig } from './config/themeLayers/dekning';
 import { fastmerkerLayerConfig } from './config/themeLayers/fastmerker';
 import { historicalMapsConfig } from './config/themeLayers/historicalMaps';
@@ -99,6 +100,7 @@ const getThemeLayerConfig = () => {
     placeNamesConfig,
     fastmerkerLayerConfig,
     dekningConfig,
+    culturalHeritageConfig,
   ];
 
   for (const config of configs) {
