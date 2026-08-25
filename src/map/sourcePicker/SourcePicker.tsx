@@ -1,7 +1,7 @@
 import { Box, Button, HStack, Text, VStack } from '@kvib/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { transformExtent } from 'ol/proj';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { mapAtom } from '../atoms';
 import { backgroundLayerAtom } from '../layers/config/backgroundLayers/atoms';
 import {
@@ -11,6 +11,7 @@ import {
   lidarProjectTileStatsAtom,
 } from '../layers/config/backgroundLayers/lidarProjects';
 import { probeCoverage, readCoverage } from './coverageProbe';
+import { warmLidarProjectTiles } from './prefetchWarmer';
 
 export const SourcePicker = () => {
   const map = useAtomValue(mapAtom);
@@ -23,6 +24,7 @@ export const SourcePicker = () => {
   const [projects, setProjects] = useState<LidarProject[]>([]);
   const [viewState, setViewState] = useState<{
     extentLonLat: [number, number, number, number];
+    extent: [number, number, number, number];
     center: [number, number];
     resolution: number;
     zoom: number;
@@ -62,6 +64,7 @@ export const SourcePicker = () => {
       ];
       setViewState({
         extentLonLat: lonLat,
+        extent: [extent[0], extent[1], extent[2], extent[3]],
         center: [center[0], center[1]],
         resolution,
         zoom,
@@ -134,6 +137,81 @@ export const SourcePicker = () => {
     setBackgroundLayer('lidarHillshade');
   };
 
+  // Warm wmscache for the lidar candidates the user is likely to try next.
+  // Cap to the top few by recency to avoid firing dozens of upstream calls
+  // for a long candidate list at low zoom.
+  useEffect(() => {
+    if (!viewState) return;
+    const { extent, resolution, projection } = viewState;
+    const activeId = activeLidarProject?.id;
+    for (const p of visibleProjects.filter((p) => p.id !== activeId).slice(0, 4)) {
+      warmLidarProjectTiles(p.id, extent, resolution, projection);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    viewState,
+    visibleProjects.map((p) => p.id).join(','),
+    activeLidarProject?.id,
+  ]);
+
+  // Rows in the same order they render, for numeric + bracket shortcuts.
+  const rows: Array<{ label: string; activate: () => void }> = [
+    { label: 'Standardkart', activate: activateStandardMap },
+    { label: 'Nasjonal mosaikk', activate: activateLidarMosaic },
+    ...visibleProjects.map((p) => ({
+      label: p.projectName,
+      activate: () => activateProject(p),
+    })),
+  ];
+  let currentRowIndex = -1;
+  if (backgroundLayer === 'topo') currentRowIndex = 0;
+  else if (backgroundLayer === 'lidarHillshade') currentRowIndex = 1;
+  else if (backgroundLayer === 'lidarProject' && activeLidarProject) {
+    const i = visibleProjects.findIndex((p) => p.id === activeLidarProject.id);
+    if (i >= 0) currentRowIndex = 2 + i;
+  }
+
+  // Keydown handler reads current rows via ref so re-binding isn't needed
+  // every render. The listener lives for the picker's lifetime.
+  const rowsRef = useRef({ rows, currentRowIndex });
+  rowsRef.current = { rows, currentRowIndex };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        const tag = t.tagName;
+        if (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          t.isContentEditable
+        )
+          return;
+      }
+      const { rows: r, currentRowIndex: idx } = rowsRef.current;
+      if (r.length === 0) return;
+      if (e.key >= '1' && e.key <= '9') {
+        const i = Number(e.key) - 1;
+        if (i < r.length) {
+          e.preventDefault();
+          r[i].activate();
+        }
+        return;
+      }
+      if (e.key === '[' || e.key === ']') {
+        const delta = e.key === ']' ? 1 : -1;
+        const start = idx < 0 ? (delta > 0 ? -1 : 0) : idx;
+        const next = ((start + delta) % r.length + r.length) % r.length;
+        e.preventDefault();
+        r[next].activate();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // Kartverket's per-project renderer sometimes returns only blank PNGs
   // below a zoom threshold that varies per dataset. If we've observed at
   // least a handful of tiles for the current project and most were blank,
@@ -181,6 +259,7 @@ export const SourcePicker = () => {
       <VStack align="stretch" gap={1}>
         <SourceRow
           label="Standardkart (topo)"
+          shortcut={shortcutFor(0)}
           active={backgroundLayer === 'topo'}
           onClick={activateStandardMap}
         />
@@ -191,6 +270,7 @@ export const SourcePicker = () => {
 
         <SourceRow
           label="Nasjonal mosaikk"
+          shortcut={shortcutFor(1)}
           badges={['blended']}
           active={isLidarMosaicActive}
           onClick={activateLidarMosaic}
@@ -202,10 +282,11 @@ export const SourcePicker = () => {
           </Text>
         )}
 
-        {visibleProjects.map((p) => (
+        {visibleProjects.map((p, i) => (
           <SourceRow
             key={p.id}
             label={p.projectName}
+            shortcut={shortcutFor(2 + i)}
             badges={[
               p.year != null ? String(p.year) : null,
               p.pointDensity,
@@ -215,17 +296,26 @@ export const SourcePicker = () => {
           />
         ))}
       </VStack>
+
+      <Text fontSize="10px" color="gray.500" mt={2}>
+        Snarveier: 1–9 velger direkte · [ og ] blar
+      </Text>
     </Box>
   );
 };
 
+const shortcutFor = (index: number): string | null =>
+  index >= 0 && index <= 8 ? String(index + 1) : null;
+
 const SourceRow = ({
   label,
+  shortcut,
   badges,
   active,
   onClick,
 }: {
   label: string;
+  shortcut?: string | null;
   badges?: string[];
   active: boolean;
   onClick: () => void;
@@ -243,9 +333,25 @@ const SourceRow = ({
     textAlign="left"
   >
     <HStack w="full" justify="space-between" gap={2}>
-      <Text fontSize="xs" flex={1}>
-        {label}
-      </Text>
+      <HStack gap={1.5} flex={1} align="center">
+        {shortcut && (
+          <Text
+            fontSize="10px"
+            fontFamily="mono"
+            px={1}
+            minW="14px"
+            textAlign="center"
+            borderRadius="sm"
+            bg={active ? 'whiteAlpha.300' : 'gray.200'}
+            color={active ? 'white' : 'gray.700'}
+          >
+            {shortcut}
+          </Text>
+        )}
+        <Text fontSize="xs" flex={1}>
+          {label}
+        </Text>
+      </HStack>
       {badges && badges.length > 0 && (
         <HStack gap={1}>
           {badges.map((b) => (
