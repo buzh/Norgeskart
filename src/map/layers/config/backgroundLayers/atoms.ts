@@ -1,7 +1,9 @@
 import { MapLibreLayer } from '@geoblocks/ol-maplibre-layer';
 import { atom, getDefaultStore } from 'jotai';
 import { atomEffect } from 'jotai-effect';
+import ImageLayer from 'ol/layer/Image';
 import TileLayer from 'ol/layer/Tile';
+import ImageWMS from 'ol/source/ImageWMS';
 import {
   getUrlParameter,
   setUrlParameter,
@@ -76,7 +78,8 @@ export const backgroundLayerAtomEffect = atomEffect((get, set) => {
       const targetProjection =
         layerConfig.requiredProjection ?? currentProjection;
 
-      let layer: TileLayer | MapLibreLayer | null = null;
+      let layer: TileLayer | ImageLayer<ImageWMS> | MapLibreLayer | null =
+        null;
       switch (layerConfig.type) {
         case 'WMTS':
           layer = await getWMTSLayer(layerConfig, targetProjection);

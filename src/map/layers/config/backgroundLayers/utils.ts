@@ -7,7 +7,9 @@ import { setWorkerUrl } from 'maplibre-gl';
 // file verbatim, leaving that sibling import unresolved -> 404 at runtime.
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { WMTSCapabilities } from 'ol/format';
+import ImageLayer from 'ol/layer/Image';
 import TileLayer from 'ol/layer/Tile';
+import ImageWMS from 'ol/source/ImageWMS';
 import TileWMS from 'ol/source/TileWMS';
 import WMTS, { optionsFromCapabilities } from 'ol/source/WMTS';
 import { mapAtom } from '../../../atoms';
@@ -138,29 +140,41 @@ export const getVectorTileLayer = (layerConfig: VectorTileBackgroundLayer) => {
   return layer;
 };
 
-export const getWMSLayer = (layerConfig: WMSBackgroundLayer) => {
+export const getWMSLayer = (
+  layerConfig: WMSBackgroundLayer,
+): TileLayer | ImageLayer<ImageWMS> => {
   const store = getDefaultStore();
   const map = store.get(mapAtom);
   const projection = map.getView().getProjection().getCode();
-  const source = new TileWMS({
-    url: layerConfig.url,
-    params: { ...layerConfig.props, SRS: projection },
-  });
-  if (layerConfig.tileLoadFunction) {
-    source.setTileLoadFunction(layerConfig.tileLoadFunction);
-  }
-  const layer = new TileLayer({
-    source,
-    properties: { id: `bg.${layerConfig.layerName}` },
-  });
+  const properties = { id: `bg.${layerConfig.layerName}` };
 
-  return layer;
+  if (layerConfig.useImage) {
+    // TILED is a MapServer tile-alignment hint and has no meaning for a
+    // single GetMap request. Some MapServer configs return an empty PNG when
+    // it's set on a non-aligned request.
+    const { TILED: _tiled, ...imageParams } = layerConfig.props ?? {};
+    return new ImageLayer({
+      source: new ImageWMS({
+        url: layerConfig.url,
+        params: { ...imageParams, SRS: projection },
+      }),
+      properties,
+    });
+  }
+
+  return new TileLayer({
+    source: new TileWMS({
+      url: layerConfig.url,
+      params: { ...layerConfig.props, SRS: projection },
+    }),
+    properties,
+  });
 };
 
 export const getLayerFromConfig = async (
   layerConfig: BackgroundLayer,
   projection?: string,
-): Promise<TileLayer | MapLibreLayer | null> => {
+): Promise<TileLayer | ImageLayer<ImageWMS> | MapLibreLayer | null> => {
   if (layerConfig.type === 'WMTS') {
     return await getWMTSLayer(layerConfig, projection);
   }

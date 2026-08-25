@@ -1,4 +1,3 @@
-import { LoadFunction } from 'ol/Tile';
 import { ProjectionIdentifier } from '../../../projections/types';
 import {
   BackgroundLayerName,
@@ -38,7 +37,7 @@ export type WMSBackgroundLayer = BackgroundLayerBase & {
   layerName: WMSLayerName;
   url: string;
   props?: Record<string, string | number | boolean>;
-  tileLoadFunction?: LoadFunction;
+  useImage?: boolean;
 };
 
 export type EmptyBackgroundLayer = BackgroundLayerBase & {

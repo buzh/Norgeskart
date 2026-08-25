@@ -1,4 +1,3 @@
-import { retryTileLoadFunction } from './loadFunctions';
 import { BackgroundLayer } from './types';
 
 export const elevationBackgroundLayers: BackgroundLayer[] = [
@@ -8,9 +7,8 @@ export const elevationBackgroundLayers: BackgroundLayer[] = [
     url: 'https://wms.geonorge.no/skwms1/wms.hoyde-dtm-nhm-topobathy-25833',
     props: {
       LAYERS: 'NHM_DTM_TOPOBATHY_25833:skyggerelieff',
-      TILED: true,
       VERSION: '1.3.0',
     },
-    tileLoadFunction: retryTileLoadFunction,
+    useImage: true,
   },
 ];
