@@ -43,6 +43,13 @@ route {
                         header_down Access-Control-Allow-Origin "*"
                 }
         }
+
+        handle /wms/hoyde-dtm {
+                rewrite * /skwms1/wms.hoyde-dtm-nhm-topobathy-25833
+                reverse_proxy https://wms.geonorge.no {
+                        header_up Host wms.geonorge.no
+                }
+        }
 }
 
 root * /var/www

@@ -5,7 +5,10 @@ export const elevationBackgroundLayers: BackgroundLayer[] = [
   {
     type: 'WMS',
     layerName: 'lidarHillshade',
-    url: 'https://wms.geonorge.no/skwms1/wms.hoyde-dtm-nhm-topobathy-25833',
+    // Proxied through Caddy to keep requests same-origin (avoids CORS
+    // issues seen with fetch against wms.geonorge.no) and sets up a spot
+    // to add HTTP caching later.
+    url: '/wms/hoyde-dtm',
     props: {
       LAYERS: 'NHM_DTM_TOPOBATHY_25833:skyggerelieff',
       VERSION: '1.3.0',
