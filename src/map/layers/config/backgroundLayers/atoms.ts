@@ -14,10 +14,20 @@ import { preNauticalProjectionAtom } from '../../atoms';
 import { BackgroundLayerName, WMTSLayerName } from '../../backgroundLayers';
 import { elevationBackgroundLayers } from './elevation';
 import { KvCacheBackgroundLayers } from './kvCache';
+import {
+  activeLidarProjectAtom,
+  DEFAULT_LIDAR_PROJECT_STYLE,
+  LIDAR_PROJECT_WMS_URL,
+} from './lidarProjects';
+import { retryBlankTileLoadFunction } from './loadFunctions';
 import { nauticalBackgroundLayers } from './nautical';
 import { nibBackgroundLayers } from './nib';
 import { npolarBackgroundLayers } from './npolar';
-import { EmptyBackgroundLayer } from './types';
+import {
+  BackgroundLayer,
+  EmptyBackgroundLayer,
+  WMSBackgroundLayer,
+} from './types';
 import {
   clearBackgroundLayer,
   getVectorTileLayer,
@@ -53,19 +63,41 @@ export const backgroundLayerAtom = atom<BackgroundLayerName>(
   getDefaultBackgroundLayer(),
 );
 
+const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => ({
+  type: 'WMS',
+  layerName: 'lidarProject',
+  url: LIDAR_PROJECT_WMS_URL,
+  props: {
+    LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
+    VERSION: '1.3.0',
+  },
+  tileLoadFunction: retryBlankTileLoadFunction,
+});
+
 export const backgroundLayerAtomEffect = atomEffect((get, set) => {
   const layerName = get(backgroundLayerAtom);
+  // Depend on the active lidar project so switching projects while
+  // 'lidarProject' is the background rebuilds the WMS layer.
+  const activeLidarProject = get(activeLidarProjectAtom);
 
   if (layerName === 'empty') {
     clearBackgroundLayer();
     setUrlParameter('backgroundLayer', 'empty');
     return;
   }
-  const layerConfig = allConfiguredBackgroundLayers.find(
-    (layer) => layer.layerName === layerName,
-  );
+
+  const layerConfig: BackgroundLayer | undefined =
+    layerName === 'lidarProject'
+      ? activeLidarProject
+        ? buildLidarProjectConfig(activeLidarProject.id)
+        : undefined
+      : allConfiguredBackgroundLayers.find((l) => l.layerName === layerName);
 
   if (!layerConfig) {
+    if (layerName === 'lidarProject') {
+      // No project selected yet — nothing to render, and no warning needed.
+      return;
+    }
     console.warn(`No layer config found for layer name: ${layerName}`);
     return;
   }

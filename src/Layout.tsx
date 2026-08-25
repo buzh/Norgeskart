@@ -13,6 +13,7 @@ import { BackgroundLayerPopover } from './map/backgroundLayer/BackgroundLayerPop
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
 import { MapComponent } from './map/MapComponent';
 import { MapControlButtons } from './map/MapControlButtons';
+import { SourcePicker } from './map/sourcePicker/SourcePicker';
 import { mapToolAtom, showSearchComponentAtom } from './map/overlay/atoms';
 import { Compass } from './map/overlay/Compass';
 import { LinkLogo } from './map/overlay/LinkLogo';
@@ -190,6 +191,11 @@ export const Layout = () => {
           pointerEvents={'none'}
         >
           <VStack alignItems="flex-end" gap={2} pointerEvents="auto">
+            <Box display={{ base: 'none', md: 'block' }}>
+              <ErrorBoundary fallback={undefined} name={'SourcePicker'}>
+                <SourcePicker />
+              </ErrorBoundary>
+            </Box>
             <ErrorBoundary fallback={undefined} name={'MapControlButtons'}>
               <MapControlButtons />
             </ErrorBoundary>

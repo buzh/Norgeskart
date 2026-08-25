@@ -1,7 +1,10 @@
 export type WMSLayerName =
   | 'oceanicelectronic'
   | 'sjokartraster'
-  | 'lidarHillshade';
+  | 'lidarHillshade'
+  // Dynamic per-acquisition LiDAR project. The concrete project + style
+  // come from activeLidarProjectAtom, not from a static layer config.
+  | 'lidarProject';
 export type VectorTileLayerName = 'nautical-background';
 export type EmptyLayerName = 'empty';
 export type WMTSLayerName =

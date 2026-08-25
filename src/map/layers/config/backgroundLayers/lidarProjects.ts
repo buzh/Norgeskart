@@ -5,6 +5,8 @@
 // The XML is proxied + long-cached through wmscache; we additionally
 // keep a week-long localStorage cache to avoid re-parsing on every load.
 
+import { atom } from 'jotai';
+
 export type LidarProject = {
   // Full WMS layer-name prefix, e.g. "Vestfold 10pkt 2025".
   id: string;
@@ -19,6 +21,14 @@ const CAPS_URL =
   '/wms/hoyde-dtm-prosjekt?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0';
 const STORAGE_KEY = 'lidarProjects.v1';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// The project the picker most recently activated as the background source.
+// Read by the background-layer effect when backgroundLayerAtom is
+// 'lidarProject' to build the actual WMS request.
+export const activeLidarProjectAtom = atom<LidarProject | null>(null);
+
+export const LIDAR_PROJECT_WMS_URL = '/wms/hoyde-dtm-prosjekt';
+export const DEFAULT_LIDAR_PROJECT_STYLE = 'skyggerelieff';
 
 type CachedEntry = { ts: number; projects: LidarProject[] };
 
@@ -135,8 +145,8 @@ function parseYear(name: string): number | null {
 }
 
 function parsePointDensity(name: string): string | null {
-  const m = name.match(/\b(\d+(?:pkt|pnt))\b/i);
-  return m ? m[1] : null;
+  const m = name.match(/\b(\d+)\s*(pkt|pnt)\b/i);
+  return m ? `${m[1]}${m[2].toLowerCase()}` : null;
 }
 
 function readCache(): LidarProject[] | null {
