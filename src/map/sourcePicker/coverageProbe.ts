@@ -13,8 +13,11 @@ import { LIDAR_PROJECT_WMS_URL } from '../layers/config/backgroundLayers/lidarPr
 export type Coverage = 'covered' | 'blank';
 
 const BUCKET_SIZE_M = 2000;
-const PROBE_PIXELS = 16;
-const BLANK_THRESHOLD_BYTES = 800;
+// 16×16 was too small — real hillshade tiles compressed to just ~250 B,
+// indistinguishable from Kartverket's ~83 B "no data" PNG. At 32×32 the
+// gap is ~10× (blank ~83 B vs real ~500–2000 B), so 250 B is a safe cut.
+const PROBE_PIXELS = 32;
+const BLANK_THRESHOLD_BYTES = 250;
 
 const bucketKey = (
   projectId: string,
