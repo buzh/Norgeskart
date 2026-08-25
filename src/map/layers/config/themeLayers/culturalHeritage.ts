@@ -10,7 +10,7 @@ export const culturalHeritageConfig: ThemeLayerConfig = {
         nn: 'Kulturminne',
         en: 'Cultural heritage',
       },
-      infoFormat: 'text/html',
+      infoFormat: 'application/vnd.ogc.gml',
     },
   ],
   layers: [
