@@ -15,6 +15,20 @@ export const culturalHeritageConfig: ThemeLayerConfig = {
   ],
   layers: [
     {
+      id: 'heritageSites',
+      name: {
+        nb: 'Lokaliteter og enkeltminner',
+        nn: 'Lokalitetar og enkeltminne',
+        en: 'Heritage sites and monuments',
+      },
+      wmsUrl: 'https://kart.ra.no/wms/kulturminner2',
+      layers: 'Kulturminner',
+      categoryId: 'culturalHeritage',
+      groupid: 19,
+      queryable: true,
+      useLegendGraphic: true,
+    },
+    {
       id: 'culturalEnvironments',
       name: {
         nb: 'Kulturmiljøer',

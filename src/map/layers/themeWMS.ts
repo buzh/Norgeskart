@@ -74,6 +74,7 @@ type OutdoorsLifeLayerName =
 type FactsLayerName = 'osloMarkaBorder';
 
 type CulturalHeritageLayerName =
+  | 'heritageSites'
   | 'culturalEnvironments'
   | 'sefrakBuildings'
   | 'protectedBuildings'
