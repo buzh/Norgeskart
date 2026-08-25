@@ -3,7 +3,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "3030:3030"
+      - "3030:3000"
     volumes:
       # Runtime config injected into the SPA. Copy config.example.js to
       # config.js and edit for your deployment.

@@ -5,7 +5,7 @@
         admin :2019
 }
 
-:3030
+:3000
 
 route {
         header Strict-Transport-Security max-age=31536000
