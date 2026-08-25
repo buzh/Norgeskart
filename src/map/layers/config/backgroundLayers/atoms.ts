@@ -79,6 +79,7 @@ export const backgroundLayerAtomEffect = atomEffect((get, set) => {
   // Depend on the active lidar project so switching projects while
   // 'lidarProject' is the background rebuilds the WMS layer.
   const activeLidarProject = get(activeLidarProjectAtom);
+  console.log('[bg effect] fired', { layerName, activeLidarProject });
 
   if (layerName === 'empty') {
     clearBackgroundLayer();
@@ -92,10 +93,11 @@ export const backgroundLayerAtomEffect = atomEffect((get, set) => {
         ? buildLidarProjectConfig(activeLidarProject.id)
         : undefined
       : allConfiguredBackgroundLayers.find((l) => l.layerName === layerName);
+  console.log('[bg effect] resolved config', layerConfig);
 
   if (!layerConfig) {
     if (layerName === 'lidarProject') {
-      // No project selected yet — nothing to render, and no warning needed.
+      console.log('[bg effect] lidarProject with no active project — noop');
       return;
     }
     console.warn(`No layer config found for layer name: ${layerName}`);
@@ -128,6 +130,7 @@ export const backgroundLayerAtomEffect = atomEffect((get, set) => {
         const preNauticalProjection = store.get(preNauticalProjectionAtom);
         clearBackgroundLayer();
         map.addLayer(layer);
+        console.log('[bg effect] layer added', layerName, layer);
         setUrlParameter('backgroundLayer', layerName);
         if (
           layerConfig.requiredProjection &&
