@@ -98,7 +98,7 @@ export const warmLidarProjectTiles = (
     if (!url) continue;
     if (count === 1) {
       // eslint-disable-next-line no-console
-      console.debug('[warm]', projectId, url);
+      console.log('[warm]', projectId, url);
     }
     queue.push(() =>
       fetch(url)

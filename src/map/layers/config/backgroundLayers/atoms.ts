@@ -98,7 +98,7 @@ const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
       if (!firstLogged) {
         firstLogged = true;
         // eslint-disable-next-line no-console
-        console.debug('[actual]', projectId, src);
+        console.log('[actual]', projectId, src);
       }
       inner(imageTile, src);
     },
