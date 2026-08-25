@@ -142,11 +142,15 @@ export const getWMSLayer = (layerConfig: WMSBackgroundLayer) => {
   const store = getDefaultStore();
   const map = store.get(mapAtom);
   const projection = map.getView().getProjection().getCode();
+  const source = new TileWMS({
+    url: layerConfig.url,
+    params: { ...layerConfig.props, SRS: projection },
+  });
+  if (layerConfig.tileLoadFunction) {
+    source.setTileLoadFunction(layerConfig.tileLoadFunction);
+  }
   const layer = new TileLayer({
-    source: new TileWMS({
-      url: layerConfig.url,
-      params: { ...layerConfig.props, SRS: projection },
-    }),
+    source,
     properties: { id: `bg.${layerConfig.layerName}` },
   });
 

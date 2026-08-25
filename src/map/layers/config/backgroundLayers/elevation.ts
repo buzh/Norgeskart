@@ -1,3 +1,4 @@
+import { retryTileLoadFunction } from './loadFunctions';
 import { BackgroundLayer } from './types';
 
 export const elevationBackgroundLayers: BackgroundLayer[] = [
@@ -10,5 +11,6 @@ export const elevationBackgroundLayers: BackgroundLayer[] = [
       TILED: true,
       VERSION: '1.3.0',
     },
+    tileLoadFunction: retryTileLoadFunction,
   },
 ];
