@@ -1,7 +1,6 @@
 import { borderConfig } from './config/themeLayers/borders';
 import { culturalHeritageConfig } from './config/themeLayers/culturalHeritage';
 import { dekningConfig } from './config/themeLayers/dekning';
-import { elevationConfig } from './config/themeLayers/elevation';
 import { fastmerkerLayerConfig } from './config/themeLayers/fastmerker';
 import { historicalMapsConfig } from './config/themeLayers/historicalMaps';
 import { outdoorRecreationLayerConfig } from './config/themeLayers/outdoorRecreation';
@@ -102,7 +101,6 @@ const getThemeLayerConfig = () => {
     fastmerkerLayerConfig,
     dekningConfig,
     culturalHeritageConfig,
-    elevationConfig,
   ];
 
   for (const config of configs) {

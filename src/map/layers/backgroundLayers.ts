@@ -1,4 +1,7 @@
-export type WMSLayerName = 'oceanicelectronic' | 'sjokartraster';
+export type WMSLayerName =
+  | 'oceanicelectronic'
+  | 'sjokartraster'
+  | 'lidarHillshade';
 export type VectorTileLayerName = 'nautical-background';
 export type EmptyLayerName = 'empty';
 export type WMTSLayerName =

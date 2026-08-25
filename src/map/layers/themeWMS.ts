@@ -80,8 +80,6 @@ type CulturalHeritageLayerName =
   | 'protectedBuildings'
   | 'userReportedHeritage';
 
-type ElevationLayerName = 'elevationHillshade';
-
 type SjoLayerName =
   | 'sjoDybdedatakvalitetSjokart'
   | 'sjoIkkeSjomalt'
@@ -130,8 +128,7 @@ export type ThemeLayerName =
   | StedsnavnLayerName
   | ConfigThemeLayerName
   | SjoLayerName
-  | CulturalHeritageLayerName
-  | ElevationLayerName;
+  | CulturalHeritageLayerName;
 
 export const QUERYABLE_LAYERS: ThemeLayerName[] = [
   'adresses',

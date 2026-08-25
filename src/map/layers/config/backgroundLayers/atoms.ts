@@ -10,6 +10,7 @@ import { currentProjectionAtom, mapAtom } from '../../../atoms';
 import { ProjectionIdentifier } from '../../../projections/types';
 import { preNauticalProjectionAtom } from '../../atoms';
 import { BackgroundLayerName, WMTSLayerName } from '../../backgroundLayers';
+import { elevationBackgroundLayers } from './elevation';
 import { KvCacheBackgroundLayers } from './kvCache';
 import { nauticalBackgroundLayers } from './nautical';
 import { nibBackgroundLayers } from './nib';
@@ -33,6 +34,7 @@ export const allConfiguredBackgroundLayers = [
   ...nibBackgroundLayers,
   ...npolarBackgroundLayers,
   ...nauticalBackgroundLayers,
+  ...elevationBackgroundLayers,
 ];
 
 const getDefaultBackgroundLayer = (): BackgroundLayerName => {
