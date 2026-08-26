@@ -1,6 +1,6 @@
 import { HStack, Stack, Text, VStack } from '@kvib/react';
 import { useTranslation } from 'react-i18next';
-import { decimalToDMS } from '../../../print/EmergencyPoster/utils';
+import { decimalToDMS } from '../../../shared/utils/coordinateCalculations';
 
 const formatCoordinateDigit = (value: number, useDMS: boolean) => {
   if (useDMS) {

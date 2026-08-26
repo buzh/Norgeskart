@@ -8,12 +8,10 @@ import {
   toaster,
   VStack,
 } from '@kvib/react';
-import { usePostHog } from '@posthog/react';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { isPrintDialogOpenAtom } from '../../print/atoms';
 import { useIsMobileScreen } from '../../shared/hooks';
 import { activeThemeLayersAtom } from '../layers/atoms';
 import { mapToolAtom } from './atoms';
@@ -21,15 +19,11 @@ import { mapToolAtom } from './atoms';
 export const MapToolButtons = () => {
   const { t } = useTranslation();
   const [currentMapTool, setCurrentMapTool] = useAtom(mapToolAtom);
-  const setIsPrintDialogOpen = useSetAtom(isPrintDialogOpenAtom);
   const isMobile = useIsMobileScreen();
-  const isPrintDialogOpenDisabled = useAtomValue(isPrintDialogOpenAtom);
   const [menuVisible, setMenuVisible] = useState(true);
-  const ph = usePostHog();
   const navigate = useNavigate();
 
   const handleShareMapClick = () => {
-    ph.capture('share_map_clicked');
     const url = window.location.href;
     navigator.clipboard
       .writeText(url)
@@ -125,7 +119,6 @@ export const MapToolButtons = () => {
           isMobile ? t('controller.draw.mobiletext') : t('controller.draw.text')
         }
         active={currentMapTool === 'draw'}
-        disabled={isPrintDialogOpenDisabled}
         id="map-draw-button"
       />
       <MapButton
@@ -138,20 +131,6 @@ export const MapToolButtons = () => {
         }
         id="map-share-button"
       />
-      {!isMobile && (
-        <MapButton
-          onClick={() => {
-            if (currentMapTool === 'draw') {
-              setCurrentMapTool(null);
-            }
-            setIsPrintDialogOpen((p) => !p);
-          }}
-          icon={'edit_document'}
-          label={t('controller.print.text')}
-          ariaLabel="print"
-          id="map-print-button"
-        />
-      )}
       <MapButton
         onClick={() => navigate('/hjelp')}
         icon={'help'}

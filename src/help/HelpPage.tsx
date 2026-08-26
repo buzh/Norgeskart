@@ -21,7 +21,6 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Contact, PrivacyPolicy } from '../help/PrivacyPolicyAndContact';
 import LanguageSwitcher from '../languageswitcher/LanguageSwitcher';
 import { useIsMobileScreen } from '../shared/hooks';
 import { ContentBlock, Tip, unwrapJsonModule } from '../types/tips';
@@ -224,29 +223,6 @@ export const HelpPage = () => {
               })}
             </SimpleGrid>
           </Box>
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap={2}>
-            <Box {...boxStyles}>
-              <PrivacyPolicy />
-            </Box>
-            <Box {...boxStyles}>
-              <Heading size={{ base: '2xl', md: '3xl' }} fontWeight="bold">
-                {t('helpPage.termsOfUse.heading')}
-              </Heading>
-              <Text mt={2} fontSize={{ base: 'sm', md: 'md' }}>
-                {t('helpPage.termsOfUse.text')}
-              </Text>
-              <Link
-                mt={2}
-                colorPalette="green"
-                href="https://www.kartverket.no/api-og-data/vilkar-for-bruk"
-                external
-                target="_blank"
-                variant="underline"
-              >
-                kartverket.no
-              </Link>
-            </Box>
-          </SimpleGrid>
           <Box {...boxStyles}>
             <Heading size={{ base: '2xl', md: '3xl' }} fontWeight="bold">
               {t('about.heading')}
@@ -265,30 +241,6 @@ export const HelpPage = () => {
               {t('about.version')}: {__COMMIT_HASH__} | {t('about.buildDate')}:{' '}
               {new Date(__BUILD_DATE__).toLocaleDateString()}
             </Text>
-          </Box>
-
-          <Box {...boxStyles}>
-            <Contact />
-          </Box>
-
-          <Box {...boxStyles}>
-            <Heading size={{ base: '2xl', md: '3xl' }} fontWeight="bold">
-              {t('privacyAndContact.status.heading')}
-            </Heading>
-            <Text mt={2} fontSize={{ base: 'sm', md: 'md' }}>
-              {t('privacyAndContact.status.infoText')}
-            </Text>
-            <Link
-              colorPalette="green"
-              href="https://status.kartverket.no/"
-              external={true}
-              target="_blank"
-              variant="underline"
-              mt={2}
-              textStyle="md"
-            >
-              status.kartverket.no
-            </Link>
           </Box>
 
           {isMobile && (
@@ -350,20 +302,6 @@ export const HelpPage = () => {
                   href="https://hoydedata.no/"
                 >
                   {t('helpPage.notFound.hoydedataButton')}
-                </Link>
-              </Box>
-              <Box>
-                <Heading>Rett i kartet</Heading>
-                <Text fontSize={{ base: 'sm', md: 'md' }}>
-                  {t('helpPage.notFound.rettikartetDescription')}
-                </Text>
-                <Link
-                  target="_blank"
-                  external
-                  href="https://rettikartet.no/"
-                  mt={4}
-                >
-                  {t('helpPage.notFound.rettikartetButton')}
                 </Link>
               </Box>
             </Stack>

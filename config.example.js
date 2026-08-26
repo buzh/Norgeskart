@@ -6,18 +6,15 @@
 // Omit a field to keep the default.
 window.__NK_CONFIG__ = {
   envName: 'selfhost',
-  usePostHog: false,
 
-  // Drawing save/load, cadastral property lookup, print job submission.
-  // These endpoints are Kartverket-hosted and CORS-locked to their own
-  // domains — expect them to fail from a private server until you stand
-  // up your own backend or a permitted proxy.
+  // Drawing save/load and cadastral property lookup. These endpoints are
+  // Kartverket-hosted and CORS-locked to their own domains — expect them
+  // to fail from a private server until you stand up your own backend or
+  // a permitted proxy.
   apiUrl: 'https://api.norgeskart.no',
-  printApiUrl: 'https://api.norgeskart.no',
 
-  // Public services that work directly from the browser.
+  // Public service that works directly from the browser.
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
-  heightDataApiUrl: 'https://hoydedata.no/arcgis/rest',
 
   layerProviderParameters: {
     norgeIBilder: {

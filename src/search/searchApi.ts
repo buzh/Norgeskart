@@ -1,11 +1,9 @@
 import { transform } from 'ol/proj';
-import posthog from 'posthog-js';
 import { getEnv } from '../env.ts';
 import { ProjectionIdentifier } from '../map/projections/types.ts';
 import { isNumberOk } from '../shared/utils/numberUtils.ts';
 import {
   AddressApiResponse,
-  EmergencyPosterResponse,
   PlaceNameApiResponse,
   PlaceNamePointApiResponse,
   Property,
@@ -24,14 +22,6 @@ const trackApiError = (
   },
 ) => {
   console.error(`Search API error [${context.searchType}]:`, error);
-  if (posthog.__loaded) {
-    posthog.captureException(error, {
-      errorType: 'search_api_error',
-      ...context,
-    });
-  } else {
-    console.warn('PostHog is not loaded, cannot track search API error');
-  }
 };
 
 const normalizeAddressQuery = (query: string): string =>
@@ -283,27 +273,6 @@ export const getElevation = async (
       httpStatus,
       searchType: 'elevation',
     });
-    throw error;
-  }
-};
-
-export const getEmergecyPosterInfoByCoordinates = async (
-  lat: number,
-  lon: number,
-): Promise<EmergencyPosterResponse> => {
-  const url = `${env.apiUrl}/emergencyPoster/${lat}/${lon}`;
-  let httpStatus;
-  try {
-    const res = await fetch(url);
-    httpStatus = res.status;
-    if (!res.ok) {
-      throw new Error(
-        `API failed [emergencyPoster]: ${res.status} for coordinates (${lat}, ${lon}), Statuscode:${res.status}`,
-      );
-    }
-    return res.json();
-  } catch (error) {
-    trackApiError(error, { url, httpStatus, searchType: 'emergencyPoster' });
     throw error;
   }
 };

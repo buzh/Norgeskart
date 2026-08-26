@@ -145,13 +145,6 @@ export type PlaceNamePointApiResponse = {
   navn: PlaceNamePoint[];
 };
 
-export type EmergencyPosterResponse = {
-  matrikkelnr: string;
-  kommune: string;
-  veg: string;
-  vegliste: string[];
-};
-
 export type Road = {
   ADRESSEKODE: string;
   FYLKESNAVN: string;

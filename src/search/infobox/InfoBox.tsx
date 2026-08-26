@@ -7,14 +7,9 @@ import {
   IconButton,
   Stack,
 } from '@kvib/react';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useSetAtom } from 'jotai';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  isRettIKartetDialogOpenAtom,
-  rettIKartetCoordinatesAtom,
-} from '../../map/menu/dialogs/atoms';
-import { isPrintDialogOpenAtom } from '../../print/atoms';
 import { searchCoordinatesAtom, selectedResultAtom } from '../atoms';
 import { InfoboxAccordionContent } from './InfoboxAccordionContent';
 import { InfoBoxPreamble } from './InfoBoxPreamble';
@@ -23,9 +18,6 @@ export const InfoBox = () => {
   const [selectedResult, setSelectedResult] = useAtom(selectedResultAtom);
   const setClickedCoordinate = useSetAtom(searchCoordinatesAtom);
   const { t } = useTranslation();
-  const isPrintDialogOpen = useAtomValue(isPrintDialogOpenAtom);
-  const setRettIKartetDialogOpen = useSetAtom(isRettIKartetDialogOpenAtom);
-  const setRettIKartetCoordinates = useSetAtom(rettIKartetCoordinatesAtom);
   const [isMinimized, setIsMinimized] = useState(false);
 
   const onClose = useCallback(() => {
@@ -51,7 +43,7 @@ export const InfoBox = () => {
       overflowY={'hidden'}
       maxHeight="52vh"
       width="100%"
-      display={isPrintDialogOpen ? 'none' : 'flex'}
+      display={'flex'}
       maxWidth={isMinimized ? '190px' : '355px'}
     >
       <Flex justifyContent={'flex-end'} alignItems="center" gap={1}>
@@ -90,17 +82,6 @@ export const InfoBox = () => {
           <InfoboxAccordionContent />
         </AccordionRoot>
       </Box>
-      <Button
-        display={isMinimized ? 'none ' : 'flex'}
-        variant="plain"
-        size="sm"
-        onClick={() => {
-          setRettIKartetCoordinates([selectedResult.lon, selectedResult.lat]);
-          setRettIKartetDialogOpen(true);
-        }}
-      >
-        {t('toolbar.reportError.label')}
-      </Button>
     </Stack>
   );
 };

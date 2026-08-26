@@ -4,9 +4,6 @@
       "openText": "Temakart",
       "mobiletext": "Temakart"
     },
-    "print": {
-      "text": "Lag kart"
-    },
     "draw": {
       "text": "Tegne og måle",
       "mobiletext": "Tegne og måle"
@@ -125,10 +122,8 @@
     },
     "coordinateSystem": "Koordinatsystem",
     "decimalDegrees": "Desimalgrader",
-    "emergencyPoster": "Lag nødplakat",
     "heightEstimatedByInterpolation": "Høyde:",
     "in": "i",
-    "makeMap": "Lag turkart",
     "metersAboveSeaLevel": "moh",
     "metersAboveSeaLevelTooltip": "Meter over havet, estimert ved interpolasjon",
     "municipality": "Kommune",
@@ -150,30 +145,6 @@
     "road": "Veg"
   },
   "map": {
-    "contextmenu": {
-      "items": {
-        "rettikartet": {
-          "dialog": {
-            "category": {
-              "label": "Velg kartkategori"
-            },
-            "description": "Meld om feil i kart på rettikartet.no. Velg fra kategoriene under for å åpne et nytt vindu. Hvis du mener en eiendomsgrense vises feil i kartet, må dette tas opp med lokal matrikkelmyndighet. Det vil si kommunen eiendommen er i. Kartverket har ikke myndighet til å gjøre endringer på eiendomsgrenser.",
-            "link": {
-              "label": "Åpne rettikartet.no i en ny fane"
-            },
-            "rettikartetcategories": {
-              "n50kartdata": "Turkart",
-              "sjo": "Sjøkart",
-              "turruter": "Turruter",
-              "veger": "Veger og adresser"
-            },
-            "title": "Meld om en feil"
-          },
-          "label": "Meld om feil",
-          "tooltip": "Gå til RettIKartet.no"
-        }
-      }
-    },
     "errorMessage": "Noe gikk veldig galt med kartet",
     "settings": {
       "compass": {
@@ -352,26 +323,6 @@
     "nameObjectType": "Navneobjekttype",
     "moreInfo": "Mer info"
   },
-  "privacyAndContact": {
-    "contactUs": "Kontakt oss",
-    "dialogContent": "Vi tar gjerne imot ris og ros på Norgeskart.no. Bruk skjemaet eller kontakt oss gjerne på e-post eller telefon",
-    "infoText": "Les hvordan vi tar vare på personopplysninger i Kartverkets",
-    "privacyPolicy": "Personvernerklæring ",
-    "sendEmail": "Send e-post",
-    "privacy": "Personvern",
-    "status": {
-      "heading": "Status",
-      "infoText": "Se status for våre tjenester ved å besøke lenken"
-    },
-    "formsLinkText": "Åpne tilbakemeldingskjema",
-    "cookieConsent": {
-      "heading": "Informasjonskapsler",
-      "currentStatus": "Nåværende samtykke:",
-      "granted": "Godtatt",
-      "denied": "Avslått",
-      "pending": "Ikke valgt"
-    }
-  },
   "propertyInfo": {
     "address": "Adresse",
     "holdingNr": "Gårdsnr.",
@@ -450,10 +401,6 @@
     }
   },
   "toolbar": {
-    "reportError": {
-      "label": "Feil i kartet?",
-      "tooltip": "Rapporter feil eller mangler i kartet."
-    },
     "scale": {
       "tooltip": "Valgt målestokk tilpasses nærmeste tilgjengelige zoomnivå i kartet. Faktisk målestokk kan derfor avvike noe.",
       "disabledTooltip": "Målestokkvelgeren er deaktivert fordi dette bakgrunnskartet bruker heltallige zoomnivåer for bedre ytelse."
@@ -469,14 +416,6 @@
     "legend": {
       "tooltip": "Vis symbolforklaring",
       "label": "Tegnforklaring"
-    }
-  },
-  "cookieDialog": {
-    "heading": "Vi bruker informasjonskapsler",
-    "body": "Norgeskart bruker informasjonskapsler (cookies) for å få nettsiden til å fungere og for å forstå hvordan tjenesten brukes, slik at vi kan forbedre den.\n\nVi bruker analyseverktøyet PostHog til å samle inn anonymisert bruksstatistikk, som for eksempel hvilke sider som besøkes og hvilke funksjoner som brukes. Opplysningene brukes kun til statistikk og tjenesteforbedring.\n\nDu kan når som helst endre eller trekke tilbake samtykket ditt under Hjelp - Personvern\n\nFeltet for tilbakemelding er et åpent fritekstfelt. Vi ber deg om å ikke skrive inn sensitive personopplysninger. Dersom du likevel oppgir personopplysninger, vil disse bli slettet så snart som mulig og ikke brukt videre.",
-    "buttons": {
-      "accept": "Godta",
-      "reject": "Avslå"
     }
   },
   "info": {
@@ -497,115 +436,6 @@
     "item": {
       "fallbackMessage": "har ingen tegnforklaring"
     }
-  },
-  "printdialog": {
-    "heading": "Lag kart",
-    "tabs": {
-      "extent": {
-        "heading": "Utsnitt"
-      },
-      "hiking": {
-        "heading": "Turkart"
-      },
-      "elevationProfile": {
-        "heading": "Høydeprofil"
-      },
-      "emergencyPoster": {
-        "heading": "Nødplakat"
-      }
-    },
-    "emergencyPoster": {
-      "section1": "Nødplakaten er fjernet fra Norgeskart. Vi anbefaler at du bruker Norsk Luftambulanse sin tjeneste for å lage eller oppdatere nødplakaten din.",
-      "link": "Lag nødplakat hos Norsk Luftambulanse",
-      "section2": "Her kan du enkelt lage en nødplakat med stedets koordinater og annen viktig informasjon som kan hjelpe nødetatene å finne frem."
-    },
-    "elevationProfile": {
-      "heading": "Tegn en linje for å lage en høydeprofil",
-      "infotext": "Opprett en høydeprofil ved å laste opp en .GPX fil eller ved å klikke i kartet for å plassere det første punktet og dobbelklikk for å avslutte.",
-      "jobError": "Kunne ikke lage høydeprofil",
-      "jobRunning": "Lager profil",
-      "buttons": {
-        "exportCsv": {
-          "label": "Last ned som CSV"
-        },
-        "exportPng": {
-          "label": "Last ned som PNG"
-        },
-        "exportJpeg": {
-          "label": "Last ned som JPEG"
-        },
-        "reset": {
-          "label": "Nullstill"
-        }
-      },
-      "chartLabels": {
-        "title": "Høydeprofil",
-        "xAxis": "Avstand [m]",
-        "yAxis": "Høyde [m]"
-      },
-      "fileUpload": {
-        "dragDrop": {
-          "label": "Dra fil, eller trykk, her",
-          "fileInfo": ".gpx format"
-        }
-      }
-    },
-    "hikingMap": {
-      "heading": "Velg målestokk og gi kartet ditt et navn",
-      "fields": {
-        "scale": {
-          "label": "Målestokk"
-        },
-        "mapName": {
-          "label": "Navn på kartet",
-          "placeholder": "Mitt turkart",
-          "helpertext": "Kun a-z og tall"
-        },
-        "includeLegend": {
-          "label": "tegnforklaring"
-        },
-        "includeSweeden": {
-          "label": "kart inn i Sverige (50km)"
-        },
-        "includeCompassInstructions": {
-          "label": "minikurs i kompassbruk"
-        },
-        "heading": "Ta med"
-      },
-      "overlayinstructions": "Plasser det oransje feltet i området du vil skrive ut",
-      "buttons": {
-        "generate": "Lag turkart",
-        "cancel": "Avbryt",
-        "download": "Last ned kart"
-      },
-      "errors": {
-        "generateFailed": "Utskrift feilet"
-      },
-      "popupblockedalert": {
-        "title": "Popup blokkert",
-        "body": "Popup blokkert. Vennligst fjern blokkeringen og prøv igjen, eller bruk nedlastingsknappen"
-      }
-    }
-  },
-  "printExtent": {
-    "label": "Velg format",
-    "placeholder": "Format",
-    "orientation": {
-      "portrait": "Portrett",
-      "landscape": "Landskap"
-    },
-    "description": "Plasser det oransje feltet i området du vil skrive ut",
-    "button": {
-      "print": "Hent kartet"
-    },
-    "toast": {
-      "success": "Nedlasting fullført",
-      "error": "Klarte ikke å hente kartet"
-    },
-    "scale": "Utskriftsmålestokk",
-    "scaleNote": "Skjermens målestokk er 1 : {{screenScale}}. Avviket skyldes at papir (72 pt/tomme) og skjerm (96 px/tomme) bruker ulike referanseverdier for pikselstørrelse.",
-    "vectorTileFallbackWarning": "Nautisk bakgrunnskart støttes ikke av utskriftstjenesten og erstattes med sjøkart oppdatert EFS i utskriften.",
-    "projectionWarning": "Utskriften vil alltid være i UTM-sone 33 (EPSG:25833), uavhengig av valgt kartprojeksjon."
   },
   "about": {
     "heading": "Om oss",
@@ -648,21 +478,6 @@
       "link": "Tilbake"
     },
     "title": "Hva trenger du hjelp med?",
-    "termsOfUse": {
-      "heading": "Vilkår for bruk",
-      "text": "Kartverket's vilkår for bruk kan du finne på"
-    },
-    "feedback": {
-      "title": "Tilbakemeldingsskjema",
-      "text": "Rapporter feil eller foreslå forbedringer"
-    },
-    "email": {
-      "title": "E-post",
-      "text": "Kontakt oss på e-post, så svarer vi så fort vi kan."
-    },
-    "phone": {
-      "title": "Telefon"
-    },
     "notFound": {
       "heading": "Finner du ikke det du leter etter?",
       "description": "Kanskje et søk i noen av våre andre tjenester kan hjelpe deg å finne det du leter etter.",
@@ -672,9 +487,7 @@
       "norgeibilderDescription": "På norgeibilder.no får du oversikt over ortofoto(målestokkriktige flybilder) som samarbeidspartene i Norge i digitalt tilbyr.",
       "norgeibilderButton": "Gå til Norgeibilder.no",
       "hoydedataDescription": "Her får du oversikt og tilgang til høydedata som Kartverket tilbyr på internett.",
-      "hoydedataButton": "Gå til høydedata.no",
-      "rettikartetDescription": "Her kan du melde fra om feil og mangler i kartdata og stedsnavn.",
-      "rettikartetButton": "Gå til rettikartet.no"
+      "hoydedataButton": "Gå til høydedata.no"
     }
   }
 }

@@ -7,7 +7,6 @@ import Cluster from 'ol/source/Cluster';
 import VectorSource from 'ol/source/Vector';
 import { getMarkerLayer } from '../../draw/drawControls/hooks/mapLayers';
 import { mapAtom } from '../../map/atoms';
-import { isPrintDialogOpenAtom } from '../../print/atoms';
 import { SearchResult } from '../../types/searchTypes';
 import { clusterStyle } from './cluster';
 import { createMarker } from './marker';
@@ -116,10 +115,6 @@ export const updateSearchMarkers = (
   if (!map.get('markerClickHandler')) {
     map.set('markerClickHandler', true);
     map.on('singleclick', (evt) => {
-      const isPrintDialogOpen = getDefaultStore().get(isPrintDialogOpenAtom);
-      if (isPrintDialogOpen) {
-        return;
-      }
       map.forEachFeatureAtPixel(evt.pixel, (feature) => {
         const featuresAtPixel = feature.get('features') as Feature[];
         if (!featuresAtPixel) {

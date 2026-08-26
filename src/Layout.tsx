@@ -20,8 +20,6 @@ import { Compass } from './map/overlay/Compass';
 import { LinkLogo } from './map/overlay/LinkLogo';
 import { MapToolButtons } from './map/overlay/MapToolButtons';
 import { MapToolCards } from './map/overlay/MapToolCards';
-import { isPrintDialogOpenAtom } from './print/atoms';
-import { PrintDialog } from './print/PrintDialog';
 import { selectedResultAtom, useSearchEffects } from './search/atoms';
 import { useMapClickSearch } from './search/hooks';
 import { InfoBox } from './search/infobox/InfoBox';
@@ -43,14 +41,13 @@ export const Layout = () => {
   });
   const selectedResult = useAtomValue(selectedResultAtom);
   const currentMapTool = useAtomValue(mapToolAtom);
-  const isPrintDialogOpen = useAtomValue(isPrintDialogOpenAtom);
 
   useFeatureInfoClick();
   useSearchEffects();
   useMapClickSearch();
 
   const isToolOpen = currentMapTool !== null && currentMapTool !== 'measure';
-  const hideLogo = selectedResult !== null || isPrintDialogOpen;
+  const hideLogo = selectedResult !== null;
   const showDesktopLogo = !isMobile && !hideLogo;
   const showMobileLogo = isMobile && !hideLogo && !isToolOpen;
 
@@ -139,9 +136,6 @@ export const Layout = () => {
           <Flex justifyContent={'flex-end'}>
             <ErrorBoundary fallback={undefined} name={'InfoBox'}>
               <InfoBox />
-            </ErrorBoundary>
-            <ErrorBoundary fallback={undefined} name={'PrintDialog'}>
-              {isPrintDialogOpen && <PrintDialog />}
             </ErrorBoundary>
           </Flex>
         </GridItem>

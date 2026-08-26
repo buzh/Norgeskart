@@ -4,9 +4,6 @@
       "openText": "Layers",
       "mobiletext": "Layers"
     },
-    "print": {
-      "text": "Create map"
-    },
     "draw": {
       "text": "Tools",
       "mobiletext": "Tools"
@@ -120,10 +117,8 @@
     },
     "coordinateSystem": "Coordinate system",
     "decimalDegrees": "Decimal degrees",
-    "emergencyPoster": "Make emergency poster",
     "heightEstimatedByInterpolation": "Height:",
     "in": "in",
-    "makeMap": "Make map",
     "metersAboveSeaLevel": "m.a.s.l.",
     "metersAboveSeaLevelTooltip": "Meters above sealevel, estimated using interpolation",
     "municipality": "Municipality",
@@ -145,30 +140,6 @@
     "road": "Road"
   },
   "map": {
-    "contextmenu": {
-      "items": {
-        "rettikartet": {
-          "dialog": {
-            "category": {
-              "label": "Select map category"
-            },
-            "description": "Report something wrong with a map in rettikartet.no. Select from the categories below to open a new window. If you believe a property boundary is shown incorrectly on the map, this must be addressed with the local cadastral authority, meaning the municipality where the property is located. The Norwegian Mapping Authority does not have the authority to make changes to property boundaries.",
-            "link": {
-              "label": "Open rettikartet.no in a new tab"
-            },
-            "rettikartetcategories": {
-              "n50kartdata": "Hikingmap",
-              "sjo": "Nautical charts",
-              "turruter": "Hiking trails",
-              "veger": "Roads and adresses"
-            },
-            "title": "Report an error"
-          },
-          "label": "Report error",
-          "tooltip": "Navigate to RettIKartet.no"
-        }
-      }
-    },
     "errorMessage": "Something went very wrong with the map",
     "settings": {
       "compass": {
@@ -347,26 +318,6 @@
     "nameObjectType": "Name object type",
     "moreInfo": "More info"
   },
-  "privacyAndContact": {
-    "contactUs": "Contact us",
-    "dialogContent": "We welcome both praise and criticism on Norgeskart.no. Use the form, or feel free to contact us by email or phone.",
-    "infoText": "Read how we protect personal data in the Norwegian Mapping Authority's",
-    "privacyPolicy": "Privacy policy ",
-    "sendEmail": "Send e-mail",
-    "privacy": "Privacy",
-    "status": {
-      "heading": "Status",
-      "infoText": "See the status of our apps and services by following the link"
-    },
-    "formsLinkText": "Open feedback form",
-    "cookieConsent": {
-      "heading": "Cookies",
-      "currentStatus": "Current consent:",
-      "granted": "Accepted",
-      "denied": "Declined",
-      "pending": "Not set"
-    }
-  },
   "propertyInfo": {
     "address": "Address",
     "holdingNr": "Holding nr.",
@@ -445,10 +396,6 @@
     }
   },
   "toolbar": {
-    "reportError": {
-      "label": "Error in the map?",
-      "tooltip": "Report errors or things missing in the map."
-    },
     "scale": {
       "tooltip": "The selected scale is adjusted to the nearest available zoom level in the map. The actual scale may therefore differ slightly.",
       "disabledTooltip": "Scale selector is disabled because this background map uses integer zoom levels so that it's performant."
@@ -464,14 +411,6 @@
     "legend": {
       "tooltip": "Show map legend",
       "label": "Map legend"
-    }
-  },
-  "cookieDialog": {
-    "heading": "We use cookies",
-    "body": "Norgeskart uses cookies to make the website work and to understand how the service is used, so that we can improve it.\n\nWe use the analytics tool PostHog to collect anonymized usage statistics, such as which pages are visited and which features are used. The information is only used for statistics and service improvement.\n\nYou can change or withdraw your consent at any time under Help – Privacy. \n\n The feedback field is an open free-text field. We ask you not to enter sensitive personal information. If you do provide personal information, it will be deleted as soon as possible and not used further.",
-    "buttons": {
-      "accept": "Accept",
-      "reject": "Decline"
     }
   },
   "info": {
@@ -492,115 +431,6 @@
     "item": {
       "fallbackMessage": "has no legend"
     }
-  },
-  "printdialog": {
-    "heading": "Create map",
-    "tabs": {
-      "extent": {
-        "heading": "Extent"
-      },
-      "hiking": {
-        "heading": "Hiking map"
-      },
-      "elevationProfile": {
-        "heading": "Elevation profile"
-      },
-      "emergencyPoster": {
-        "heading": "Emergency poster"
-      }
-    },
-    "emergencyPoster": {
-      "section1": "The emergency poster has been removed from Norgeskart. We recommend using the Norwegian Air Ambulance Foundation's service to create or update your emergency poster.",
-      "link": "Create an emergency poster with the Norwegian Air Ambulance Foundation",
-      "section2": "Here you can easily create an emergency poster with the location's coordinates and other important information that can help the emergency services find their way."
-    },
-    "elevationProfile": {
-      "heading": "Draw a line to create a elevation profile",
-      "infotext": "Start creating a elevation profile by uploading a .GPX file or by clicking the map to place the first point and double click to finish.",
-      "jobError": "Failed to load elevation profile data.",
-      "jobRunning": "Creating profile",
-      "buttons": {
-        "exportCsv": {
-          "label": "Export as CSV"
-        },
-        "exportPng": {
-          "label": "Download as PNG"
-        },
-        "exportJpeg": {
-          "label": "Download as JPEG"
-        },
-        "reset": {
-          "label": "Reset"
-        }
-      },
-      "chartLabels": {
-        "title": "elevationProfile",
-        "xAxis": "Distance [m]",
-        "yAxis": "Elevation [m]"
-      },
-      "fileUpload": {
-        "dragDrop": {
-          "label": "Drag file, or click, here",
-          "fileInfo": ".gpx format"
-        }
-      }
-    },
-    "hikingMap": {
-      "heading": "Choose a scale and give your map a name",
-      "fields": {
-        "scale": {
-          "label": "Scale"
-        },
-        "mapName": {
-          "label": "Name on map",
-          "placeholder": "My hiking map",
-          "helpertext": "Only a-z and numbers"
-        },
-        "includeLegend": {
-          "label": "map legend"
-        },
-        "includeSweeden": {
-          "label": "map into Sweeden (50km)"
-        },
-        "includeCompassInstructions": {
-          "label": "crash course in compass usage"
-        },
-        "heading": "Include"
-      },
-      "overlayinstructions": "Place the orange overlay where you want the map",
-      "buttons": {
-        "generate": "Make map",
-        "cancel": "Cancel",
-        "download": "Download map"
-      },
-      "errors": {
-        "generateFailed": "Print failed"
-      },
-      "popupblockedalert": {
-        "title": "Popup blocked",
-        "body": "Popups are blocked. Please unblock them and try again, or use the download button"
-      }
-    }
-  },
-  "printExtent": {
-    "label": "Select format",
-    "placeholder": "Format",
-    "orientation": {
-      "portrait": "Portrait",
-      "landscape": "Landscape"
-    },
-    "description": "Place the orange area over the part of the map you want to print",
-    "button": {
-      "print": "Download map"
-    },
-    "toast": {
-      "success": "Download complete",
-      "error": "Could not download map"
-    },
-    "scale": "Print scale",
-    "scaleNote": "The screen scale is 1 : {{screenScale}}. The difference is because paper (72 pt/inch) and screen (96 px/inch) use different reference values for pixel size.",
-    "vectorTileFallbackWarning": "The nautical background map is not supported by the print service and will be replaced with nautical chart in the print.",
-    "projectionWarning": "The print output will always be in UTM zone 33 (EPSG:25833), regardless of the selected map projection."
   },
   "about": {
     "heading": "About us",
@@ -643,21 +473,6 @@
       "link": "Back to map"
     },
     "title": "How can we help you?",
-    "termsOfUse": {
-      "heading": "Terms of Use",
-      "text": "Kartverket's Terms of Use can be found at"
-    },
-    "feedback": {
-      "title": "Feedback form",
-      "text": "Report a bug or suggest improvements"
-    },
-    "email": {
-      "title": "Email",
-      "text": "Contact us by email, and we will respond as soon as possible."
-    },
-    "phone": {
-      "title": "Phone"
-    },
     "notFound": {
       "heading": "Can't find what you're looking for?",
       "description": "Perhaps a search in some of our other services can help you find what you're looking for.",
@@ -667,9 +482,7 @@
       "norgeibilderDescription": "On norgeibilder.no, you can find an overview of orthophotos(scale-accurate aerial photographs) offered by the partners in the collaboration.",
       "norgeibilderButton": "Go to Norgeibilder.no",
       "hoydedataDescription": "Here you can find an overview of and access to elevation data provided by Kartverket online",
-      "hoydedataButton": "Go to hoydedata.no",
-      "rettikartetDescription": "Here you can report errors and omissions in map data and place names.",
-      "rettikartetButton": "Go to rettikartet.no"
+      "hoydedataButton": "Go to hoydedata.no"
     }
   }
 }

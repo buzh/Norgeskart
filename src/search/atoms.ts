@@ -3,7 +3,6 @@ import { atomEffect } from 'jotai-effect';
 import { transform } from 'ol/proj';
 import { DEFAULT_PROJECTION, mapAtom } from '../map/atoms';
 import { ProjectionIdentifier } from '../map/projections/types';
-import { isPrintDialogOpenAtom } from '../print/atoms';
 import {
   parseCoordinateInput,
   ParsedCoordinate,
@@ -248,13 +247,6 @@ export const selectedResultAtom = atom<SearchResult | null>(
   getInitialSelectedResult(),
 );
 
-export const selectedResultEffect = atomEffect((get, set) => {
-  const selectedResult = get(selectedResultAtom);
-  if (selectedResult !== null) {
-    set(isPrintDialogOpenAtom, false);
-  }
-});
-
 export const useResetSearchResults = () => {
   const setAddressResults = useSetAtom(addressResultsAtom);
   const setPlaceNameResults = useSetAtom(placeNameResultsAtom);
@@ -277,5 +269,4 @@ export const useSearchEffects = () => {
   useAtom(searchCoordinatesEffect);
   useAtom(searchQueryEffect);
   useAtom(placeNamePageEffet);
-  useAtom(selectedResultEffect);
 };

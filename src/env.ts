@@ -20,16 +20,12 @@ type layerProviderParameters = {
 type EnvName = 'local' | 'dev' | 'test' | 'prod';
 type Env = {
   apiUrl: string;
-  heightDataApiUrl: string;
   geoNorgeApiBaseUrl: string;
-  printApiUrl: string;
-  usePostHog: boolean;
   layerProviderParameters: layerProviderParameters;
   envName: EnvName;
 };
 
 const LOCAL_ENV: Env = {
-  usePostHog: false,
   apiUrl: 'https://testapi.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
   layerProviderParameters: {
@@ -52,12 +48,9 @@ const LOCAL_ENV: Env = {
     },
   },
   envName: 'local',
-  heightDataApiUrl: 'https://hoydedata.no/arcgis/rest',
-  printApiUrl: 'https://testapi.norgeskart.no',
 };
 
 const DEV_ENV: Env = {
-  usePostHog: true,
   apiUrl: 'https://testapi.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
   layerProviderParameters: {
@@ -80,12 +73,9 @@ const DEV_ENV: Env = {
     },
   },
   envName: 'dev',
-  heightDataApiUrl: 'https://hoydedata.no/arcgis/rest',
-  printApiUrl: 'https://testapi.norgeskart.no',
 };
 
 const PROD_ENV: Env = {
-  usePostHog: true,
   apiUrl: 'https://api.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
   layerProviderParameters: {
@@ -108,8 +98,6 @@ const PROD_ENV: Env = {
     },
   },
   envName: 'prod',
-  heightDataApiUrl: 'https://hoydedata.no/arcgis/rest',
-  printApiUrl: 'https://api.norgeskart.no',
 };
 
 const getEnvName = (): EnvName => {

@@ -1,5 +1,4 @@
 import { Flex, IconButton, MaterialSymbol, Text } from '@kvib/react';
-import { usePostHog } from '@posthog/react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useTranslation } from 'react-i18next';
 import { drawPanelCollapsedAtom } from '../map/overlay/atoms';
@@ -79,7 +78,6 @@ const DrawTypeButton = ({
 
   const setPrimaryColor = useSetAtom(primaryColorAtom);
   const setSecondaryColor = useSetAtom(secondaryColorAtom);
-  const ph = usePostHog();
 
   const effectiveIcon: MaterialSymbol =
     isCurrentTool && collapsed ? 'keyboard_arrow_up' : icon;
@@ -113,7 +111,6 @@ const DrawTypeButton = ({
             setPrimaryColor('#000000');
             setSecondaryColor('#ffffffff');
           }
-          ph.capture('draw_tool_selected', { tool: type });
           setDrawType(type);
         }}
       />

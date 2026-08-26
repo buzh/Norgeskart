@@ -14,12 +14,6 @@ import { themeLayerEffect } from './layers/atoms.ts';
 import { backgroundLayerAtomEffect } from './layers/config/backgroundLayers/atoms.ts';
 import { useMap } from './mapHooks.ts';
 import { getScaleFromResolution } from './mapScale.ts';
-import {
-  mapContextIsOpenAtom,
-  mapContextXPosAtom,
-  mapContextYPosAtom,
-} from './menu/atoms.ts';
-import { MapContextMenu } from './menu/MapContextMenu.tsx';
 
 export const MapComponent = () => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -27,9 +21,6 @@ export const MapComponent = () => {
   const map = useAtomValue(mapAtom);
   const { t } = useTranslation();
   const { setDrawLayerFeatures } = useDrawSettings();
-  const setIsMenuOpen = useSetAtom(mapContextIsOpenAtom);
-  const setXPos = useSetAtom(mapContextXPosAtom);
-  const setYPos = useSetAtom(mapContextYPosAtom);
   const hasLoadedDrawingRef = useRef(false);
   const setScale = useSetAtom(scaleAtom);
   const { setTargetElement } = useMap();
@@ -94,20 +85,8 @@ export const MapComponent = () => {
           ref={mapRef}
           id="map"
           style={{ width: '100%', height: '100%' }}
-          onContextMenu={(e) => {
-            setXPos(e.clientX);
-            setYPos(e.clientY);
-            setIsMenuOpen(true);
-            e.stopPropagation();
-            e.preventDefault();
-          }}
-          onClick={() => {
-            setIsMenuOpen(false);
-          }}
         />
       </ErrorBoundary>
-
-      <MapContextMenu />
     </Box>
   );
 };

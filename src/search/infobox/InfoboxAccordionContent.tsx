@@ -3,12 +3,9 @@ import {
   AccordionItemContent,
   AccordionItemTrigger,
   Box,
-  useAccordionContext,
 } from '@kvib/react';
-import { usePostHog } from '@posthog/react';
 import { t } from 'i18next';
 import { useAtomValue } from 'jotai';
-import { useEffect } from 'react';
 import { ProjectionIdentifier } from '../../map/projections/types';
 import { getInputCRS } from '../../shared/utils/crsUtils';
 import { placesNearbyAtom, selectedResultAtom } from '../atoms';
@@ -20,20 +17,7 @@ import { PropertyInfo } from './PropertyInfo';
 export const InfoboxAccordionContent = () => {
   const placesNearby = useAtomValue(placesNearbyAtom);
   const selectedResult = useAtomValue(selectedResultAtom);
-  const accordion = useAccordionContext();
-  const ph = usePostHog();
 
-  // It works ok, but might trigger falsly when two items are open and you close one of them.
-  useEffect(() => {
-    if (
-      accordion.focusedValue != null &&
-      accordion.value.includes(accordion.focusedValue)
-    ) {
-      ph.capture('infobox_accordion_item_opened', {
-        item: accordion.focusedValue,
-      });
-    }
-  }, [accordion, ph]);
   if (!selectedResult) {
     return null;
   }

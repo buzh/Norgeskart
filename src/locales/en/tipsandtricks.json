@@ -31,24 +31,6 @@
   },
   {
     "category": "drawing",
-    "title": "How do I view an elevation profile?",
-    "content": [
-      {
-        "type": "text",
-        "text": "The elevation profile tool is available under “Create map” in the main menu."
-      },
-      {
-        "type": "list",
-        "items": [
-          "Select “Create map”.",
-          "Click a starting point in the map.",
-          "Click where you want the measurement to end."
-        ]
-      }
-    ]
-  },
-  {
-    "category": "drawing",
     "title": "Drawing storage",
     "content": [
       {
@@ -182,42 +164,6 @@
           "A unique URL will be generated.",
           "Share the map using “Share” in the menu or copy the URL from the search field."
         ]
-      }
-    ]
-  },
-  {
-    "category": "sharing",
-    "title": "Can I print in formats other than A4?",
-    "content": [
-      {
-        "type": "text",
-        "text": "The map can be printed in both A3 and A4 formats."
-      },
-      {
-        "type": "list",
-        "items": [
-          "Select “Create map”.",
-          "Choose the desired format under “Extent”."
-        ]
-      }
-    ]
-  },
-  {
-    "category": "sharing",
-    "title": "Where can I create an emergency poster?",
-    "content": [
-      {
-        "type": "text",
-        "text": "The emergency poster has been removed from Norgeskart. We recommend using the Norwegian Air Ambulance Foundation's service to create and update your emergency poster."
-      },
-      {
-        "type": "link",
-        "text": "Create an emergency poster with the Norwegian Air Ambulance Foundation",
-        "href": "https://norskluftambulanse.no/nodplakat/"
-      },
-      {
-        "type": "text",
-        "text": "Here you can easily create an emergency poster with the location's coordinates and other important information that can help the emergency services find their way to the location."
       }
     ]
   },

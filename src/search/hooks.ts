@@ -6,10 +6,8 @@ import { useCallback, useEffect } from 'react';
 import { mapAtom } from '../map/atoms';
 import { hasVisibleLayerWithIdIn } from '../map/featureInfo/featureInfoService';
 import { CULTURAL_HERITAGE_LAYER_IDS } from '../map/layers/config/themeLayers/culturalHeritage';
-import { mapContextIsOpenAtom } from '../map/menu/atoms';
 import { mapToolAtom } from '../map/overlay/atoms';
 import { ProjectionIdentifier } from '../map/projections/types';
-import { isPrintDialogOpenAtom } from '../print/atoms';
 import { ParsedCoordinate } from '../shared/utils/coordinateParser';
 import { SearchResult } from '../types/searchTypes';
 import { searchCoordinatesAtom, selectedResultAtom } from './atoms';
@@ -77,14 +75,6 @@ export const useMapClickSearch = () => {
   const mapClickHandler = useCallback(
     (e: Event | BaseEvent) => {
       const store = getDefaultStore();
-      const isContextMenuOpen = store.get(mapContextIsOpenAtom);
-      if (isContextMenuOpen) {
-        return;
-      }
-      const isPrintDialogOpen = store.get(isPrintDialogOpenAtom);
-      if (isPrintDialogOpen) {
-        return;
-      }
       const currentTool = store.get(mapToolAtom);
       if (currentTool && currentTool !== 'layers') {
         return;

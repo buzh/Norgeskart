@@ -6,10 +6,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { AtomWrapper } from './AtomWrapper.tsx';
-import { CookieConsentDialog } from './CookieConsentDialog.tsx';
 import './index.css';
 import { projInit } from './map/projections/proj/projInit.ts';
-import { PostHogWrapper } from './PosthogWrapper.tsx';
 projInit();
 
 createRoot(document.getElementById('root')!).render(
@@ -18,11 +16,8 @@ createRoot(document.getElementById('root')!).render(
       <AtomWrapper>
         <QueryClientProvider client={new QueryClient()}>
           <KvibProvider>
-            <PostHogWrapper>
-              <App />
-              <Toaster />
-              <CookieConsentDialog />
-            </PostHogWrapper>
+            <App />
+            <Toaster />
           </KvibProvider>
         </QueryClientProvider>
       </AtomWrapper>

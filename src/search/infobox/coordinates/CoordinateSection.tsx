@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { mapAtom } from '../../../map/atoms';
 import { backgroundLayerAtom } from '../../../map/layers/config/backgroundLayers/atoms';
 import { ProjectionIdentifier } from '../../../map/projections/types';
-import { decimalToDMS } from '../../../print/EmergencyPoster/utils';
+import { decimalToDMS } from '../../../shared/utils/coordinateCalculations';
 import { ProjectionSelector } from '../../../shared/Components/ProjectionSelector';
 import { CoordinateText } from './CoordinateText';
 

@@ -9,8 +9,7 @@ import {
   Text,
   Tooltip,
 } from '@kvib/react';
-import { usePostHog } from '@posthog/react';
-import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { MapBrowserEvent } from 'ol';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,10 +22,6 @@ import {
   scaleToResolutionEffect,
   useMagneticNorthAtom,
 } from '../map/atoms';
-import {
-  isRettIKartetDialogOpenAtom,
-  rettIKartetCoordinatesAtom,
-} from '../map/menu/dialogs/atoms';
 import { ProjectionSettings } from '../settings/map/ProjectionSettings';
 import { ScaleSelector } from './ScaleSelector';
 
@@ -45,8 +40,6 @@ const formatCoords = (
 
 export const Toolbar = () => {
   const { t } = useTranslation();
-  const setRettIKartetDialogOpen = useSetAtom(isRettIKartetDialogOpenAtom);
-  const setRettIKartetCoordinates = useSetAtom(rettIKartetCoordinatesAtom);
   const [displayCompassOverlay, setDisplayCompassOverlay] = useAtom(
     displayCompassOverlayAtom,
   );
@@ -58,7 +51,6 @@ export const Toolbar = () => {
   >(null);
   const map = useAtomValue(mapAtom);
   useAtom(scaleToResolutionEffect);
-  const ph = usePostHog();
 
   const crsCode = map.getView().getProjection().getCode();
 
@@ -129,37 +121,12 @@ export const Toolbar = () => {
               variant="plain"
               color="white"
               size="sm"
-              onClick={() => {
-                ph.capture('toolbar_legend_clicked');
-                setDisplayMapLegend(true);
-              }}
+              onClick={() => setDisplayMapLegend(true)}
             >
               {t('toolbar.legend.label')}
             </Button>
           </Tooltip>
         )}
-        <Tooltip content={t('toolbar.reportError.tooltip')}>
-          <Button
-            variant="plain"
-            color="white"
-            size="sm"
-            onClick={() => {
-              ph.capture('toolbar_report_error_clicked');
-              const store = getDefaultStore();
-              const map = store.get(mapAtom);
-              const view = map.getView();
-              const center = view.getCenter();
-              if (center) {
-                setRettIKartetCoordinates(center);
-              }
-
-              setRettIKartetDialogOpen(true);
-            }}
-          >
-            {t('toolbar.reportError.label')}
-          </Button>
-        </Tooltip>
-
         <LanguageSwitcher variant="icon" />
       </Flex>
     </Flex>

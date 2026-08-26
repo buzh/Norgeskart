@@ -30,16 +30,6 @@
   },
   {
     "category": "drawing",
-    "title": "Korleis finn eg høgdeprofil?",
-    "content": [
-      {
-        "type": "text",
-        "text": "Høgdeprofil finn du under Lag kart» i hovudmenyen nedst. For å lage ein høgdeprofil klikkar du ein stad i kartet for å starte målinga, og deretter vel du kvar du vil avslutte."
-      }
-    ]
-  },
-  {
-    "category": "drawing",
     "title": "Lagring av teikning",
     "content": [
       {
@@ -157,35 +147,6 @@
       {
         "type": "text",
         "text": "For å få med innhaldet i teikninga må du først lagre det du har gjort. Ved å trykkje på lagresymbolet nedst i teiknemenyen blir det generert ein unik URL. Når du har lagra, kan du dele kartet ved å trykkje på «del kart» i menyen eller ved å kopiere URL-en i søkjefeltet."
-      }
-    ]
-  },
-  {
-    "category": "sharing",
-    "title": "Er det mogleg å skrive ut i eit anna format enn A4?",
-    "content": [
-      {
-        "type": "text",
-        "text": "Du kan skrive ut kartet i A3- og A4-format. Vel «Skriv ut», og vel deretter format under «utsnitt»."
-      }
-    ]
-  },
-  {
-    "category": "sharing",
-    "title": "Kvar kan eg lage nødplakat?",
-    "content": [
-      {
-        "type": "text",
-        "text": "Nødplakaten er fjerna frå Norgeskart. Vi tilrår at du bruker tenesta til Norsk Luftambulanse for å lage og oppdatere nødplakaten din."
-      },
-      {
-        "type": "link",
-        "text": "Lag nødplakat hos Norsk Luftambulanse",
-        "href": "https://norskluftambulanse.no/nodplakat/"
-      },
-      {
-        "type": "text",
-        "text": "Her kan du enkelt lage ein nødplakat med koordinatane til staden og annan viktig informasjon som kan hjelpe nødetatane med å finne fram."
       }
     ]
   },
