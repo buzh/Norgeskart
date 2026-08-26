@@ -10,7 +10,7 @@ export const fastmerkerLayerConfig: ThemeLayerConfig = {
         nn: 'Fastmerke',
         en: 'Reference marks',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.fastmerker2',
+      wmsUrl: '/wms/geonorge/wms.fastmerker2',
     },
     {
       id: 'benchmarks',
@@ -20,7 +20,7 @@ export const fastmerkerLayerConfig: ThemeLayerConfig = {
         nn: 'Fastmerke',
         en: 'Benchmarks',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.fastmerker2',
+      wmsUrl: '/wms/geonorge/wms.fastmerker2',
       parentId: 'fastmerker',
       featureInfoFields: [
         {
@@ -106,7 +106,7 @@ export const fastmerkerLayerConfig: ThemeLayerConfig = {
         nn: 'Basestasjonar',
         en: 'Base stations',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.fastmerker2',
+      wmsUrl: '/wms/geonorge/wms.fastmerker2',
       parentId: 'fastmerker',
       featureInfoFields: [
         {
@@ -131,7 +131,7 @@ export const fastmerkerLayerConfig: ThemeLayerConfig = {
         nn: 'UTM-rutenett',
         en: 'UTM grid',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.rutenett',
+      wmsUrl: '/wms/geonorge/wms.rutenett',
       parentId: 'fastmerker',
     },
   ],

@@ -19,7 +19,7 @@ export const sjoConfig: ThemeLayerConfig = {
         nn: 'Djupnedatakvalitet i sjøkart',
         en: 'Depth data quality in nautical chart',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.dybdedatakvalitet_navigasjon',
+      wmsUrl: '/wms/geonorge/wms.dybdedatakvalitet_navigasjon',
       parentId: 'sjo',
     },
     {
@@ -30,7 +30,7 @@ export const sjoConfig: ThemeLayerConfig = {
         nn: 'Farlege bølgjer',
         en: 'Dangerous waves',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.farlige_bolger',
+      wmsUrl: '/wms/geonorge/wms.farlige_bolger',
       infoFormat: 'text/plain',
       parentId: 'sjo',
       featureInfoFields: [

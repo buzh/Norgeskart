@@ -10,7 +10,7 @@ export const outdoorRecreationLayerConfig: ThemeLayerConfig = {
         nn: 'Tur- og friluftsruter',
         en: 'Hiking and outdoor routes',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.friluftsruter2',
+      wmsUrl: '/wms/geonorge/wms.friluftsruter2',
     },
   ],
   layers: [

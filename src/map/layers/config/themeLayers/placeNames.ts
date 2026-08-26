@@ -10,7 +10,7 @@ export const placeNamesConfig: ThemeLayerConfig = {
         nn: 'Stadnamn',
         en: 'Place names',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.ssr2',
+      wmsUrl: '/wms/geonorge/wms.ssr2',
     },
     {
       id: 'placeNameLanguages',
@@ -20,7 +20,7 @@ export const placeNamesConfig: ThemeLayerConfig = {
         nn: 'Språk',
         en: 'Language',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.ssr2',
+      wmsUrl: '/wms/geonorge/wms.ssr2',
       parentId: 'placeNames',
     },
     {
@@ -31,7 +31,7 @@ export const placeNamesConfig: ThemeLayerConfig = {
         nn: 'Namnetype',
         en: 'Name type',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.ssr2',
+      wmsUrl: '/wms/geonorge/wms.ssr2',
       parentId: 'placeNames',
     },
     {
@@ -42,7 +42,7 @@ export const placeNamesConfig: ThemeLayerConfig = {
         nn: 'Vedtak siste periode',
         en: 'Decisions',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.ssr2',
+      wmsUrl: '/wms/geonorge/wms.ssr2',
       parentId: 'placeNames',
     },
     {
@@ -53,7 +53,7 @@ export const placeNamesConfig: ThemeLayerConfig = {
         nn: 'Skrivemåtestatus',
         en: 'Spelling status',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.ssr2',
+      wmsUrl: '/wms/geonorge/wms.ssr2',
       parentId: 'placeNames',
     },
     {
@@ -64,7 +64,7 @@ export const placeNamesConfig: ThemeLayerConfig = {
         nn: 'Namnesaksstatus',
         en: 'Place name status',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.ssr2',
+      wmsUrl: '/wms/geonorge/wms.ssr2',
       parentId: 'placeNames',
     },
   ],

@@ -78,6 +78,7 @@ export const getWMTSLayer = async (
     const layer = new TileLayer({
       source: wmts,
       properties: { id: `bg.${layerConfig.layerName}` },
+      preload: 2,
     });
 
     return layer;
@@ -169,7 +170,7 @@ export const getWMSLayer = (
   if (layerConfig.tileLoadFunction) {
     source.setTileLoadFunction(layerConfig.tileLoadFunction);
   }
-  return new TileLayer({ source, properties });
+  return new TileLayer({ source, properties, preload: 2 });
 };
 
 export const getLayerFromConfig = async (

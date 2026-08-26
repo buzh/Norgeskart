@@ -27,7 +27,9 @@ window.__NK_CONFIG__ = {
       apiKey: 'REPLACE_ME',
     },
     kartverketCache: { baseUrl: 'https://cache.kartverket.no' },
-    geoNorgeWMS: { baseUrl: 'https://wms.geonorge.no/skwms1/wms' },
+    // Fronted by the wmscache sidecar via Caddy. Change only if you want to
+    // bypass the cache and go straight to origin.
+    geoNorgeWMS: { baseUrl: '/wms/geonorge/wms' },
     eccProxy: {
       wmsUrl: 'https://tnt-proxy.atkv3-prod.kartverket.cloud/wms',
     },

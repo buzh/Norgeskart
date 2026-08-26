@@ -206,9 +206,8 @@ export const createThemeLayerFromConfig = (
       params: { ...wmsParams, TILED: true },
       projection: projection,
       cacheSize: 512,
-      transition: 0,
     }),
     properties: layerProperties,
-    preload: 1,
+    preload: 2,
   });
 };

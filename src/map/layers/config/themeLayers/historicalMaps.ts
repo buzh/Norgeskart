@@ -25,7 +25,7 @@ export const historicalMapsConfig: ThemeLayerConfig = {
       groupid: 20,
       legacyId: 'ssr.1011',
       queryable: true,
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.n5raster2',
+      wmsUrl: '/wms/geonorge/wms.n5raster2',
       noLegend: true,
     },
     {
@@ -40,7 +40,7 @@ export const historicalMapsConfig: ThemeLayerConfig = {
       groupid: 20,
       legacyId: 'ssr.1012',
       queryable: false,
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.historiskekart',
+      wmsUrl: '/wms/geonorge/wms.historiskekart',
       noLegend: true,
     },
   ],

@@ -17,8 +17,8 @@ route {
                 default-src 'self';
                 script-src 'self' ph.kartverket.no;
                 worker-src 'self' blob:;
-                img-src 'self' data: blob: tilecache.norgeibilder.no opencache.statkart.no *.geonorge.no *.norgeskart.no cache.kartverket.no *.kartverket-intern.cloud cache.atgcp1-prod.kartverket.cloud cache.atkv3-dev.kartverket.cloud data.kartverket.no *.ecc.no tnt-proxy.atkv3-dev.kartverket-intern.cloud tnt-proxy.atkv3-prod.kartverket.cloud *.maplytic.no *.ngu.no geodata.npolar.no kart.ra.no;
-                connect-src 'self' data: blob: *.posthog.com internal-j.posthog.com us.posthog.com tilecache.norgeibilder.no *.geonorge.no geonorge.no norgeskart.no *.norgeskart.no hoydedata.no cache.kartverket.no cache.atkv3-dev.kartverket.cloud opencache.statkart.no raw.githubusercontent.com ph.kartverket.no *.ecc.no *.maplytic.no fonts.googleapis.com fonts.gstatic.com print.atkv3-dev.kartverket-intern.cloud tnt-proxy.atkv3-dev.kartverket-intern.cloud tnt-proxy.atkv3-prod.kartverket.cloud geodata.npolar.no kart.ra.no;
+                img-src 'self' data: blob: tilecache.norgeibilder.no opencache.statkart.no *.geonorge.no *.norgeskart.no cache.kartverket.no *.kartverket-intern.cloud cache.atgcp1-prod.kartverket.cloud cache.atkv3-dev.kartverket.cloud data.kartverket.no *.ecc.no tnt-proxy.atkv3-dev.kartverket-intern.cloud tnt-proxy.atkv3-prod.kartverket.cloud *.maplytic.no *.ngu.no geodata.npolar.no;
+                connect-src 'self' data: blob: *.posthog.com internal-j.posthog.com us.posthog.com tilecache.norgeibilder.no *.geonorge.no geonorge.no norgeskart.no *.norgeskart.no hoydedata.no cache.kartverket.no cache.atkv3-dev.kartverket.cloud opencache.statkart.no raw.githubusercontent.com ph.kartverket.no *.ecc.no *.maplytic.no fonts.googleapis.com fonts.gstatic.com print.atkv3-dev.kartverket-intern.cloud tnt-proxy.atkv3-dev.kartverket-intern.cloud tnt-proxy.atkv3-prod.kartverket.cloud geodata.npolar.no;
                 style-src 'self' 'unsafe-inline' ph.kartverket.no eu.i.posthog.com *.posthog.com fonts.googleapis.com;
                 font-src 'self' fonts.gstatic.com;
                 frame-ancestors *;
@@ -44,13 +44,30 @@ route {
                 }
         }
 
-        handle /wms/hoyde-dtm {
-                rewrite * /skwms1/wms.hoyde-dtm-nhm-topobathy-25833
+        # Proxies to wmscache. One handler per upstream host — the second
+        # path segment picks the host, the rest is passed through to that
+        # host's WMS namespace. Layer configs use these same-origin paths
+        # so no CSP whitelist entry is needed for the upstream and the
+        # response can be cached by nginx.
+
+        # wms.geonorge.no/skwms1/* — main Kartverket WMS namespace (theme
+        # layers + national LiDAR + per-project LiDAR). handle_path strips
+        # /wms/geonorge from the URI; the post-strip path already starts
+        # with '/' so we prepend /skwms1 without another slash.
+        handle_path /wms/geonorge/* {
+                rewrite * /skwms1{http.request.uri.path}
                 reverse_proxy http://wmscache
         }
 
-        handle /wms/hoyde-dtm-prosjekt {
-                rewrite * /skwms1/wms.hoyde-dtm-prosjekt
+        # kart.ra.no/wms/* — Riksantikvaren Kulturminner WMS.
+        handle_path /wms/ra/* {
+                rewrite * /wms{http.request.uri.path}
+                reverse_proxy http://wmscache
+        }
+
+        # testapi.norgeskart.no/v1/* — matrikkel (cadastral) WMS.
+        handle_path /wms/testapi/* {
+                rewrite * /v1{http.request.uri.path}
                 reverse_proxy http://wmscache
         }
 }

@@ -10,7 +10,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Tilgjengelegheit',
         en: 'Accessibility',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       infoFormat: 'application/vnd.ogc.gml',
       featureInfoImageBaseUrl:
         'https://data.kartverket.no/tilgjengelighet/tilgjengelighet',
@@ -506,7 +506,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Tettstad - Rullestol',
         en: 'Village - Wheelchair',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       parentId: 'tilgjengelighet',
     },
     {
@@ -517,7 +517,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Tettstad - El-rullestol',
         en: 'Village - Electric wheelchair',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       parentId: 'tilgjengelighet',
     },
     {
@@ -528,7 +528,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Tettstad - Synshemmingar',
         en: 'Village - Sight',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       parentId: 'tilgjengelighet',
     },
     {
@@ -539,7 +539,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Friluft - Rullestol',
         en: 'Recreation - Wheelchair',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       parentId: 'tilgjengelighet',
     },
     {
@@ -550,7 +550,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Friluft - El-rullestol',
         en: 'Recreation - Electric wheelchair',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       parentId: 'tilgjengelighet',
     },
     {
@@ -561,7 +561,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Friluft - Syn',
         en: 'Recreation - Sight',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       parentId: 'tilgjengelighet',
     },
     {
@@ -572,7 +572,7 @@ export const tilgjengelighetConfig: ThemeLayerConfig = {
         nn: 'Felles',
         en: 'Shared',
       },
-      wmsUrl: 'https://wms.geonorge.no/skwms1/wms.tilgjengelighet3',
+      wmsUrl: '/wms/geonorge/wms.tilgjengelighet3',
       parentId: 'tilgjengelighet',
     },
   ],

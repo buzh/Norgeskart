@@ -26,11 +26,29 @@ Ports: Caddy inside the container listens on `:3000`; docker-compose maps host
 - **norgeskart** — multi-stage Dockerfile: `node:24-alpine` builds the SPA,
   then `caddy:2.10.0-alpine` serves `/var/www` with the baked-in `Caddyfile`.
   `config.js` is bind-mounted at runtime.
-- **wmscache** — `nginx:1.27-alpine` sidecar. Reverse-proxies +
-  caches the Kartverket LiDAR hillshade WMS. Config at
-  `nginx/wms-cache.conf`, mounted read-only. Cache lives on a named docker
-  volume (`wmscache`) with a 25 GB LRU cap. Not exposed on the host — only
-  reachable from `norgeskart` over the compose network.
+- **wmscache** — `nginx:1.27-alpine` sidecar. Reverse-proxies + caches
+  every external WMS the SPA uses. Currently fronts three upstreams:
+  - `wms.geonorge.no/skwms1/*` — Kartverket theme + LiDAR WMS.
+  - `kart.ra.no/wms/*` — Riksantikvaren Kulturminner WMS.
+  - `testapi.norgeskart.no/v1/*` — matrikkel (cadastral) WMS.
+
+  Caddy exposes each host under a same-origin prefix and rewrites into
+  the upstream namespace before forwarding:
+
+  ```
+  /wms/geonorge/wms.foo    →  wms.geonorge.no/skwms1/wms.foo
+  /wms/ra/kulturminner2    →  kart.ra.no/wms/kulturminner2
+  /wms/testapi/matrikkel   →  testapi.norgeskart.no/v1/matrikkel
+  ```
+
+  Cache config at `nginx/wms-cache.conf` (per-upstream `location` blocks)
+  + `nginx/wms-proxy-common.conf` (shared cache/timeout/header defaults).
+  Cache lives on the `wmscache` docker volume with a 25 GB LRU cap. Not
+  exposed on the host — only reachable from `norgeskart` over the compose
+  network.
+
+  Because everything is same-origin from the browser's POV, none of these
+  hosts need to appear in the Caddyfile CSP `img-src` / `connect-src`.
 
 ## Added map content
 
@@ -41,16 +59,16 @@ in `themeLayerConfigApi.ts` (added to `configs` array) and the layer id
 union in `themeWMS.ts` (`CulturalHeritageLayerName`).
 
 Five layers under the "Kulturminner" theme category (groupid 19), one per
-Riksantikvaren WMS service on `kart.ra.no`: `kulturminner2` (sites +
-monuments), `kulturmiljoer`, `sefrak`, `freda_bygninger`, `brukerminner`.
+Riksantikvaren WMS service. URLs are same-origin (`/wms/ra/<name>`) and
+routed through `wmscache` to `kart.ra.no/wms/<name>`: `kulturminner2`
+(sites + monuments), `kulturmiljoer`, `sefrak`, `freda_bygninger`,
+`brukerminner`.
 
 Feature-info: the category sets `infoFormat: 'application/vnd.ogc.gml'` so
 the existing `parseXmlFeatureInfo` (which handles MapServer `msGMLOutput`)
 kicks in and shows structured fields. If left unset, the WMS returns HTML,
 which the parser wraps as `{ _html: ... }` and the UI shows an
 unhelpful "HTML-respons mottatt" placeholder.
-
-CSP: `kart.ra.no` is added to `img-src` and `connect-src` in the Caddyfile.
 
 ### LiDAR hillshade (background layer, Kartverket)
 
@@ -71,10 +89,13 @@ to overlay Kulturminner objects on top of the terrain relief.
   `src/locales/{nb,nn,en}/translation.json`.
 
 Layer URL is **not** `wms.geonorge.no` directly — the client hits
-`/wms/hoyde-dtm`, which Caddy rewrites and proxies to `wmscache`, which
-proxies to `https://wms.geonorge.no/skwms1/wms.hoyde-dtm-nhm-topobathy-25833`
-and caches. This same-origin path avoids CORS issues seen when calling
-`wms.geonorge.no` from `fetch()` on the self-host origin.
+`/wms/geonorge/wms.hoyde-dtm-nhm-topobathy-25833`, which Caddy proxies to
+`wmscache`, which proxies to
+`https://wms.geonorge.no/skwms1/wms.hoyde-dtm-nhm-topobathy-25833` and
+caches. This same-origin path avoids CORS issues seen when calling
+`wms.geonorge.no` from `fetch()` on the self-host origin. Same treatment
+for the per-project LiDAR at `/wms/geonorge/wms.hoyde-dtm-prosjekt` (see
+`lidarProjects.ts`).
 
 ### Why the LiDAR tile loader is custom
 
@@ -95,28 +116,42 @@ Key CSP dependencies for this path: `img-src` must include `blob:`
 
 ## nginx cache behavior (wmscache)
 
-`nginx/wms-cache.conf`:
+Split across two files:
 
-- 25 GB LRU on `/var/cache/nginx/wms`, `inactive=180d`.
-- Static upstream block (`server wms.geonorge.no:443; keepalive 8;`) —
-  resolved once at startup, so no `resolver` directive needed. Variable-
-  based `proxy_pass` caused HTTP 426 responses to leak back to the browser;
-  the static form fixes it.
-- `Host: wms.geonorge.no` + `proxy_ssl_name` + explicit TLS 1.2/1.3 so the
-  handshake with the Kartverket istio-envoy front is unambiguous.
+- `nginx/wms-cache.conf` — shared cache zone, `$skip_cache` map, one
+  `upstream` block per host, and one `location` per host with the
+  per-host bits (`proxy_pass`, `Host`, `proxy_ssl_name`).
+- `nginx/wms-proxy-common.conf` — everything host-independent: cache
+  directives, timeouts, TLS 1.2/1.3, header scrubbing. Included from
+  each `location`.
+
+Notes on shared behavior:
+
+- Single 25 GB LRU on `/var/cache/nginx/wms`, `inactive=180d`, shared
+  across all three upstreams. The cache key is the full request URI,
+  which starts with a unique per-upstream prefix (`/skwms1/`, `/wms/`,
+  `/v1/`) so there's no risk of collision.
+- Static upstream blocks (`server host:443; keepalive 8;`) — resolved
+  once at startup, so no `resolver` directive needed. Variable-based
+  `proxy_pass` previously caused HTTP 426 responses to leak back to the
+  browser; the static form fixes it.
+- Per-host `Host` + `proxy_ssl_name` set inline in each `location`, plus
+  explicit TLS 1.2/1.3 in the common include, so the handshake with each
+  upstream (Kartverket istio-envoy, RA MapServer, etc.) is unambiguous.
 - Skips caching for responses under 1000 bytes (`map` on
   `$upstream_http_content_length`) so blank responses never poison the
   cache. Legit no-coverage tiles are also small and bypass the cache too —
   cheap because they're 479 bytes.
-- `proxy_ignore_headers Set-Cookie` — the upstream sends a `JSESSIONID`
-  cookie which would otherwise disable caching entirely.
+- `proxy_ignore_headers Set-Cookie Cache-Control Expires` — upstreams
+  frequently set session cookies which would otherwise disable caching
+  entirely.
 - Adds `X-Cache-Status: HIT|MISS|BYPASS` to responses for debugging.
 - `proxy_cache_lock on` — one upstream request in flight per cold key.
 
-Sanity check after a rebuild:
+Sanity check after a rebuild (LiDAR hillshade):
 
 ```
-curl -sI "http://localhost:3030/wms/hoyde-dtm?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=NHM_DTM_TOPOBATHY_25833:skyggerelieff&CRS=EPSG:25833&BBOX=200000,6500000,300000,6600000&WIDTH=256&HEIGHT=256&FORMAT=image/png" | grep -i x-cache
+curl -sI "http://localhost:3030/wms/geonorge/wms.hoyde-dtm-nhm-topobathy-25833?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=NHM_DTM_TOPOBATHY_25833:skyggerelieff&CRS=EPSG:25833&BBOX=200000,6500000,300000,6600000&WIDTH=256&HEIGHT=256&FORMAT=image/png" | grep -i x-cache
 ```
 
 First call: `MISS`. Repeat: `HIT`. Inspect on-disk size:
@@ -133,8 +168,13 @@ First call: `MISS`. Repeat: `HIT`. Inspect on-disk size:
    `src/map/layers/themeLayerConfigApi.ts` inside `getThemeLayerConfig()`.
 3. Add the layer id(s) to a union in `src/map/layers/themeWMS.ts` and
    into `ThemeLayerName`.
-4. Whitelist the WMS host in `Caddyfile` CSP `img-src` (for tiles + legend)
-   and `connect-src` (for GetFeatureInfo).
+4. Route requests through `wmscache` instead of hitting the origin from
+   the browser. Add a `handle_path /wms/<host-slug>/*` block in
+   `Caddyfile` that rewrites to the upstream's WMS path prefix, plus an
+   `upstream` + `location` pair in `nginx/wms-cache.conf`, and use
+   `/wms/<host-slug>/...` as `wmsUrl` in the config. This gives you the
+   25 GB LRU disk cache and same-origin browser requests for free (no
+   CSP entry needed).
 5. If the WMS's GetFeatureInfo doesn't offer JSON, set `infoFormat` on the
    category or layer to a format the parser can handle
    (`application/vnd.ogc.gml` works for MapServer via

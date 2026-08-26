@@ -42,7 +42,7 @@ const LOCAL_ENV: Env = {
       baseUrl: 'https://cache.kartverket.no',
     },
     geoNorgeWMS: {
-      baseUrl: 'https://wms.geonorge.no/skwms1/wms',
+      baseUrl: '/wms/geonorge/wms',
     },
     eccProxy: {
       wmsUrl: 'https://tnt-proxy.atkv3-dev.kartverket-intern.cloud/wms',
@@ -70,7 +70,7 @@ const DEV_ENV: Env = {
       baseUrl: 'https://cache.kartverket.no',
     },
     geoNorgeWMS: {
-      baseUrl: 'https://wms.geonorge.no/skwms1/wms',
+      baseUrl: '/wms/geonorge/wms',
     },
     eccProxy: {
       wmsUrl: 'https://tnt-proxy.atkv3-prod.kartverket.cloud/wms',
@@ -98,7 +98,7 @@ const PROD_ENV: Env = {
       baseUrl: 'https://cache.kartverket.no',
     },
     geoNorgeWMS: {
-      baseUrl: 'https://wms.geonorge.no/skwms1/wms',
+      baseUrl: '/wms/geonorge/wms',
     },
     eccProxy: {
       wmsUrl: 'https://tnt-proxy.atkv3-prod.kartverket.cloud/wms',

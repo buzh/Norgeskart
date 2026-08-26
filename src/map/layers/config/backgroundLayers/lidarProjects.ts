@@ -18,7 +18,7 @@ export type LidarProject = {
 };
 
 const CAPS_URL =
-  '/wms/hoyde-dtm-prosjekt?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0';
+  '/wms/geonorge/wms.hoyde-dtm-prosjekt?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0';
 // Bump when the parser output shape or filtering changes so cached
 // entries from an older schema are ignored.
 const STORAGE_KEY = 'lidarProjects.v3';
@@ -29,7 +29,7 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // 'lidarProject' to build the actual WMS request.
 export const activeLidarProjectAtom = atom<LidarProject | null>(null);
 
-export const LIDAR_PROJECT_WMS_URL = '/wms/hoyde-dtm-prosjekt';
+export const LIDAR_PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
 export const DEFAULT_LIDAR_PROJECT_STYLE = 'skyggerelieff';
 
 // Rolling counters for tiles observed on the currently-active project.
