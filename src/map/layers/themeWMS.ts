@@ -185,7 +185,7 @@ export const createThemeLayerFromConfig = (
     LAYERS: layerDef.layers,
     TRANSPARENT: true,
     SRS: projection,
-    ...(layerDef.styles ? { STYLES: layerDef.styles } : {}),
+    STYLES: layerDef.styles ?? '',
     FILTER: layerDef.filter ? layerDef.filter : undefined,
   };
 
