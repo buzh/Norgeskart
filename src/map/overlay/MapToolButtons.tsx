@@ -127,7 +127,7 @@ export const MapToolButtons = () => {
             currentMapTool === 'lidarExtract' ? null : 'lidarExtract',
           );
         }}
-        icon={'terrain'}
+        icon={'crop_free'}
         label={
           isMobile
             ? t('controller.lidarExtract.mobiletext')
