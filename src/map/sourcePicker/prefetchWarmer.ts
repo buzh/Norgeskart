@@ -96,10 +96,6 @@ export const warmLidarProjectTiles = (
     count++;
     const url = tileUrlFunction([z, x, y], pixelRatio, projection);
     if (!url) continue;
-    if (count === 1) {
-      // eslint-disable-next-line no-console
-      console.log('[warm]', projectId, url);
-    }
     queue.push(() =>
       fetch(url)
         .then(() => undefined)

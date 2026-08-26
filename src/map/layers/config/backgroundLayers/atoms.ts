@@ -85,7 +85,6 @@ const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
       });
     },
   });
-  let firstLogged = false;
   return {
     type: 'WMS',
     layerName: 'lidarProject',
@@ -94,14 +93,7 @@ const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
       LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
       VERSION: '1.3.0',
     },
-    tileLoadFunction: (imageTile, src) => {
-      if (!firstLogged) {
-        firstLogged = true;
-        // eslint-disable-next-line no-console
-        console.log('[actual]', projectId, src);
-      }
-      inner(imageTile, src);
-    },
+    tileLoadFunction: inner,
   };
 };
 
