@@ -174,7 +174,30 @@ const groupFeatures = (layers: LayerFeatureInfo[]): HeritageGroup[] => {
     else g.navn = 'Kulturminne';
   }
 
-  return Array.from(groups.values());
+  const all = Array.from(groups.values());
+
+  // Kulturminnesøk doesn't surface sikringssoner as first-class results —
+  // they're implicit protection metadata for a lokalitet. Drop pure
+  // sikringssone groups when there's any real POI in the click; otherwise
+  // keep them so a lone sikringssone click still shows something.
+  const hasReal = all.some((g) => g.lokalitet || g.enkeltminner.length > 0);
+  if (hasReal) {
+    return all.filter((g) => g.lokalitet || g.enkeltminner.length > 0 || g.others.length > 0);
+  }
+  return all;
+};
+
+// Roll up a field across a lokalitet + its enkeltminner, following the
+// Kulturminnesøk pattern: if the values agree, show the shared value;
+// if they disagree, show a "Flere/Ulike …" aggregate label.
+const rollup = (
+  values: string[],
+  aggregateLabel: string,
+): string => {
+  const unique = Array.from(new Set(values.filter((v) => v.length > 0)));
+  if (unique.length === 0) return '';
+  if (unique.length === 1) return unique[0];
+  return aggregateLabel;
 };
 
 const formatDate = (v: unknown): string => {
@@ -211,20 +234,39 @@ const NestedEnkeltminner = ({
     <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={1}>
       Enkeltminner ved klikket ({features.length})
     </Text>
-    <Stack gap={1}>
+    <Stack gap={2}>
       {features.map((em, i) => {
-        const emNavn = stringify(em.properties['navn']);
-        const emArt = stringify(em.properties['enkeltminneart']);
-        const emId = stringify(em.properties['lokalid']);
+        const p = em.properties;
+        const emNavn = stringify(p['navn']);
+        const emArt = stringify(p['enkeltminneart']);
+        const emKategori = stringify(p['enkeltminnekategori']);
+        const emId = stringify(p['lokalid']);
+        const emVerne = stringify(p['vernetype']);
+        const emDatering = stringify(p['datering']);
+        const subtitle = [emArt, emKategori].filter(Boolean).join(' — ');
         return (
           <Box key={i} pl={2} borderLeft="2px solid" borderColor="gray.200">
             <Text fontSize="sm" wordBreak="break-word">
               {emNavn || emArt || `Enkeltminne #${emId}`}
             </Text>
-            {emNavn && emArt && (
-              <Text fontSize="xs" color="gray.500">
-                {emArt}
+            {subtitle && emNavn && (
+              <Text fontSize="xs" color="gray.500" wordBreak="break-word">
+                {subtitle}
               </Text>
+            )}
+            {(emVerne || emDatering) && (
+              <Flex gap={2} mt={0.5} wrap="wrap">
+                {emVerne && (
+                  <Badge colorPalette="green" size="sm">
+                    {emVerne}
+                  </Badge>
+                )}
+                {emDatering && (
+                  <Text fontSize="xs" color="gray.600">
+                    {emDatering}
+                  </Text>
+                )}
+              </Flex>
             )}
           </Box>
         );
@@ -246,18 +288,51 @@ const HeritageCard = ({ group }: { group: HeritageGroup }) => {
   const artKategori = [artRaw, kategoriRaw].filter(Boolean).join(' — ');
 
   const kommune = stringify(props['kommune']);
-  const vernetype = stringify(props['vernetype']);
-  const vernedato = formatDate(props['vernedato']);
-  const datering = stringify(props['datering']);
+  const fylke = stringify(props['fylke']);
+  const beliggenhet = [fylke, kommune].filter(Boolean).join(', ');
+
+  // Roll up vernetype + datering across the lokalitet's own field AND all
+  // its nested enkeltminner. If they agree, show the value; if not, show
+  // the "Ulike vernestatus" / "Flere dateringer" aggregate label the way
+  // Kulturminnesøk does.
+  const memberProps = [
+    ...(group.lokalitet ? [group.lokalitet.properties] : []),
+    ...group.enkeltminner.map((em) => em.properties),
+  ];
+  const vernetype = rollup(
+    memberProps.map((p) => stringify(p['vernetype'])),
+    'Ulike vernestatus',
+  );
+  const datering = rollup(
+    memberProps.map((p) => stringify(p['datering'])),
+    'Flere dateringer',
+  );
+  // vernedato only if there's a single shared vernetype AND a single shared
+  // date across all members; otherwise a single date next to "Ulike
+  // vernestatus" would misrepresent when the mixed statuses were assigned.
+  const uniqueVerne = new Set(
+    memberProps.map((p) => stringify(p['vernetype'])).filter(Boolean),
+  );
+  const uniqueVerneDato = new Set(
+    memberProps.map((p) => formatDate(p['vernedato'])).filter(Boolean),
+  );
+  const vernedato =
+    uniqueVerne.size === 1 && uniqueVerneDato.size === 1
+      ? Array.from(uniqueVerneDato)[0]
+      : '';
   const antall =
     group.lokalitet && stringify(group.lokalitet.properties['antallenkeltminner']);
   const informasjon = stringify(props['informasjon']);
-  const askeladden =
-    stringify(props['linkaskeladden']) ||
-    (props['lokalid']
-      ? `https://askeladden.ra.no/askeladden/?kid=${stringify(props['lokalid'])}`
-      : '');
-  const kulturminnesok = stringify(props['linkkulturminnesok']);
+  // Links only apply to real POIs — sikringssoner have their own id space
+  // and a synthesized askeladden URL for a sikringssone id doesn't resolve.
+  const hasReal = !!group.lokalitet || group.enkeltminner.length > 0;
+  const askeladden = hasReal
+    ? stringify(props['linkaskeladden']) ||
+      (props['lokalid']
+        ? `https://askeladden.ra.no/askeladden/?kid=${stringify(props['lokalid'])}`
+        : '')
+    : '';
+  const kulturminnesok = hasReal ? stringify(props['linkkulturminnesok']) : '';
 
   return (
     <Box
@@ -290,11 +365,11 @@ const HeritageCard = ({ group }: { group: HeritageGroup }) => {
       </Stack>
 
       <Stack gap={1}>
-        {artKategori && <FieldRow label="Art" value={artKategori} />}
-        {kommune && <FieldRow label="Kommune" value={kommune} />}
+        {artKategori && <FieldRow label="Kategori" value={artKategori} />}
+        {beliggenhet && <FieldRow label="Beliggenhet" value={beliggenhet} />}
         {vernetype && (
           <FieldRow
-            label="Vernetype"
+            label="Vernestatus"
             value={vernedato ? `${vernetype} (${vernedato})` : vernetype}
           />
         )}
