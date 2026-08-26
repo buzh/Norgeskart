@@ -23,6 +23,10 @@ export const culturalHeritageConfig: ThemeLayerConfig = {
       // scales symbol sizes / line widths on the server side. 192 = ~2x
       // the default 96 dpi, doubling the "R" icon and related glyphs.
       extraWmsParams: { map_resolution: 192 },
+      // Norway has ~300k heritage records; below city-scale zoom the
+      // map turns into an unreadable wall of pins. Hide the whole
+      // category until the view zooms in past this level.
+      minZoom: 8,
     },
   ],
   layers: [

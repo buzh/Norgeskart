@@ -34,6 +34,10 @@ export interface ThemeLayerCategory {
   featureInfoImageBaseUrl?: string;
   featureInfoFields?: FieldConfig[];
   extraWmsParams?: Record<string, string | number | boolean>;
+  // OpenLayers layer.minZoom — the layer is visible only when the view
+  // zoom is strictly greater than this. Cascades to layers in the
+  // category unless the layer sets its own.
+  minZoom?: number;
 }
 
 export interface ThemeLayerStyle {
@@ -80,6 +84,7 @@ export interface ThemeLayerDefinition {
   noLegend?: boolean;
   singleImage?: boolean;
   extraWmsParams?: Record<string, string | number | boolean>;
+  minZoom?: number;
 }
 
 export interface ThemeLayerConfig {

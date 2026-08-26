@@ -187,6 +187,9 @@ export const createThemeLayerFromConfig = (
     ...layerDef.extraWmsParams,
   };
 
+  const minZoom =
+    layerDef.minZoom ?? category?.minZoom ?? parentCategory?.minZoom;
+
   const wmsParams = {
     LAYERS: layerDef.layers,
     TRANSPARENT: true,
@@ -204,6 +207,7 @@ export const createThemeLayerFromConfig = (
         projection: projection,
       }),
       properties: layerProperties,
+      ...(minZoom !== undefined ? { minZoom } : {}),
     });
   }
 
@@ -216,5 +220,6 @@ export const createThemeLayerFromConfig = (
     }),
     properties: layerProperties,
     preload: 2,
+    ...(minZoom !== undefined ? { minZoom } : {}),
   });
 };
