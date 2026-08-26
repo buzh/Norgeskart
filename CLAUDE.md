@@ -18,6 +18,19 @@ docker compose up -d
 docker compose logs -f norgeskart wmscache
 ```
 
+If `nginx/wms-cache.conf` or `nginx/wms-proxy-common.conf` changed, also
+restart wmscache — the configs are bind-mounted, so the file on disk is
+current, but nginx only reads config at startup and `docker compose up -d`
+doesn't recreate wmscache (its image tag is unchanged):
+
+```
+docker compose restart wmscache
+```
+
+Symptom of forgetting this: same-origin proxy paths (e.g. `/wms/ra/...`)
+return nginx's default 404 page even though the Caddyfile and layer configs
+look correct.
+
 Ports: Caddy inside the container listens on `:3000`; docker-compose maps host
 `3030 → container 3000`.
 

@@ -33,6 +33,7 @@ export interface ThemeLayerCategory {
   infoFormat?: string;
   featureInfoImageBaseUrl?: string;
   featureInfoFields?: FieldConfig[];
+  extraWmsParams?: Record<string, string | number | boolean>;
 }
 
 export interface ThemeLayerStyle {
@@ -78,6 +79,7 @@ export interface ThemeLayerDefinition {
   filter?: string;
   noLegend?: boolean;
   singleImage?: boolean;
+  extraWmsParams?: Record<string, string | number | boolean>;
 }
 
 export interface ThemeLayerConfig {

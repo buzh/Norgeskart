@@ -181,12 +181,19 @@ export const createThemeLayerFromConfig = (
     ...(featureInfoFields ? { featureInfoFields } : {}),
   };
 
+  const extraWmsParams = {
+    ...parentCategory?.extraWmsParams,
+    ...category?.extraWmsParams,
+    ...layerDef.extraWmsParams,
+  };
+
   const wmsParams = {
     LAYERS: layerDef.layers,
     TRANSPARENT: true,
     SRS: projection,
     STYLES: layerDef.styles ?? '',
     FILTER: layerDef.filter ? layerDef.filter : undefined,
+    ...extraWmsParams,
   };
 
   if (layerDef.singleImage) {

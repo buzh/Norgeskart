@@ -10,6 +10,7 @@ import { useAtomValue } from 'jotai';
 import { BottomDrawToolSelector } from './draw/BottomDrawToolSelector';
 import { displayCompassOverlayAtom } from './map/atoms';
 import { BackgroundLayerPopover } from './map/backgroundLayer/BackgroundLayerPopover';
+import { KulturminnerPopup } from './map/featureInfo/KulturminnerPopup';
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
 import { MapComponent } from './map/MapComponent';
 import { MapControlButtons } from './map/MapControlButtons';
@@ -231,6 +232,9 @@ export const Layout = () => {
           <BottomDrawToolSelector />
         </ErrorBoundary>
       )}
+      <ErrorBoundary fallback={undefined} name={'KulturminnerPopup'}>
+        <KulturminnerPopup />
+      </ErrorBoundary>
     </ErrorBoundary>
   );
 };

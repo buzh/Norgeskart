@@ -4,6 +4,8 @@ import BaseEvent from 'ol/events/Event';
 import { Geometry } from 'ol/geom';
 import { useCallback, useEffect } from 'react';
 import { mapAtom } from '../map/atoms';
+import { hasVisibleLayerWithIdIn } from '../map/featureInfo/featureInfoService';
+import { CULTURAL_HERITAGE_LAYER_IDS } from '../map/layers/config/themeLayers/culturalHeritage';
 import { mapContextIsOpenAtom } from '../map/menu/atoms';
 import { mapToolAtom } from '../map/overlay/atoms';
 import { ProjectionIdentifier } from '../map/projections/types';
@@ -95,6 +97,14 @@ export const useMapClickSearch = () => {
         const isClickClusterClick = isClusterClick(e);
 
         if (isClickClusterClick) {
+          return;
+        }
+        // If a kulturminner layer is visible, useFeatureInfoClick owns the
+        // click result — it may open the compact popup and doesn't want the
+        // coordinate InfoBox flashing in first. It will fall back to setting
+        // selectedResult itself when the click misses every kulturminner.
+        const map = getDefaultStore().get(mapAtom);
+        if (hasVisibleLayerWithIdIn(map, CULTURAL_HERITAGE_LAYER_IDS)) {
           return;
         }
         handlePositionClick(e);

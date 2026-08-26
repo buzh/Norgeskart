@@ -1,5 +1,13 @@
 import { ThemeLayerConfig } from '../../themeLayerConfigApi';
 
+export const CULTURAL_HERITAGE_LAYER_IDS = new Set([
+  'theme.heritageSites',
+  'theme.culturalEnvironments',
+  'theme.sefrakBuildings',
+  'theme.protectedBuildings',
+  'theme.userReportedHeritage',
+]);
+
 export const culturalHeritageConfig: ThemeLayerConfig = {
   categories: [
     {
@@ -11,6 +19,10 @@ export const culturalHeritageConfig: ThemeLayerConfig = {
         en: 'Cultural heritage',
       },
       infoFormat: 'application/vnd.ogc.gml',
+      // Kart.ra.no is MapServer; map_resolution acts as a DPI hint and
+      // scales symbol sizes / line widths on the server side. 192 = ~2x
+      // the default 96 dpi, doubling the "R" icon and related glyphs.
+      extraWmsParams: { map_resolution: 192 },
     },
   ],
   layers: [

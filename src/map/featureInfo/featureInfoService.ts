@@ -569,3 +569,17 @@ export const isQueryableLayer = (layer: BaseLayer): boolean => {
 export const hasVisibleQueryableLayers = (map: Map): boolean => {
   return getQueryableWMSLayers(map).length > 0;
 };
+
+export const hasVisibleLayerWithIdIn = (
+  map: Map,
+  layerIds: ReadonlySet<string>,
+): boolean => {
+  return map
+    .getLayers()
+    .getArray()
+    .some((layer) => {
+      if (!layer.getVisible()) return false;
+      const id = layer.get('id');
+      return typeof id === 'string' && layerIds.has(id);
+    });
+};
