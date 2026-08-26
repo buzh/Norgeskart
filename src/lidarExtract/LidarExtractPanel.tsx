@@ -20,11 +20,13 @@ import {
   nativeResolutionMetersPerPx,
 } from './sources';
 import { MAX_CANVAS_PX_PER_SIDE } from './stitch';
+import { useDrawSelection } from './useDrawSelection';
 
 const RESOLUTION_OPTIONS = [0.15, 0.25, 0.5, 1, 2];
 
 export const LidarExtractPanel = () => {
   const { t } = useTranslation();
+  useDrawSelection();
   const [selection, setSelection] = useAtom(lidarExtractSelectionAtom);
   const [sources, setSources] = useAtom(lidarExtractSourcesAtom);
   const [resolution, setResolution] = useAtom(lidarExtractResolutionAtom);
