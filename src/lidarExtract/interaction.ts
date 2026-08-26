@@ -95,6 +95,9 @@ export const lidarExtractInteractionEffect = atomEffect((get) => {
     source,
     type: 'Circle', // createBox() reshapes it into an axis-aligned polygon
     geometryFunction: createBox(),
+    // Freehand: press → drag → release. Without this, OL treats drags as
+    // pan (click-only draws) and the user can't paint a box in one gesture.
+    freehand: true,
     style: selectionStyle,
   });
   // Tag so we can distinguish this Draw from ones the draw/measure modules
