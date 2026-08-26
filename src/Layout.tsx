@@ -29,7 +29,13 @@ import { useIsMobileScreen } from './shared/hooks';
 import { Toolbar } from './toolbar/Toolbar';
 
 export type MapTool =
-  'layers' | 'draw' | 'info' | 'settings' | 'measure' | null;
+  | 'layers'
+  | 'draw'
+  | 'info'
+  | 'settings'
+  | 'measure'
+  | 'lidarExtract'
+  | null;
 
 export const Layout = () => {
   const displayCompassOverlay = useAtomValue(displayCompassOverlayAtom);

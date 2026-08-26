@@ -122,6 +122,21 @@ export const MapToolButtons = () => {
         id="map-draw-button"
       />
       <MapButton
+        onClick={() => {
+          setCurrentMapTool(
+            currentMapTool === 'lidarExtract' ? null : 'lidarExtract',
+          );
+        }}
+        icon={'terrain'}
+        label={
+          isMobile
+            ? t('controller.lidarExtract.mobiletext')
+            : t('controller.lidarExtract.text')
+        }
+        active={currentMapTool === 'lidarExtract'}
+        id="map-lidar-extract-button"
+      />
+      <MapButton
         onClick={handleShareMapClick}
         icon={'share'}
         label={

@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DrawControls } from '../../draw/drawControls/DrawControls';
 import { useDrawSettings } from '../../draw/drawControls/hooks/drawSettings';
+import { LidarExtractPanel } from '../../lidarExtract/LidarExtractPanel';
 import { MapThemes } from '../../settings/map/themes/MapThemes';
 import { useIsMobileScreen } from '../../shared/hooks';
 import { SettingsDrawer } from '../../sidePanel/SettingsDrawer';
@@ -145,6 +146,14 @@ const MapToolCardsBody = () => {
     return (
       <MapToolCard label={t('info.settings.text')} onClose={onClose}>
         <SettingsDrawer />
+      </MapToolCard>
+    );
+  }
+
+  if (currentMapTool === 'lidarExtract') {
+    return (
+      <MapToolCard label={t('lidarExtract.tabHeading')} onClose={onClose}>
+        <LidarExtractPanel />
       </MapToolCard>
     );
   }

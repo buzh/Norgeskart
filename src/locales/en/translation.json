@@ -8,6 +8,10 @@
       "text": "Tools",
       "mobiletext": "Tools"
     },
+    "lidarExtract": {
+      "text": "LiDAR extract",
+      "mobiletext": "LiDAR"
+    },
     "settings": {
       "mobiletext": "Settings",
       "text": "Settings"
@@ -131,6 +135,40 @@
   "languageSelector": {
     "chooseLanguage": "Select language",
     "tabHeading": "Language"
+  },
+  "lidarExtract": {
+    "tabHeading": "LiDAR extract",
+    "instructions": {
+      "drawBox": "Draw a rectangle on the map to select an area.",
+      "drawHint": "Drag corner to corner. Fetched in EPSG:25833 via the local cache."
+    },
+    "selection": {
+      "label": "Selection"
+    },
+    "resolution": {
+      "label": "Resolution"
+    },
+    "output": {
+      "label": "Output",
+      "cappedTo": "Capped to {{res}} m/px"
+    },
+    "sources": {
+      "label": "Sources and styles",
+      "loading": "Loading LiDAR catalogue …",
+      "none": "No LiDAR sources cover this area."
+    },
+    "actions": {
+      "redraw": "Draw again",
+      "run": "Fetch",
+      "download": "Download"
+    },
+    "results": {
+      "label": "Results"
+    },
+    "status": {
+      "done": "Done",
+      "error": "Error"
+    }
   },
   "locationType": {
     "address": "Address",

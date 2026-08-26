@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeatures } from '../api/nkApiClient.ts';
 import { useDrawSettings } from '../draw/drawControls/hooks/drawSettings.ts';
+import { lidarExtractInteractionEffect } from '../lidarExtract/interaction.ts';
 import { ErrorBoundary } from '../shared/ErrorBoundary.tsx';
 import { getUrlParameter } from '../shared/utils/urlUtils.ts';
 import { mapAtom, projectionEffect, scaleAtom } from './atoms.ts';
@@ -28,6 +29,7 @@ export const MapComponent = () => {
   useAtom(trackPostitionAtomEffect);
   useAtom(projectionEffect);
   useAtom(backgroundLayerAtomEffect);
+  useAtom(lidarExtractInteractionEffect);
 
   useEffect(() => {
     if (mapRef.current) {

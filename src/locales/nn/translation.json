@@ -8,6 +8,10 @@
       "text": "Teikne og måle",
       "mobiletext": "Verktøy"
     },
+    "lidarExtract": {
+      "text": "LiDAR-uttrekk",
+      "mobiletext": "LiDAR"
+    },
     "settings": {
       "mobiletext": "Innstillingar",
       "text": "Innstillingar"
@@ -136,6 +140,40 @@
   "languageSelector": {
     "chooseLanguage": "Vel språk",
     "tabHeading": "Språk"
+  },
+  "lidarExtract": {
+    "tabHeading": "LiDAR-uttrekk",
+    "instructions": {
+      "drawBox": "Teikn eit rektangel på kartet for å velje område.",
+      "drawHint": "Dra frå hjørne til hjørne. Hentast i EPSG:25833 via lokal cache."
+    },
+    "selection": {
+      "label": "Utval"
+    },
+    "resolution": {
+      "label": "Oppløysing"
+    },
+    "output": {
+      "label": "Utgang",
+      "cappedTo": "Kappa til {{res}} m/px"
+    },
+    "sources": {
+      "label": "Kjelder og stilar",
+      "loading": "Les LiDAR-katalog …",
+      "none": "Ingen LiDAR-kjelder dekkjer dette området."
+    },
+    "actions": {
+      "redraw": "Teikn ny",
+      "run": "Hent",
+      "download": "Last ned"
+    },
+    "results": {
+      "label": "Resultat"
+    },
+    "status": {
+      "done": "Ferdig",
+      "error": "Feil"
+    }
   },
   "locationType": {
     "address": "Adresse",
