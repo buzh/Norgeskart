@@ -20,7 +20,15 @@ import {
   runWithConcurrency,
 } from './stitch';
 
-const MAX_CONCURRENT_TILES = 8;
+// Kept modest so a Hent doesn't drown the wmscache→Kartverket keepalive
+// pool while regular map tiles are also flowing. Bumping this past ~4
+// tends to trigger 502s from wmscache under real map-browsing load.
+const MAX_CONCURRENT_TILES = 4;
+
+// Transient 5xx from wmscache / Kartverket during bursts is common; a
+// small retry with backoff turns the flakiness into eventual success.
+const TILE_MAX_RETRIES = 3;
+const TILE_RETRY_BASE_MS = 500;
 
 export type StylesBySource = Record<string, string[]>;
 
@@ -102,29 +110,38 @@ export function startExtraction(
   void runWithConcurrency(workItems, MAX_CONCURRENT_TILES, async (item) => {
     if (abort.signal.aborted) return;
     markStatus(runId, item.canvasId, 'fetching');
-    try {
-      const result = await fetchAndPaint(
-        item.url,
-        item.ctx,
-        item.dx,
-        item.dy,
-        item.dw,
-        item.dh,
-        abort.signal,
-      );
-      recordTileDone(runId, item.canvasId, {
-        blank: result === 'blank',
-        failed: false,
-      });
-    } catch (err) {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= TILE_MAX_RETRIES; attempt++) {
       if (abort.signal.aborted) return;
-      const message = err instanceof Error ? err.message : String(err);
-      recordTileDone(runId, item.canvasId, {
-        blank: false,
-        failed: true,
-        errorMessage: message,
-      });
+      try {
+        const result = await fetchAndPaint(
+          item.url,
+          item.ctx,
+          item.dx,
+          item.dy,
+          item.dw,
+          item.dh,
+          abort.signal,
+        );
+        recordTileDone(runId, item.canvasId, {
+          blank: result === 'blank',
+          failed: false,
+        });
+        return;
+      } catch (err) {
+        lastErr = err;
+        if (abort.signal.aborted) return;
+        if (attempt < TILE_MAX_RETRIES) {
+          await sleep(TILE_RETRY_BASE_MS * 2 ** attempt, abort.signal);
+        }
+      }
     }
+    const message = lastErr instanceof Error ? lastErr.message : String(lastErr);
+    recordTileDone(runId, item.canvasId, {
+      blank: false,
+      failed: true,
+      errorMessage: message,
+    });
   });
 
   return run;
@@ -133,6 +150,24 @@ export function startExtraction(
 export function cancelExtraction(): void {
   currentAbort?.abort();
   currentAbort = null;
+}
+
+// Abortable sleep. Rejects immediately if the signal aborts; otherwise
+// resolves after `ms`. Wrapped so the retry loop can bail on Cancel.
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(new Error('aborted'));
+    const t = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(t);
+      signal.removeEventListener('abort', onAbort);
+      reject(new Error('aborted'));
+    };
+    signal.addEventListener('abort', onAbort);
+  });
 }
 
 function updateRun(
