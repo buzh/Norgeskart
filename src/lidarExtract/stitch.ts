@@ -129,19 +129,15 @@ export async function runWithConcurrency<T>(
   await Promise.all(workers);
 }
 
-// Kartverket returns a near-empty PNG (headers + tiny compressed IDAT)
-// when a request lands outside actual coverage even if the bbox check
-// passed. These come in around 500–1500 bytes regardless of requested
-// tile size, whereas real hillshade tiles at 512 px and up are always
-// tens to hundreds of KB. 4 KB is a safe cut between the two.
-export const BLANK_RESPONSE_THRESHOLD_BYTES = 4000;
-
 export type TileResult = 'painted' | 'blank';
 
-// Fetch a single tile and paint it onto the target canvas — unless the
-// response is small enough to be a coverage-hole PNG, in which case we
-// leave the canvas transparent under it and report 'blank' so the caller
-// can distinguish "no data here" from "everything worked".
+// Kartverket's per-project WMS often returns a valid PNG of the requested
+// size but filled with a single uniform colour when the request lands
+// outside the project's actual coverage. Byte-size heuristics don't catch
+// these (a 2048² uniform PNG is ~16 KB, well above trivial-empty thresholds),
+// so we downsample-and-check for pixel variance instead: a 16×16 sample
+// of a truly uniform tile stays uniform; anything with real hillshade
+// content varies at that scale.
 export async function fetchAndPaint(
   url: string,
   ctx: CanvasRenderingContext2D,
@@ -154,22 +150,51 @@ export async function fetchAndPaint(
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
-  if (blob.size < BLANK_RESPONSE_THRESHOLD_BYTES) {
-    return 'blank';
-  }
   const objectUrl = URL.createObjectURL(blob);
   try {
-    await new Promise<void>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, dx, dy, dw, dh);
-        resolve();
-      };
-      img.onerror = () => reject(new Error('image decode failed'));
-      img.src = objectUrl;
-    });
+    const img = await loadImage(objectUrl);
+    if (isUniformImage(img)) return 'blank';
+    ctx.drawImage(img, dx, dy, dw, dh);
     return 'painted';
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = url;
+  });
+}
+
+function isUniformImage(img: HTMLImageElement): boolean {
+  // Downsample to 16×16 in an offscreen canvas: cheap to read back and
+  // still averages across enough of the source that any real terrain
+  // detail shows up as variance.
+  const sampleSize = 16;
+  const oc = document.createElement('canvas');
+  oc.width = sampleSize;
+  oc.height = sampleSize;
+  const octx = oc.getContext('2d', { willReadFrequently: true });
+  if (!octx) return false;
+  octx.drawImage(img, 0, 0, sampleSize, sampleSize);
+  const data = octx.getImageData(0, 0, sampleSize, sampleSize).data;
+  const r0 = data[0];
+  const g0 = data[1];
+  const b0 = data[2];
+  const a0 = data[3];
+  for (let i = 4; i < data.length; i += 4) {
+    if (
+      data[i] !== r0 ||
+      data[i + 1] !== g0 ||
+      data[i + 2] !== b0 ||
+      data[i + 3] !== a0
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
