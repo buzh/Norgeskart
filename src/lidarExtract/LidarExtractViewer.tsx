@@ -192,38 +192,53 @@ export const LidarExtractViewer = () => {
   }, [orderedCanvases, clampedSelected]);
 
   // Keyboard: arrow keys cycle selection, Del removes the current image,
-  // Escape closes.
+  // Escape closes. Listens in CAPTURE phase on document so we consume the
+  // event before OL's KeyboardPan/KeyboardZoom (which are attached to
+  // document by the map atom's `keyboardEventTarget`) can pan the map
+  // underneath the viewer.
   useEffect(() => {
     if (!open) return;
+    const handle = (e: KeyboardEvent, action: () => void) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      action();
+    };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        close();
-        return;
-      }
-      if (e.key === 'Delete') {
-        e.preventDefault();
-        deleteCurrent();
-        return;
-      }
-      if (e.key === '0') {
-        e.preventDefault();
-        resetZoom();
-        return;
-      }
-      if (orderedCanvases.length === 0) return;
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.max(0, Math.min(i, orderedCanvases.length - 1) - 1));
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        setSelectedIndex((i) =>
-          Math.min(orderedCanvases.length - 1, Math.min(i, orderedCanvases.length - 1) + 1),
-        );
+      switch (e.key) {
+        case 'Escape':
+          handle(e, close);
+          return;
+        case 'Delete':
+          handle(e, deleteCurrent);
+          return;
+        case '0':
+          handle(e, resetZoom);
+          return;
+        case 'ArrowLeft':
+          if (orderedCanvases.length === 0) return;
+          handle(e, () =>
+            setSelectedIndex((i) =>
+              Math.max(0, Math.min(i, orderedCanvases.length - 1) - 1),
+            ),
+          );
+          return;
+        case 'ArrowRight':
+          if (orderedCanvases.length === 0) return;
+          handle(e, () =>
+            setSelectedIndex((i) =>
+              Math.min(
+                orderedCanvases.length - 1,
+                Math.min(i, orderedCanvases.length - 1) + 1,
+              ),
+            ),
+          );
+          return;
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, { capture: true });
+    return () =>
+      document.removeEventListener('keydown', onKey, { capture: true });
   }, [open, orderedCanvases.length, close, deleteCurrent, resetZoom]);
 
   const onThumbDragStart = (id: string, e: React.DragEvent) => {
