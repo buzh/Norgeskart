@@ -52,11 +52,13 @@ export const LidarExtractViewer = () => {
     );
   }, [run]);
 
-  // Fresh run → wipe local user state (order/deletions/selection).
+  // Fresh run → wipe local user state (order/deletions/selection/zoom).
   useEffect(() => {
     setOrder([]);
     setDeletedIds(new Set());
     setSelectedIndex(0);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   }, [run?.runId]);
 
   // Reconcile the drag-reorderable order with the reality of what's
@@ -112,12 +114,6 @@ export const LidarExtractViewer = () => {
     // Sharper zoom when the user scales up — the browser's default
     // bilinear filter turns hillshade into mush at high zooms.
     el.style.imageRendering = 'pixelated';
-  }, [selected]);
-
-  // Reset zoom/pan whenever the selected canvas changes.
-  useEffect(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
   }, [selected]);
 
   // Apply the current zoom/pan to the canvas transform.

@@ -27,6 +27,15 @@ export const NATIONAL_WMS_URL =
 export const NATIONAL_LAYER_PREFIX = 'NHM_DTM_TOPOBATHY_25833';
 export const PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
 
+// Styles that are advertised but not useful here. Filtered out both when
+// parsing national caps and when mapping per-project sources.
+//   - `None`: national's "no style" placeholder (renders a near-uniform PNG).
+//   - `dynamisk_farget_hoyde`: Kartverket picks a per-tile colour ramp
+//     from the local elevation range, so adjacent tiles get incompatible
+//     palettes and the stitched output has visible seams. No workaround
+//     from the client side.
+const EXCLUDED_STYLES = new Set<string>(['None', 'dynamisk_farget_hoyde']);
+
 const NATIONAL_CAPS_URL =
   `${NATIONAL_WMS_URL}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`;
 // Bump when the parser filter changes so stale cached lists (e.g. still
@@ -71,10 +80,7 @@ function parseStylesForPrefix(xmlText: string, prefix: string): string[] {
     const name = layer.getElementsByTagName('Name')[0]?.textContent?.trim();
     if (!name || !name.startsWith(prefix + ':')) continue;
     const suffix = name.slice(prefix.length + 1);
-    // Kartverket advertises a `<prefix>:None` pseudo-layer on the national
-    // DTM WMS that renders as an unstyled near-uniform tile. It's not real
-    // hillshade output — skip it.
-    if (suffix === 'None') continue;
+    if (EXCLUDED_STYLES.has(suffix)) continue;
     styles.add(suffix);
   }
   return Array.from(styles).sort();
@@ -142,7 +148,7 @@ function projectToSource(p: LidarProject): LidarSource {
     pointDensity: p.pointDensity,
     wmsUrl: PROJECT_WMS_URL,
     layerPrefix: p.projectName,
-    styles: p.styles,
+    styles: p.styles.filter((s) => !EXCLUDED_STYLES.has(s)),
   };
 }
 
