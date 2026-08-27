@@ -26,17 +26,8 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // The project the picker most recently activated as the background source.
 // Read by the background-layer effect when backgroundLayerAtom is
-// 'lidarProject' to build the actual WMS request. Kept as a slim struct
-// rather than a full LidarProject because the coverage overlay is now
-// populated from WFS metadata (see wfsCoverage.ts) and doesn't carry
-// bboxLonLat / styles.
-export type ActiveLidarProject = {
-  id: string; // matches WMS layer-name prefix
-  projectName: string;
-  year: number | null;
-  pointDensity: number | null; // pt/m²
-};
-export const activeLidarProjectAtom = atom<ActiveLidarProject | null>(null);
+// 'lidarProject' to build the actual WMS request.
+export const activeLidarProjectAtom = atom<LidarProject | null>(null);
 
 export const LIDAR_PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
 export const DEFAULT_LIDAR_PROJECT_STYLE = 'skyggerelieff';
