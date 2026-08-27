@@ -234,7 +234,7 @@ export const LidarExtractViewer = () => {
           <Button
             size="xs"
             variant="ghost"
-            colorPalette="whiteAlpha"
+            colorPalette="gray"
             leftIcon="download"
             onClick={download}
             disabled={!selected || selected.status !== 'done'}
@@ -314,7 +314,6 @@ const Thumbnail = ({
   return (
     <Box
       as="button"
-      type="button"
       onClick={onClick}
       draggable
       onDragStart={onDragStart}
