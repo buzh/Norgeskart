@@ -56,3 +56,8 @@ export const lidarExtractRunAtom = atom<LidarExtractRun | null>(null);
 // rather than derived from selection because enumeration is async
 // (reads GetCapabilities); the panel populates it after the box is drawn.
 export const lidarExtractSourcesAtom = atom<LidarSource[] | null>(null);
+
+// Opens the full-screen viewer that shows thumbnails + selected preview.
+// Set by the panel when the user presses "Hent"; cleared by the viewer's
+// close button, Escape, or a fresh "draw again" from the panel.
+export const lidarExtractViewerOpenAtom = atom<boolean>(false);

@@ -8,14 +8,14 @@
 // This avoids the "uncheck 'skyggerelieff' on every dataset" busywork.
 
 import { Box, Button, HStack, Text, VStack } from '@kvib/react';
-import { useAtom } from 'jotai';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAtom, useSetAtom } from 'jotai';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  LidarCanvas,
   lidarExtractRunAtom,
   lidarExtractSelectionAtom,
   lidarExtractSourcesAtom,
+  lidarExtractViewerOpenAtom,
 } from './atoms';
 import { cancelExtraction, startExtraction, StylesBySource } from './run';
 import {
@@ -36,7 +36,8 @@ export const LidarExtractPanel = () => {
   useDrawSelection();
   const [selection, setSelection] = useAtom(lidarExtractSelectionAtom);
   const [sources, setSources] = useAtom(lidarExtractSourcesAtom);
-  const [run, setRun] = useAtom(lidarExtractRunAtom);
+  const [, setRun] = useAtom(lidarExtractRunAtom);
+  const setViewerOpen = useSetAtom(lidarExtractViewerOpenAtom);
   const [enabledStyles, setEnabledStyles] = useState<Set<string>>(new Set());
   const [disabledSources, setDisabledSources] = useState<Set<string>>(
     new Set(),
@@ -79,6 +80,7 @@ export const LidarExtractPanel = () => {
   const drawAgain = () => {
     cancelExtraction();
     setRun(null);
+    setViewerOpen(false);
     setSelection(null);
   };
 
@@ -103,6 +105,7 @@ export const LidarExtractPanel = () => {
       active.push(s);
     }
     startExtraction(selection.bbox25833, active, stylesBySource);
+    setViewerOpen(true);
   };
 
   const toggleStyle = (style: string) => {
@@ -236,18 +239,6 @@ export const LidarExtractPanel = () => {
         </Button>
       </HStack>
 
-      {run && (
-        <VStack align="stretch" gap={3} mt={2}>
-          <Text fontSize="xs" color="gray.600">
-            {t('lidarExtract.results.label')}
-          </Text>
-          {run.canvases
-            .filter((c) => c.status !== 'noCoverage' && c.status !== 'error')
-            .map((c) => (
-              <CanvasPreview key={c.id} canvasData={c} />
-            ))}
-        </VStack>
-      )}
     </VStack>
   );
 };
@@ -313,85 +304,6 @@ const SourceRow = ({
   );
 };
 
-const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
-  const { t } = useTranslation();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    container.replaceChildren(canvasData.canvas);
-    canvasData.canvas.style.maxWidth = '100%';
-    canvasData.canvas.style.height = 'auto';
-    canvasData.canvas.style.display = 'block';
-    canvasData.canvas.style.imageRendering = 'auto';
-  }, [canvasData.canvas]);
-
-  const download = () => {
-    canvasData.canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${sanitizeFilename(canvasData.sourceLabel)}_${
-        canvasData.style
-      }_${canvasData.widthPx}x${canvasData.heightPx}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    }, 'image/png');
-  };
-
-  const progress =
-    canvasData.status === 'done'
-      ? t('lidarExtract.status.done')
-      : `${canvasData.tilesDone}/${canvasData.tilesTotal}`;
-
-  const paintedTiles =
-    canvasData.tilesDone - canvasData.tilesBlank - canvasData.tilesFailed;
-
-  return (
-    <Box borderWidth="1px" borderColor="gray.200" borderRadius="sm" p={2}>
-      <HStack justify="space-between" mb={1}>
-        <VStack align="start" gap={0}>
-          <Text fontSize="sm" fontWeight="medium">
-            {canvasData.sourceLabel}
-          </Text>
-          <Text fontSize="10px" color="gray.500">
-            {canvasData.style} · {canvasData.widthPx}×{canvasData.heightPx} px ·
-            {' '}
-            {canvasData.metresPerPx} m/px
-          </Text>
-        </VStack>
-        <HStack>
-          <Text fontSize="xs" color="gray.600">
-            {progress}
-          </Text>
-          {canvasData.status === 'done' && (
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={download}
-              leftIcon="download"
-              aria-label={t('lidarExtract.actions.download')}
-            >
-              PNG
-            </Button>
-          )}
-        </HStack>
-      </HStack>
-      {canvasData.status === 'done' && canvasData.tilesBlank > 0 && (
-        <Text fontSize="10px" color="gray.500" mb={1}>
-          {t('lidarExtract.status.partial', {
-            painted: paintedTiles,
-            total: canvasData.tilesTotal,
-          })}
-        </Text>
-      )}
-      <Box ref={containerRef} bg="gray.50" />
-    </Box>
-  );
-};
-
 function sortedStyles(sources: LidarSource[]): string[] {
   const all = new Set<string>();
   for (const s of sources) s.styles.forEach((st) => all.add(st));
@@ -405,8 +317,4 @@ function sortedStyles(sources: LidarSource[]): string[] {
 function formatMeters(m: number): string {
   if (m >= 1000) return `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} km`;
   return `${m} m`;
-}
-
-function sanitizeFilename(s: string): string {
-  return s.replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 80);
 }

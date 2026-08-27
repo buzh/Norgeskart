@@ -163,8 +163,9 @@
       "run": "Hent",
       "download": "Last ned"
     },
-    "results": {
-      "label": "Resultater"
+    "viewer": {
+      "empty": "Ingen bilder ennå …",
+      "close": "Lukk visning"
     },
     "status": {
       "done": "Ferdig",

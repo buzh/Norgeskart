@@ -4,6 +4,7 @@ import { Debug } from './debug/Debug.tsx';
 import { HelpPage } from './help/HelpPage.tsx';
 import './i18n';
 import { Layout } from './Layout.tsx';
+import { LidarExtractViewer } from './lidarExtract/LidarExtractViewer.tsx';
 import { useMapSettings } from './map/mapHooks.ts';
 import { MapLegendDrawer } from './map/menu/drawers/MapLegendDrawer.tsx';
 import { MessageBox } from './messages/MessageBox.tsx';
@@ -30,6 +31,7 @@ export const App = () => {
     <>
       <MessageBox />
       <MapLegendDrawer />
+      <LidarExtractViewer />
       <Debug />
       <Routes>
         <Route path="/" element={<Layout />} />

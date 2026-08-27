@@ -158,8 +158,9 @@
       "run": "Fetch",
       "download": "Download"
     },
-    "results": {
-      "label": "Results"
+    "viewer": {
+      "empty": "No images yet …",
+      "close": "Close viewer"
     },
     "status": {
       "done": "Done",

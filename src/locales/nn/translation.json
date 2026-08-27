@@ -163,8 +163,9 @@
       "run": "Hent",
       "download": "Last ned"
     },
-    "results": {
-      "label": "Resultat"
+    "viewer": {
+      "empty": "Ingen bilete enno …",
+      "close": "Lukk visning"
     },
     "status": {
       "done": "Ferdig",
