@@ -13,9 +13,8 @@ import {
   activeLidarProjectAtom,
   DEFAULT_LIDAR_PROJECT_STYLE,
   LIDAR_PROJECT_WMS_URL,
-  lidarProjectTileStatsAtom,
 } from './lidarProjects';
-import { makeRetryBlankTileLoadFunction } from './loadFunctions';
+import { retryBlankTileLoadFunction } from './loadFunctions';
 import {
   BackgroundLayer,
   EmptyBackgroundLayer,
@@ -52,38 +51,16 @@ export const backgroundLayerAtom = atom<BackgroundLayerName>(
   getDefaultBackgroundLayer(),
 );
 
-const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
-  const store = getDefaultStore();
-  store.set(lidarProjectTileStatsAtom, {
-    projectId,
-    blank: 0,
-    total: 0,
-  });
-  const inner = makeRetryBlankTileLoadFunction({
-    onSettled: ({ blank, failed }) => {
-      if (failed) return;
-      const s = store.get(lidarProjectTileStatsAtom);
-      // Only count for the currently-active project — a lingering load
-      // from an old project must not skew the new project's stats.
-      if (s.projectId !== projectId) return;
-      store.set(lidarProjectTileStatsAtom, {
-        projectId,
-        blank: s.blank + (blank ? 1 : 0),
-        total: s.total + 1,
-      });
-    },
-  });
-  return {
-    type: 'WMS',
-    layerName: 'lidarProject',
-    url: LIDAR_PROJECT_WMS_URL,
-    props: {
-      LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
-      VERSION: '1.3.0',
-    },
-    tileLoadFunction: inner,
-  };
-};
+const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => ({
+  type: 'WMS',
+  layerName: 'lidarProject',
+  url: LIDAR_PROJECT_WMS_URL,
+  props: {
+    LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
+    VERSION: '1.3.0',
+  },
+  tileLoadFunction: retryBlankTileLoadFunction,
+});
 
 export const backgroundLayerAtomEffect = atomEffect((get) => {
   const layerName = get(backgroundLayerAtom);

@@ -32,21 +32,6 @@ export const activeLidarProjectAtom = atom<LidarProject | null>(null);
 export const LIDAR_PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
 export const DEFAULT_LIDAR_PROJECT_STYLE = 'skyggerelieff';
 
-// Rolling counters for tiles observed on the currently-active project.
-// Kartverket occasionally publishes datasets whose renderer returns only
-// blank tiles below some zoom (see NDH Skien 5pkt 2022) — the picker
-// watches this atom to warn the user when that happens.
-export type LidarProjectTileStats = {
-  projectId: string | null;
-  blank: number;
-  total: number;
-};
-export const lidarProjectTileStatsAtom = atom<LidarProjectTileStats>({
-  projectId: null,
-  blank: 0,
-  total: 0,
-});
-
 type CachedEntry = { ts: number; projects: LidarProject[] };
 
 let inflight: Promise<LidarProject[]> | null = null;

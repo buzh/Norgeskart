@@ -329,9 +329,6 @@
       },
       "symbols": {
         "label": "Tegnforklaring"
-      },
-      "backgroundLayer": {
-        "label": "Kart"
       }
     }
   },
@@ -368,8 +365,7 @@
       }
     },
     "backgroundChooser": {
-      "tooltip": "Velg bakgrunnskart (Flyfoto, Sjøkart, Topografisk osv.)",
-      "label": "Bakgrunn"
+      "label": "Vis kartlagvelger"
     },
     "addresses": "Adresser",
     "coordinates": "Koordinater",

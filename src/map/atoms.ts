@@ -11,7 +11,6 @@ import { validateProjectionIdString } from '../shared/utils/enumUtils';
 import { getUrlParameter, setUrlParameter } from '../shared/utils/urlUtils';
 import { isMapLayerBackground, mapLayers } from './layers';
 import { activeThemeLayersAtom } from './layers/atoms';
-import { BackgroundLayerName } from './layers/backgroundLayers';
 import {
   allConfiguredBackgroundLayers,
   backgroundLayerAtom,
@@ -52,23 +51,6 @@ export const displayCompassOverlayAtom = atom<boolean>(false);
 export const useMagneticNorthAtom = atom<boolean>(false);
 export const magneticDeclinationAtom = atom<number>(0);
 export const gridConvergenceAtom = atom<number>(0);
-
-export const getBackgroundLayerImageName = (
-  layerName: BackgroundLayerName,
-): string => {
-  switch (layerName) {
-    case 'lidarHillshade':
-      // Placeholder — drop a real lidarHillshade.png in
-      // public/backgroundlayerImages/ and remove this case.
-      return 'topograatone';
-    case 'lidarProject':
-      return 'topograatone';
-    case 'empty':
-      return 'empty';
-    default:
-      return layerName;
-  }
-};
 
 const getInitialMapView = () => {
   const projectionIdFromUrl = validateProjectionIdString(

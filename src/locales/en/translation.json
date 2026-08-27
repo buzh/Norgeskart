@@ -324,9 +324,6 @@
       },
       "symbols": {
         "label": "Map legend"
-      },
-      "backgroundLayer": {
-        "label": "Map"
       }
     }
   },
@@ -363,8 +360,7 @@
       }
     },
     "backgroundChooser": {
-      "tooltip": "Choose background map (Aerial photo, Nautical, Topographic etc.)",
-      "label": "Background"
+      "label": "Show layer picker"
     },
     "addresses": "Addresses",
     "coordinates": "Coordinates",

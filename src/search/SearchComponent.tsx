@@ -1,10 +1,8 @@
 import {
   Box,
-  Button,
   Flex,
   Icon,
   IconButton,
-  Image,
   Search,
   Spinner,
   Text,
@@ -12,10 +10,8 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getBackgroundLayerImageName } from '../map/atoms';
 
-import { BackgroundLayerPanel } from '../map/backgroundLayer/BackgroundLayerPanel.tsx';
-import { backgroundLayerAtom } from '../map/layers/config/backgroundLayers/atoms.ts';
+import { MapLayerPicker } from '../map/backgroundLayer/MapLayerPicker.tsx';
 import { ErrorBoundary } from '../shared/ErrorBoundary.tsx';
 import { SearchResult } from '../types/searchTypes.ts';
 import {
@@ -54,19 +50,14 @@ const SearchIcon = () => {
 export const SearchComponent = () => {
   const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
   const [hoveredResult, setHoveredResult] = useState<SearchResult | null>(null);
-  const [showBackgroundSettings, setShowBackgroundSettings] = useState(false);
+  const [showLayerPicker, setShowLayerPicker] = useState(false);
   const { t } = useTranslation();
-  const activeBackgroundLayer = useAtomValue(backgroundLayerAtom);
   const setDisplaySearchResults = useSetAtom(displaySearchResultsAtom);
-  const backgroundImageName = getBackgroundLayerImageName(
-    activeBackgroundLayer,
-  );
-  const backgroundImageUrl = `/backgroundlayerImages/${backgroundImageName}.png`;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     setHoveredResult(null);
-    setShowBackgroundSettings(false);
+    setShowLayerPicker(false);
   };
 
   return (
@@ -87,27 +78,15 @@ export const SearchComponent = () => {
           <Flex alignItems="center" gap={2}>
             {/* Kart-flis til venstre */}
 
-            <Button
+            <IconButton
               display={{ md: 'none' }}
-              width="46px"
-              height="44px"
-              borderRadius={8}
-              overflow="hidden"
-              cursor="pointer"
-              padding={0}
+              icon="layers"
+              variant="tertiary"
+              aria-label={t('search.backgroundChooser.label')}
               onClick={() => {
-                setShowBackgroundSettings((s) => !s);
+                setShowLayerPicker((s) => !s);
               }}
-              boxShadow="md"
-            >
-              <Image
-                src={backgroundImageUrl}
-                alt={t('search.backgroundChooser.tooltip')}
-                width="100%"
-                height="100%"
-                objectFit="cover"
-              />
-            </Button>
+            />
             <Box position="relative" width="100%">
               <Search
                 autoFocus
@@ -143,11 +122,9 @@ export const SearchComponent = () => {
           hoveredResult={hoveredResult}
           setHoveredResult={setHoveredResult}
         />
-        {showBackgroundSettings && (
-          <Box>
-            <BackgroundLayerPanel
-              onSelectComplete={() => setShowBackgroundSettings(false)}
-            />
+        {showLayerPicker && (
+          <Box display={{ md: 'none' }}>
+            <MapLayerPicker />
           </Box>
         )}
       </Flex>
