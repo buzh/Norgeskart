@@ -1,44 +1,32 @@
 import { atom, getDefaultStore } from 'jotai';
 import { atomEffect } from 'jotai-effect';
 import { Feature, Map } from 'ol';
-import { Polygon } from 'ol/geom';
+import { Geometry } from 'ol/geom';
 import VectorLayer from 'ol/layer/Vector';
-import { transformExtent } from 'ol/proj';
 import VectorSource from 'ol/source/Vector';
 import { Fill, Stroke, Style } from 'ol/style';
 import { currentProjectionAtom, mapAtom } from '../atoms';
 import { backgroundLayerAtom } from '../layers/config/backgroundLayers/atoms';
 import {
+  ActiveLidarProject,
   activeLidarProjectAtom,
-  fetchLidarProjects,
-  LidarProject,
 } from '../layers/config/backgroundLayers/lidarProjects';
+import { CoverageProject, fetchCoverageInBbox } from './wfsCoverage';
 
 const OVERLAY_LAYER_ID = 'lidarCoverageOverlay';
+const WFS_SRS = 'EPSG:25833';
 
 export const showCoverageOverlayAtom = atom<boolean>(false);
-
-// Module-scope so subsequent effect runs (active-project changes, projection
-// changes) synchronously reuse the parsed capabilities without another
-// microtask hop. `fetchLidarProjects` itself also memoises via localStorage,
-// but this avoids the awaited-Promise round-trip once the list is in memory.
-let cachedProjects: LidarProject[] | null = null;
-
-const parseDensity = (d: string | null): number => {
-  if (!d) return 0;
-  const m = d.match(/^(\d+)/);
-  return m ? parseInt(m[1], 10) : 0;
-};
 
 // Density → hue-fixed green ramp: higher pt/m² = darker + more saturated,
 // so at a glance the visually heaviest polygons are the highest-quality
 // captures. Alpha stays low so the underlying topo map remains readable.
-const styleFor = (density: number, active: boolean): Style => {
-  const clamped = Math.min(density, 20);
+const styleFor = (density: number | null, active: boolean): Style => {
+  const clamped = Math.min(density ?? 0, 20);
   const lightness = 60 - clamped * 1.5; // 60% → 30%
   const fillAlpha = active ? 0.55 : 0.35;
   const fillColor =
-    density === 0
+    density == null || density === 0
       ? `hsla(0, 0%, 60%, ${fillAlpha})`
       : `hsla(150, 65%, ${lightness}%, ${fillAlpha})`;
   return new Style({
@@ -49,32 +37,35 @@ const styleFor = (density: number, active: boolean): Style => {
   });
 };
 
-const buildFeatures = (
-  projects: LidarProject[],
+// Reprojects a WFS-native (EPSG:25833) feature into the map's current
+// projection, tags it for click hit-testing, and applies the density style.
+const buildRenderFeature = (
+  p: CoverageProject,
   targetProjection: string,
   activeId: string | null,
-): Feature<Polygon>[] =>
-  projects.map((p) => {
-    const [minX, minY, maxX, maxY] = transformExtent(
-      p.bboxLonLat,
-      'EPSG:4326',
-      targetProjection,
-    );
-    const feat = new Feature(
-      new Polygon([
-        [
-          [minX, minY],
-          [maxX, minY],
-          [maxX, maxY],
-          [minX, maxY],
-          [minX, minY],
-        ],
-      ]),
-    );
-    feat.set('lidarProject', p);
-    feat.setStyle(styleFor(parseDensity(p.pointDensity), activeId === p.id));
-    return feat;
-  });
+): Feature<Geometry> => {
+  const clone = p.feature.clone();
+  if (targetProjection !== WFS_SRS) {
+    clone.getGeometry()?.transform(WFS_SRS, targetProjection);
+  }
+  clone.set('coverageProject', p);
+  clone.setStyle(styleFor(p.pointDensity, activeId === p.id));
+  return clone;
+};
+
+const populateSource = (
+  source: VectorSource,
+  projects: Iterable<CoverageProject>,
+  targetProjection: string,
+  activeId: string | null,
+) => {
+  source.clear();
+  const feats: Feature<Geometry>[] = [];
+  for (const p of projects) {
+    feats.push(buildRenderFeature(p, targetProjection, activeId));
+  }
+  source.addFeatures(feats);
+};
 
 const removeExistingOverlay = (map: Map) => {
   map
@@ -93,37 +84,48 @@ export const coverageOverlayEffect = atomEffect((get) => {
   removeExistingOverlay(map);
   if (!show) return;
 
-  const build = (projects: LidarProject[]) => {
-    // Re-check the toggle — the fetch may have resolved after the user
-    // turned the overlay off.
-    if (!getDefaultStore().get(showCoverageOverlayAtom)) return;
-    const layer = new VectorLayer({
-      source: new VectorSource({
-        features: buildFeatures(
-          projects,
+  const source = new VectorSource();
+  const layer = new VectorLayer({
+    source,
+    properties: { id: OVERLAY_LAYER_ID },
+    zIndex: 1,
+  });
+  map.addLayer(layer);
+
+  const refresh = () => {
+    const size = map.getSize();
+    if (!size) return;
+    const extent = map.getView().calculateExtent(size);
+    if (!extent) return;
+    fetchCoverageInBbox(
+      [extent[0], extent[1], extent[2], extent[3]],
+      targetProjection,
+    )
+      .then((cache) => {
+        // Re-check the toggle — the fetch may have resolved after the
+        // user turned the overlay off (or a projection change tore this
+        // effect down).
+        if (!getDefaultStore().get(showCoverageOverlayAtom)) return;
+        populateSource(
+          source,
+          cache.values(),
           targetProjection,
           activeProject?.id ?? null,
-        ),
-      }),
-      properties: { id: OVERLAY_LAYER_ID },
-      zIndex: 1,
-    });
-    map.addLayer(layer);
+        );
+      })
+      .catch((err) =>
+        console.warn('[coverageOverlay] WFS fetch failed', err),
+      );
   };
 
-  if (cachedProjects) {
-    build(cachedProjects);
-    return;
-  }
+  refresh();
+  const onMoveEnd = () => refresh();
+  map.on('moveend', onMoveEnd);
 
-  fetchLidarProjects()
-    .then((projects) => {
-      cachedProjects = projects;
-      build(projects);
-    })
-    .catch((err) =>
-      console.warn('[coverageOverlay] failed to fetch projects', err),
-    );
+  return () => {
+    map.un('moveend', onMoveEnd);
+    map.removeLayer(layer);
+  };
 });
 
 // Called from other map-click handlers (feature info, search) to decide
@@ -144,11 +146,18 @@ export const handleCoverageClickIfHit = (
   if (!store.get(showCoverageOverlayAtom)) return false;
   const hit = map.forEachFeatureAtPixel(
     pixel,
-    (feature) => feature.get('lidarProject') as LidarProject | undefined,
+    (feature) => feature.get('coverageProject') as CoverageProject | undefined,
     { layerFilter: (l) => l.get('id') === OVERLAY_LAYER_ID },
   );
   if (!hit) return false;
-  store.set(activeLidarProjectAtom, hit);
+  const active: ActiveLidarProject = {
+    id: hit.id,
+    projectName: hit.projectName,
+    year: hit.year,
+    pointDensity: hit.pointDensity,
+  };
+  store.set(activeLidarProjectAtom, active);
   store.set(backgroundLayerAtom, 'lidarProject');
   return true;
 };
+
