@@ -161,7 +161,8 @@
     "viewer": {
       "empty": "No images yet …",
       "close": "Close viewer",
-      "delete": "Remove image (Del)"
+      "delete": "Remove image (Del)",
+      "resetZoom": "Reset zoom (0)"
     },
     "status": {
       "done": "Done",

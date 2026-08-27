@@ -36,6 +36,13 @@ export const LidarExtractViewer = () => {
   // reconcile-order effect doesn't keep re-adding them on the next tile
   // update. Reset when a new run starts.
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  // Zoom + pan on the big-view canvas. Reset every time the selection or
+  // run changes. Pan is measured in container CSS pixels; transform-origin
+  // is centre-centre so the maths matches how the wheel handler keeps the
+  // cursor point stable when zooming.
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef({ x: 0, y: 0, dragging: false, startX: 0, startY: 0 });
   const bigViewRef = useRef<HTMLDivElement | null>(null);
 
   const visibleCanvases = useMemo(() => {
@@ -84,7 +91,8 @@ export const LidarExtractViewer = () => {
   const close = useCallback(() => setOpen(false), [setOpen]);
 
   // Move the selected source canvas into the big-view slot. Sized via CSS
-  // to fit while preserving the aspect ratio.
+  // to fit while preserving the aspect ratio. Zoom/pan are applied to the
+  // canvas element itself via CSS transform in a separate effect.
   useEffect(() => {
     const container = bigViewRef.current;
     if (!container) return;
@@ -100,8 +108,83 @@ export const LidarExtractViewer = () => {
     el.style.height = 'auto';
     el.style.display = 'block';
     el.style.margin = '0 auto';
-    el.style.imageRendering = 'auto';
+    el.style.transformOrigin = 'center center';
+    // Sharper zoom when the user scales up — the browser's default
+    // bilinear filter turns hillshade into mush at high zooms.
+    el.style.imageRendering = 'pixelated';
   }, [selected]);
+
+  // Reset zoom/pan whenever the selected canvas changes.
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [selected]);
+
+  // Apply the current zoom/pan to the canvas transform.
+  useEffect(() => {
+    if (!selected) return;
+    const el = selected.canvas;
+    el.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+    el.style.cursor = zoom > 1 ? 'grab' : 'default';
+  }, [selected, zoom, pan]);
+
+  // Wheel zoom needs a non-passive listener to preventDefault the page
+  // scroll; React's synthetic onWheel is passive as of React 17.
+  useEffect(() => {
+    if (!open) return;
+    const el = bigViewRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width / 2;
+      const cy = e.clientY - rect.top - rect.height / 2;
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      setZoom((prevZoom) => {
+        const newZoom = Math.max(1, Math.min(20, prevZoom * factor));
+        if (newZoom === prevZoom) return prevZoom;
+        setPan((prevPan) => {
+          const scale = newZoom / prevZoom;
+          return {
+            x: cx - (cx - prevPan.x) * scale,
+            y: cy - (cy - prevPan.y) * scale,
+          };
+        });
+        return newZoom;
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [open]);
+
+  const resetZoom = useCallback(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  const onBigViewPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (zoom <= 1) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    panRef.current = {
+      x: pan.x,
+      y: pan.y,
+      dragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+    };
+  };
+  const onBigViewPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!panRef.current.dragging) return;
+    const dx = e.clientX - panRef.current.startX;
+    const dy = e.clientY - panRef.current.startY;
+    setPan({ x: panRef.current.x + dx, y: panRef.current.y + dy });
+  };
+  const onBigViewPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!panRef.current.dragging) return;
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    panRef.current.dragging = false;
+  };
 
   const deleteCurrent = useCallback(() => {
     const cur = orderedCanvases[clampedSelected];
@@ -127,6 +210,11 @@ export const LidarExtractViewer = () => {
         deleteCurrent();
         return;
       }
+      if (e.key === '0') {
+        e.preventDefault();
+        resetZoom();
+        return;
+      }
       if (orderedCanvases.length === 0) return;
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -140,7 +228,7 @@ export const LidarExtractViewer = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, orderedCanvases.length, close, deleteCurrent]);
+  }, [open, orderedCanvases.length, close, deleteCurrent, resetZoom]);
 
   const onThumbDragStart = (id: string, e: React.DragEvent) => {
     // Firefox refuses to fire dragover/drop unless dataTransfer has data.
@@ -258,6 +346,21 @@ export const LidarExtractViewer = () => {
               ? `${clampedSelected + 1} / ${orderedCanvases.length}`
               : ''}
           </Text>
+          {zoom !== 1 && (
+            <>
+              <Text fontSize="xs" color="whiteAlpha.700">
+                {zoom.toFixed(1)}×
+              </Text>
+              <IconButton
+                size="xs"
+                variant="ghost"
+                colorPalette="gray"
+                icon="restart_alt"
+                aria-label={t('lidarExtract.viewer.resetZoom')}
+                onClick={resetZoom}
+              />
+            </>
+          )}
           <Button
             size="xs"
             variant="ghost"
@@ -296,6 +399,11 @@ export const LidarExtractViewer = () => {
         justifyContent="center"
         overflow="hidden"
         p={4}
+        onPointerDown={onBigViewPointerDown}
+        onPointerMove={onBigViewPointerMove}
+        onPointerUp={onBigViewPointerUp}
+        onDoubleClick={resetZoom}
+        style={{ touchAction: 'none' }}
       />
     </Box>
   );
