@@ -1,6 +1,7 @@
 // The card body rendered when mapTool === 'lidarExtract'. Steps the user
-// through: draw a box → pick sources & styles & resolution → fetch +
-// stitch → preview and download the composed canvases.
+// through: draw a box → pick sources & styles → fetch + stitch → preview
+// and download the composed canvases. Each source renders at its native
+// ground resolution — no per-run resolution picker.
 
 import { Box, Button, HStack, Icon, Text, VStack } from '@kvib/react';
 import { useAtom } from 'jotai';
@@ -8,7 +9,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LidarCanvas,
-  lidarExtractResolutionAtom,
   lidarExtractRunAtom,
   lidarExtractSelectionAtom,
   lidarExtractSourcesAtom,
@@ -22,14 +22,11 @@ import {
 import { MAX_CANVAS_PX_PER_SIDE } from './stitch';
 import { useDrawSelection } from './useDrawSelection';
 
-const RESOLUTION_OPTIONS = [0.15, 0.25, 0.5, 1, 2];
-
 export const LidarExtractPanel = () => {
   const { t } = useTranslation();
   useDrawSelection();
   const [selection, setSelection] = useAtom(lidarExtractSelectionAtom);
   const [sources, setSources] = useAtom(lidarExtractSourcesAtom);
-  const [resolution, setResolution] = useAtom(lidarExtractResolutionAtom);
   const [run, setRun] = useAtom(lidarExtractRunAtom);
   const [selectedStyles, setSelectedStyles] = useState<
     Record<string, Set<string>>
@@ -85,12 +82,7 @@ export const LidarExtractPanel = () => {
     for (const s of active) {
       stylesBySource[s.key] = Array.from(selectedStyles[s.key] ?? []);
     }
-    startExtraction(
-      selection.bbox25833,
-      resolution,
-      active,
-      stylesBySource,
-    );
+    startExtraction(selection.bbox25833, active, stylesBySource);
   };
 
   const toggleAllStyles = (source: LidarSource) => {
@@ -122,22 +114,6 @@ export const LidarExtractPanel = () => {
       }
     : null;
 
-  const outputPx = spanM
-    ? {
-        w: Math.min(
-          MAX_CANVAS_PX_PER_SIDE,
-          Math.max(1, Math.round(spanM.w / resolution)),
-        ),
-        h: Math.min(
-          MAX_CANVAS_PX_PER_SIDE,
-          Math.max(1, Math.round(spanM.h / resolution)),
-        ),
-      }
-    : null;
-
-  const effectiveResolution =
-    spanM && outputPx ? spanM.w / outputPx.w : resolution;
-
   if (!selection) {
     return (
       <VStack align="stretch" gap={3}>
@@ -164,48 +140,6 @@ export const LidarExtractPanel = () => {
         </Text>
       </Box>
 
-      <HStack>
-        <Box flex={1}>
-          <Text fontSize="xs" color="gray.600" mb={1}>
-            {t('lidarExtract.resolution.label')}
-          </Text>
-          <select
-            aria-label={t('lidarExtract.resolution.label')}
-            value={String(resolution)}
-            onChange={(e) => setResolution(Number(e.target.value))}
-            style={{
-              width: '100%',
-              padding: '4px 6px',
-              border: '1px solid var(--chakra-colors-gray-300, #cbd5e0)',
-              borderRadius: 4,
-              fontSize: 13,
-              background: 'white',
-            }}
-          >
-            {RESOLUTION_OPTIONS.map((r) => (
-              <option key={r} value={r}>
-                {r} m/px
-              </option>
-            ))}
-          </select>
-        </Box>
-        <Box flex={1}>
-          <Text fontSize="xs" color="gray.600" mb={1}>
-            {t('lidarExtract.output.label')}
-          </Text>
-          <Text fontSize="sm">
-            {outputPx ? `${outputPx.w} × ${outputPx.h} px` : '—'}
-          </Text>
-          {outputPx && effectiveResolution > resolution + 1e-6 && (
-            <Text fontSize="10px" color="orange.600">
-              {t('lidarExtract.output.cappedTo', {
-                res: effectiveResolution.toFixed(2),
-              })}
-            </Text>
-          )}
-        </Box>
-      </HStack>
-
       <Box>
         <Text fontSize="xs" color="gray.600" mb={1}>
           {t('lidarExtract.sources.label')}
@@ -220,12 +154,13 @@ export const LidarExtractPanel = () => {
             {t('lidarExtract.sources.none')}
           </Text>
         )}
-        {!enumerating && sources && sources.length > 0 && (
+        {!enumerating && sources && sources.length > 0 && spanM && (
           <VStack align="stretch" gap={2}>
             {sources.map((source) => (
               <SourceRow
                 key={source.key}
                 source={source}
+                spanM={spanM}
                 selectedStyles={selectedStyles[source.key] ?? new Set()}
                 onToggleAll={() => toggleAllStyles(source)}
                 onToggleStyle={(style) => toggleStyle(source, style)}
@@ -271,21 +206,35 @@ export const LidarExtractPanel = () => {
 
 const SourceRow = ({
   source,
+  spanM,
   selectedStyles,
   onToggleAll,
   onToggleStyle,
 }: {
   source: LidarSource;
+  spanM: { w: number; h: number };
   selectedStyles: Set<string>;
   onToggleAll: () => void;
   onToggleStyle: (style: string) => void;
 }) => {
   const allSelected = source.styles.every((s) => selectedStyles.has(s));
   const anySelected = source.styles.some((s) => selectedStyles.has(s));
+  const mpp = nativeResolutionMetersPerPx(source);
+  const rawW = Math.max(1, Math.round(spanM.w / mpp));
+  const rawH = Math.max(1, Math.round(spanM.h / mpp));
+  const scale = Math.min(1, MAX_CANVAS_PX_PER_SIDE / Math.max(rawW, rawH));
+  const outW = Math.round(rawW * scale);
+  const outH = Math.round(rawH * scale);
+  const capped = scale < 1;
+  const effectiveMpp = spanM.w / outW;
+  const resLabel = capped
+    ? `~${effectiveMpp.toFixed(2)} m/px (kappet)`
+    : `~${mpp} m/px`;
   const badges = [
     source.year != null ? String(source.year) : null,
     source.pointDensity,
-    `~${nativeResolutionMetersPerPx(source)} m/px`,
+    resLabel,
+    `${outW}×${outH} px`,
   ].filter((x): x is string => x != null);
 
   return (
@@ -347,22 +296,21 @@ const SourceRow = ({
 const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const hasPreview =
+    canvasData.status !== 'noCoverage' && canvasData.status !== 'error';
 
   useEffect(() => {
+    if (!hasPreview) return;
     const container = containerRef.current;
     if (!container) return;
-    // Move the actual canvas into the preview slot; sizing is handled via
-    // CSS so the composed pixel data stays intact for download.
     container.replaceChildren(canvasData.canvas);
     canvasData.canvas.style.maxWidth = '100%';
     canvasData.canvas.style.height = 'auto';
     canvasData.canvas.style.display = 'block';
     canvasData.canvas.style.imageRendering = 'auto';
-  }, [canvasData.canvas]);
+  }, [canvasData.canvas, hasPreview]);
 
   const download = () => {
-    // toBlob is preferred over toDataURL: a 12k × 12k data-URL string can
-    // exceed browser limits and pins the whole PNG in memory as base64.
     canvasData.canvas.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -381,7 +329,12 @@ const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
       ? t('lidarExtract.status.done')
       : canvasData.status === 'error'
         ? t('lidarExtract.status.error')
-        : `${canvasData.tilesDone}/${canvasData.tilesTotal}`;
+        : canvasData.status === 'noCoverage'
+          ? t('lidarExtract.status.noCoverage')
+          : `${canvasData.tilesDone}/${canvasData.tilesTotal}`;
+
+  const paintedTiles =
+    canvasData.tilesDone - canvasData.tilesBlank - canvasData.tilesFailed;
 
   return (
     <Box borderWidth="1px" borderColor="gray.200" borderRadius="sm" p={2}>
@@ -391,7 +344,9 @@ const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
             {canvasData.sourceLabel}
           </Text>
           <Text fontSize="10px" color="gray.500">
-            {canvasData.style} · {canvasData.widthPx}×{canvasData.heightPx} px
+            {canvasData.style} · {canvasData.widthPx}×{canvasData.heightPx} px ·
+            {' '}
+            {canvasData.metresPerPx} m/px
           </Text>
         </VStack>
         <HStack>
@@ -411,13 +366,26 @@ const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
           )}
         </HStack>
       </HStack>
+      {canvasData.status === 'done' && canvasData.tilesBlank > 0 && (
+        <Text fontSize="10px" color="gray.500" mb={1}>
+          {t('lidarExtract.status.partial', {
+            painted: paintedTiles,
+            total: canvasData.tilesTotal,
+          })}
+        </Text>
+      )}
       {canvasData.status === 'error' && canvasData.error && (
         <HStack gap={1} mb={1} color="red.700">
           <Icon icon="warning" />
           <Text fontSize="10px">{canvasData.error}</Text>
         </HStack>
       )}
-      <Box ref={containerRef} bg="gray.50" />
+      {canvasData.status === 'noCoverage' && (
+        <Text fontSize="10px" color="gray.500">
+          {t('lidarExtract.status.noCoverageDetail')}
+        </Text>
+      )}
+      {hasPreview && <Box ref={containerRef} bg="gray.50" />}
     </Box>
   );
 };

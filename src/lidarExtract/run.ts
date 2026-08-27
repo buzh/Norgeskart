@@ -1,7 +1,10 @@
-// Orchestrates a single extraction run: for each (source × style), create
-// a canvas, tile the bbox, fire fetches through a concurrency pool, and
-// update the run atom as tiles finish so the panel can render progress
-// and partial previews.
+// Orchestrates a single extraction run. Each (source × style) gets its
+// own canvas rendered at that source's native ground resolution — the
+// national mosaic at 1 m/px, per-project layers at whatever their point
+// density supports. Tiles that come back as blank PNGs (see
+// BLANK_RESPONSE_THRESHOLD_BYTES) don't get painted; a canvas that ends
+// with zero painted tiles is reported as noCoverage so the panel can
+// hide its empty preview.
 
 import { getDefaultStore } from 'jotai';
 import {
@@ -9,7 +12,7 @@ import {
   LidarExtractRun,
   lidarExtractRunAtom,
 } from './atoms';
-import { LidarSource } from './sources';
+import { LidarSource, nativeResolutionMetersPerPx } from './sources';
 import {
   buildGetMapUrl,
   fetchAndPaint,
@@ -17,22 +20,14 @@ import {
   runWithConcurrency,
 } from './stitch';
 
-// Deliberately modest: national + a few projects × several styles each can
-// produce dozens of tile fetches. wmscache serialises identical requests
-// via proxy_cache_lock, but upstream Kartverket still charges CPU per
-// distinct render, so we stay polite.
 const MAX_CONCURRENT_TILES = 8;
 
 export type StylesBySource = Record<string, string[]>;
 
 let currentAbort: AbortController | null = null;
 
-// Kick off a new run. Any in-progress run is cancelled first. Returns the
-// created run so the caller can display an initial "0/N" state before the
-// first tile completes.
 export function startExtraction(
   bbox25833: [number, number, number, number],
-  resolution: number,
   sources: LidarSource[],
   stylesBySource: StylesBySource,
 ): LidarExtractRun {
@@ -56,8 +51,9 @@ export function startExtraction(
 
   for (const source of sources) {
     const styles = stylesBySource[source.key] ?? [];
+    const metresPerPx = nativeResolutionMetersPerPx(source);
     for (const style of styles) {
-      const plan = planTiles(bbox25833, resolution);
+      const plan = planTiles(bbox25833, metresPerPx);
       const canvas = document.createElement('canvas');
       canvas.width = plan.widthPx;
       canvas.height = plan.heightPx;
@@ -70,11 +66,13 @@ export function startExtraction(
         sourceKey: source.key,
         sourceLabel: source.label,
         style,
+        metresPerPx,
         widthPx: plan.widthPx,
         heightPx: plan.heightPx,
         canvas,
         tilesTotal: plan.tiles.length,
         tilesDone: 0,
+        tilesBlank: 0,
         tilesFailed: 0,
         status: plan.tiles.length === 0 ? 'done' : 'pending',
       });
@@ -96,19 +94,16 @@ export function startExtraction(
   const run: LidarExtractRun = {
     runId,
     bbox25833,
-    resolution,
     canvases,
     startedAt: Date.now(),
   };
   store.set(lidarExtractRunAtom, run);
 
-  // Fire and forget: the pool completes independently. Progress updates
-  // flow through the atom.
   void runWithConcurrency(workItems, MAX_CONCURRENT_TILES, async (item) => {
     if (abort.signal.aborted) return;
     markStatus(runId, item.canvasId, 'fetching');
     try {
-      await fetchAndPaint(
+      const result = await fetchAndPaint(
         item.url,
         item.ctx,
         item.dx,
@@ -117,11 +112,18 @@ export function startExtraction(
         item.dh,
         abort.signal,
       );
-      recordTileDone(runId, item.canvasId, false);
+      recordTileDone(runId, item.canvasId, {
+        blank: result === 'blank',
+        failed: false,
+      });
     } catch (err) {
       if (abort.signal.aborted) return;
       const message = err instanceof Error ? err.message : String(err);
-      recordTileDone(runId, item.canvasId, true, message);
+      recordTileDone(runId, item.canvasId, {
+        blank: false,
+        failed: true,
+        errorMessage: message,
+      });
     }
   });
 
@@ -139,7 +141,6 @@ function updateRun(
 ) {
   const store = getDefaultStore();
   const current = store.get(lidarExtractRunAtom);
-  // Ignore stale updates from a run the user has since replaced.
   if (!current || current.runId !== runId) return;
   store.set(lidarExtractRunAtom, updater(current));
 }
@@ -157,30 +158,39 @@ function markStatus(
   }));
 }
 
+type TileOutcome = {
+  blank: boolean;
+  failed: boolean;
+  errorMessage?: string;
+};
+
 function recordTileDone(
   runId: number,
   canvasId: string,
-  failed: boolean,
-  errorMessage?: string,
+  outcome: TileOutcome,
 ) {
   updateRun(runId, (run) => ({
     ...run,
     canvases: run.canvases.map((c) => {
       if (c.id !== canvasId) return c;
       const tilesDone = c.tilesDone + 1;
-      const tilesFailed = c.tilesFailed + (failed ? 1 : 0);
+      const tilesBlank = c.tilesBlank + (outcome.blank ? 1 : 0);
+      const tilesFailed = c.tilesFailed + (outcome.failed ? 1 : 0);
       const finished = tilesDone >= c.tilesTotal;
       let status: LidarCanvas['status'] = c.status;
       let error = c.error;
       if (finished) {
+        const painted = tilesDone - tilesBlank - tilesFailed;
         if (tilesFailed === c.tilesTotal) {
           status = 'error';
-          error = errorMessage ?? c.error ?? 'Alle fliser feilet';
+          error = outcome.errorMessage ?? c.error ?? 'Alle fliser feilet';
+        } else if (painted === 0) {
+          status = 'noCoverage';
         } else {
           status = 'done';
         }
       }
-      return { ...c, tilesDone, tilesFailed, status, error };
+      return { ...c, tilesDone, tilesBlank, tilesFailed, status, error };
     }),
   }));
 }

@@ -145,13 +145,6 @@
     "selection": {
       "label": "Selection"
     },
-    "resolution": {
-      "label": "Resolution"
-    },
-    "output": {
-      "label": "Output",
-      "cappedTo": "Capped to {{res}} m/px"
-    },
     "sources": {
       "label": "Sources and styles",
       "loading": "Loading LiDAR catalogue …",
@@ -167,7 +160,10 @@
     },
     "status": {
       "done": "Done",
-      "error": "Error"
+      "error": "Error",
+      "noCoverage": "No coverage",
+      "noCoverageDetail": "This source has no data for the selected area.",
+      "partial": "{{painted}}/{{total}} tiles had data"
     }
   },
   "locationType": {

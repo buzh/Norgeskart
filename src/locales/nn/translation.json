@@ -150,13 +150,6 @@
     "selection": {
       "label": "Utval"
     },
-    "resolution": {
-      "label": "Oppløysing"
-    },
-    "output": {
-      "label": "Utgang",
-      "cappedTo": "Kappa til {{res}} m/px"
-    },
     "sources": {
       "label": "Kjelder og stilar",
       "loading": "Les LiDAR-katalog …",
@@ -172,7 +165,10 @@
     },
     "status": {
       "done": "Ferdig",
-      "error": "Feil"
+      "error": "Feil",
+      "noCoverage": "Inga dekning",
+      "noCoverageDetail": "Kjelda dekkjer ikkje dette området.",
+      "partial": "{{painted}}/{{total}} fliser hadde data"
     }
   },
   "locationType": {

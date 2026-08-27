@@ -150,13 +150,6 @@
     "selection": {
       "label": "Utvalg"
     },
-    "resolution": {
-      "label": "Oppløsning"
-    },
-    "output": {
-      "label": "Utgang",
-      "cappedTo": "Kappet til {{res}} m/px"
-    },
     "sources": {
       "label": "Kilder og stiler",
       "loading": "Leser LiDAR-katalog …",
@@ -172,7 +165,10 @@
     },
     "status": {
       "done": "Ferdig",
-      "error": "Feil"
+      "error": "Feil",
+      "noCoverage": "Ingen dekning",
+      "noCoverageDetail": "Kilden dekker ikke dette området.",
+      "partial": "{{painted}}/{{total}} fliser hadde data"
     }
   },
   "locationType": {

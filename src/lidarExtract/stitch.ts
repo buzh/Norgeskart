@@ -129,8 +129,19 @@ export async function runWithConcurrency<T>(
   await Promise.all(workers);
 }
 
-// Fetch a single tile and paint it onto the target canvas. Uses an
-// off-DOM Image with a blob URL so we don't need to touch document.
+// Kartverket returns a near-empty PNG (headers + tiny compressed IDAT)
+// when a request lands outside actual coverage even if the bbox check
+// passed. These come in around 500–1500 bytes regardless of requested
+// tile size, whereas real hillshade tiles at 512 px and up are always
+// tens to hundreds of KB. 4 KB is a safe cut between the two.
+export const BLANK_RESPONSE_THRESHOLD_BYTES = 4000;
+
+export type TileResult = 'painted' | 'blank';
+
+// Fetch a single tile and paint it onto the target canvas — unless the
+// response is small enough to be a coverage-hole PNG, in which case we
+// leave the canvas transparent under it and report 'blank' so the caller
+// can distinguish "no data here" from "everything worked".
 export async function fetchAndPaint(
   url: string,
   ctx: CanvasRenderingContext2D,
@@ -139,10 +150,13 @@ export async function fetchAndPaint(
   dw: number,
   dh: number,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<TileResult> {
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
+  if (blob.size < BLANK_RESPONSE_THRESHOLD_BYTES) {
+    return 'blank';
+  }
   const objectUrl = URL.createObjectURL(blob);
   try {
     await new Promise<void>((resolve, reject) => {
@@ -154,6 +168,7 @@ export async function fetchAndPaint(
       img.onerror = () => reject(new Error('image decode failed'));
       img.src = objectUrl;
     });
+    return 'painted';
   } finally {
     URL.revokeObjectURL(objectUrl);
   }

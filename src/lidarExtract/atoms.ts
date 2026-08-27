@@ -22,32 +22,30 @@ export const lidarExtractSelectionAtom = atom<LidarExtractSelection | null>(
   null,
 );
 
-// Target ground resolution in metres/pixel. The user picks this per run.
-// The panel exposes discrete options (0.15/0.25/0.5/1/2 m/px) and shows
-// the resulting output pixel size for the current selection.
-export const lidarExtractResolutionAtom = atom<number>(0.5);
-
-// One canvas per (source, style). The canvas is the composed output the
-// panel previews and lets the user download.
+// One canvas per (source, style). Resolution is chosen per-source based on
+// its native detail rather than user-picked (see nativeResolutionMetersPerPx).
 export type LidarCanvas = {
   id: string;
   sourceKey: string;
   sourceLabel: string;
   style: string;
+  metresPerPx: number; // effective resolution actually rendered at
   widthPx: number;
   heightPx: number;
   canvas: HTMLCanvasElement;
   tilesTotal: number;
   tilesDone: number;
-  tilesFailed: number;
-  status: 'pending' | 'fetching' | 'done' | 'error';
+  tilesBlank: number; // responses under the blank-size threshold
+  tilesFailed: number; // network / decode failures
+  // 'noCoverage' means every completed tile was blank — the source's
+  // declared bbox includes this area but no LiDAR data does.
+  status: 'pending' | 'fetching' | 'done' | 'noCoverage' | 'error';
   error?: string;
 };
 
 export type LidarExtractRun = {
   runId: number;
   bbox25833: [number, number, number, number];
-  resolution: number;
   canvases: LidarCanvas[];
   startedAt: number;
 };
