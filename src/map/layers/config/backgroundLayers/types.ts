@@ -3,12 +3,11 @@ import { ProjectionIdentifier } from '../../../projections/types';
 import {
   BackgroundLayerName,
   EmptyLayerName,
-  VectorTileLayerName,
   WMSLayerName,
   WMTSLayerName,
 } from '../../backgroundLayers';
 
-export type LayerType = 'WMTS' | 'WMS' | 'VectorTile' | 'Empty';
+export type LayerType = 'WMTS' | 'WMS' | 'Empty';
 
 export type LayerProvider = {
   capabilitiesUrl: string;
@@ -27,19 +26,12 @@ export type WMTSBackgroundLayer = BackgroundLayerBase & {
   provider: LayerProvider;
 };
 
-export type VectorTileBackgroundLayer = BackgroundLayerBase & {
-  type: 'VectorTile';
-  layerName: VectorTileLayerName;
-  styleUrl: string;
-};
-
 export type WMSBackgroundLayer = BackgroundLayerBase & {
   type: 'WMS';
   layerName: WMSLayerName;
   url: string;
   props?: Record<string, string | number | boolean>;
   tileLoadFunction?: LoadFunction;
-  useImage?: boolean;
 };
 
 export type EmptyBackgroundLayer = BackgroundLayerBase & {
@@ -49,6 +41,5 @@ export type EmptyBackgroundLayer = BackgroundLayerBase & {
 
 export type BackgroundLayer =
   | WMTSBackgroundLayer
-  | VectorTileBackgroundLayer
   | WMSBackgroundLayer
   | EmptyBackgroundLayer;

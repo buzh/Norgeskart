@@ -44,15 +44,6 @@ export const MapThemes = () => {
     [activeLayerSet],
   );
 
-  const isSjoLayer = (layerName: ThemeLayerName): boolean => {
-    const layerDef = themeLayerConfig.layers.find((l) => l.id === layerName);
-    if (!layerDef) return false;
-    const category = themeLayerConfig.categories.find(
-      (c) => c.id === layerDef.categoryId,
-    );
-    return category?.id === 'sjo' || category?.parentId === 'sjo';
-  };
-
   const configThemeLayers = useMemo((): Theme[] => {
     const currentLang = i18n.language as 'nb' | 'nn' | 'en';
     const mainCategories = getMainCategories(themeLayerConfig);
@@ -126,20 +117,9 @@ export const MapThemes = () => {
       if (!checked) {
         addThemeLayerToMap(layerName);
 
-        const store = getDefaultStore();
-
         if (layerName === 'economicMapFirstEdition') {
-          store.set(backgroundLayerAtom, 'empty');
-          return;
-        }
-
-        if (isSjoLayer(layerName)) {
           const store = getDefaultStore();
-          const currentBakground = store.get(backgroundLayerAtom);
-
-          if (currentBakground !== 'nautical-background') {
-            store.set(backgroundLayerAtom, 'nautical-background');
-          }
+          store.set(backgroundLayerAtom, 'empty');
         }
       } else {
         removeThemeLayerFromMap(layerName);

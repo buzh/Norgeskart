@@ -1,6 +1,5 @@
 import { atom, getDefaultStore } from 'jotai';
 import { atomEffect } from 'jotai-effect';
-import { ProjectionIdentifier } from '../../map/projections/types';
 import {
   addToUrlListParameter,
   removeFromUrlListParameter,
@@ -12,10 +11,6 @@ import {
 } from '../featureInfo/atoms';
 import { getThemeLayerById, themeLayerConfig } from './themeLayerConfigApi';
 import { createThemeLayerFromConfig, ThemeLayerName } from './themeWMS';
-
-export const preNauticalProjectionAtom = atom<ProjectionIdentifier | null>(
-  null,
-);
 
 export const activeThemeLayersAtom = atom<Set<ThemeLayerName>>(new Set([]));
 

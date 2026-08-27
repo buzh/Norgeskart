@@ -1,16 +1,11 @@
-import { MapLibreLayer } from '@geoblocks/ol-maplibre-layer';
 import { atom, getDefaultStore } from 'jotai';
 import { atomEffect } from 'jotai-effect';
-import ImageLayer from 'ol/layer/Image';
 import TileLayer from 'ol/layer/Tile';
-import ImageWMS from 'ol/source/ImageWMS';
 import {
   getUrlParameter,
   setUrlParameter,
 } from '../../../../shared/utils/urlUtils';
-import { currentProjectionAtom, mapAtom } from '../../../atoms';
-import { ProjectionIdentifier } from '../../../projections/types';
-import { preNauticalProjectionAtom } from '../../atoms';
+import { mapAtom } from '../../../atoms';
 import { BackgroundLayerName, WMTSLayerName } from '../../backgroundLayers';
 import { elevationBackgroundLayers } from './elevation';
 import { KvCacheBackgroundLayers } from './kvCache';
@@ -21,9 +16,6 @@ import {
   lidarProjectTileStatsAtom,
 } from './lidarProjects';
 import { makeRetryBlankTileLoadFunction } from './loadFunctions';
-import { nauticalBackgroundLayers } from './nautical';
-import { nibBackgroundLayers } from './nib';
-import { npolarBackgroundLayers } from './npolar';
 import {
   BackgroundLayer,
   EmptyBackgroundLayer,
@@ -31,7 +23,6 @@ import {
 } from './types';
 import {
   clearBackgroundLayer,
-  getVectorTileLayer,
   getWMSLayer,
   getWMTSLayer,
 } from './utils';
@@ -44,9 +35,6 @@ const emptyBackgroundLayer: EmptyBackgroundLayer = {
 export const allConfiguredBackgroundLayers = [
   emptyBackgroundLayer,
   ...KvCacheBackgroundLayers,
-  ...nibBackgroundLayers,
-  ...npolarBackgroundLayers,
-  ...nauticalBackgroundLayers,
   ...elevationBackgroundLayers,
 ];
 
@@ -97,7 +85,7 @@ const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => {
   };
 };
 
-export const backgroundLayerAtomEffect = atomEffect((get, set) => {
+export const backgroundLayerAtomEffect = atomEffect((get) => {
   const layerName = get(backgroundLayerAtom);
   // Depend on the active lidar project so switching projects while
   // 'lidarProject' is the background rebuilds the WMS layer.
@@ -129,18 +117,14 @@ export const backgroundLayerAtomEffect = atomEffect((get, set) => {
     try {
       const store = getDefaultStore();
       const map = store.get(mapAtom);
-      const currentProjection = map.getView().getProjection().getCode();
-      const targetProjection =
-        layerConfig.requiredProjection ?? currentProjection;
 
-      let layer: TileLayer | ImageLayer<ImageWMS> | MapLibreLayer | null =
-        null;
+      let layer: TileLayer | null = null;
       switch (layerConfig.type) {
         case 'WMTS':
-          layer = await getWMTSLayer(layerConfig, targetProjection);
-          break;
-        case 'VectorTile':
-          layer = getVectorTileLayer(layerConfig);
+          layer = await getWMTSLayer(
+            layerConfig,
+            map.getView().getProjection().getCode(),
+          );
           break;
         case 'WMS':
           layer = getWMSLayer(layerConfig);
@@ -148,28 +132,9 @@ export const backgroundLayerAtomEffect = atomEffect((get, set) => {
       }
 
       if (layer) {
-        const preNauticalProjection = store.get(preNauticalProjectionAtom);
         clearBackgroundLayer();
         map.addLayer(layer);
         setUrlParameter('backgroundLayer', layerName);
-        if (
-          layerConfig.requiredProjection &&
-          layerConfig.requiredProjection !== currentProjection
-        ) {
-          set(currentProjectionAtom, layerConfig.requiredProjection);
-          if (layerConfig.layerName === 'nautical-background') {
-            store.set(
-              preNauticalProjectionAtom,
-              currentProjection as ProjectionIdentifier,
-            );
-          }
-        } else if (
-          preNauticalProjection &&
-          layerConfig.layerName !== 'nautical-background'
-        ) {
-          set(currentProjectionAtom, preNauticalProjection);
-          store.set(preNauticalProjectionAtom, null);
-        }
 
         if (layerConfig.moveToExtent) {
           map.getView().fit(layerConfig.moveToExtent, { duration: 200 });

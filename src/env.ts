@@ -1,18 +1,8 @@
 type layerProviderParameters = {
-  norgeIBilder: {
-    baseUrl: string;
-    apiKey: string;
-  };
   kartverketCache: {
     baseUrl: string;
   };
   geoNorgeWMS: {
-    baseUrl: string;
-  };
-  eccProxy: {
-    wmsUrl: string;
-  };
-  npolar: {
     baseUrl: string;
   };
 };
@@ -29,22 +19,11 @@ const LOCAL_ENV: Env = {
   apiUrl: 'https://testapi.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
   layerProviderParameters: {
-    norgeIBilder: {
-      baseUrl: 'https://tilecache.norgeibilder.no',
-      apiKey:
-        'XfHYfx1C2WFLyx_YIQ691V208TmiXQBOos-XW4ngvUx5-Ruh-_NJpLQ1YmBUDgnh',
-    },
     kartverketCache: {
       baseUrl: 'https://cache.kartverket.no',
     },
     geoNorgeWMS: {
       baseUrl: '/wms/geonorge/wms',
-    },
-    eccProxy: {
-      wmsUrl: 'https://tnt-proxy.atkv3-dev.kartverket-intern.cloud/wms',
-    },
-    npolar: {
-      baseUrl: 'https://geodata.npolar.no',
     },
   },
   envName: 'local',
@@ -54,22 +33,11 @@ const DEV_ENV: Env = {
   apiUrl: 'https://testapi.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
   layerProviderParameters: {
-    norgeIBilder: {
-      baseUrl: 'https://tilecache.norgeibilder.no',
-      apiKey:
-        'C-Uchk2o_WKPxs1ySOgbV1fGDYisqK1ARRin1snVFgRypTS1HSw8xAQG_yL8-uBxHQpJpgU9qRqmH8Uo3iKLYA..',
-    },
     kartverketCache: {
       baseUrl: 'https://cache.kartverket.no',
     },
     geoNorgeWMS: {
       baseUrl: '/wms/geonorge/wms',
-    },
-    eccProxy: {
-      wmsUrl: 'https://tnt-proxy.atkv3-prod.kartverket.cloud/wms',
-    },
-    npolar: {
-      baseUrl: 'https://geodata.npolar.no',
     },
   },
   envName: 'dev',
@@ -79,22 +47,11 @@ const PROD_ENV: Env = {
   apiUrl: 'https://api.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
   layerProviderParameters: {
-    norgeIBilder: {
-      baseUrl: 'https://tilecache.norgeibilder.no',
-      apiKey:
-        'C-Uchk2o_WKPxs1ySOgbV_QfuZ-oS6b6gUCdXgAYPExQwx_lu0PpbszjZVXx0Lsc',
-    },
     kartverketCache: {
       baseUrl: 'https://cache.kartverket.no',
     },
     geoNorgeWMS: {
       baseUrl: '/wms/geonorge/wms',
-    },
-    eccProxy: {
-      wmsUrl: 'https://tnt-proxy.atkv3-prod.kartverket.cloud/wms',
-    },
-    npolar: {
-      baseUrl: 'https://geodata.npolar.no',
     },
   },
   envName: 'prod',

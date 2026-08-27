@@ -4,7 +4,6 @@ import { transform } from 'ol/proj';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mapAtom } from '../../../map/atoms';
-import { backgroundLayerAtom } from '../../../map/layers/config/backgroundLayers/atoms';
 import { ProjectionIdentifier } from '../../../map/projections/types';
 import { decimalToDMS } from '../../../shared/utils/coordinateCalculations';
 import { ProjectionSelector } from '../../../shared/Components/ProjectionSelector';
@@ -17,18 +16,13 @@ interface CoordinateInfoProps {
 }
 export const CoordinateInfo = ({ lat, lon, inputCRS }: CoordinateInfoProps) => {
   const map = useAtomValue(mapAtom);
-  const activeBackgroundLayer = useAtomValue(backgroundLayerAtom);
   const { t } = useTranslation();
   const currentMapProjection = map
     .getView()
     .getProjection()
     .getCode() as ProjectionIdentifier;
-  const defaultProjection: ProjectionIdentifier =
-    activeBackgroundLayer === 'nautical-background'
-      ? 'EPSG:4326'
-      : currentMapProjection;
   const [selectedProjection, setSelectedProjection] =
-    useState<ProjectionIdentifier>(defaultProjection);
+    useState<ProjectionIdentifier>(currentMapProjection);
 
   const [x, y] = transform([lon, lat], inputCRS, selectedProjection);
 

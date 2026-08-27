@@ -195,20 +195,7 @@
         },
         "mapNames": {
           "backgroundMaps": {
-            "Nibcache_UTM32_EUREF89_v2": "$t(map.settings.layers.mapNames.backgroundMaps.Nibcache_web_mercator_v2)",
-            "Nibcache_UTM33_EUREF89_v2": "$t(map.settings.layers.mapNames.backgroundMaps.Nibcache_web_mercator_v2)",
-            "Nibcache_UTM35_EUREF89_v2": "$t(map.settings.layers.mapNames.backgroundMaps.Nibcache_web_mercator_v2)",
-            "Nibcache_web_mercator_v2": "Flyfoto",
-            "nautical-background": "Nautisk bakgrunnskart",
-            "oceanicelectronic": "Elektronisk sjøkart",
-            "sjokartraster": "Sjøkart oppdatert EFS",
             "topo": "Standard",
-            "topo_2025": "Topo 2025",
-            "topograatone": "Standard (gråtone)",
-            "topoProd": "Topografisk",
-            "toporaster": "Papirkart",
-            "Basisdata_NP_Basiskart_Svalbard_WMTS_25833": "Svalbard",
-            "Basisdata_NP_Basiskart_JanMayen_WMTS_25833": "Jan Mayen",
             "lidarHillshade": "Terrengskygge (laser)",
             "empty": "Ingen bakgrunn"
           }

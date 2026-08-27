@@ -1,33 +1,15 @@
-import MapLibreLayer from '@geoblocks/ol-maplibre-layer/lib/MapLibreLayer';
 import { getDefaultStore } from 'jotai';
-import { setWorkerUrl } from 'maplibre-gl';
-// `?worker&url` (not plain `?url`) routes the file through Vite's worker
-// bundling pipeline, which inlines the worker's own `maplibre-gl-shared.mjs`
-// import into one self-contained chunk. Plain `?url` would copy the worker
-// file verbatim, leaving that sibling import unresolved -> 404 at runtime.
-import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { WMTSCapabilities } from 'ol/format';
-import ImageLayer from 'ol/layer/Image';
 import TileLayer from 'ol/layer/Tile';
-import ImageWMS from 'ol/source/ImageWMS';
 import TileWMS from 'ol/source/TileWMS';
 import WMTS, { optionsFromCapabilities } from 'ol/source/WMTS';
 import { mapAtom } from '../../../atoms';
 import { backgroundLayerCapabilitiesCacheAtom } from './atoms';
-import { nibTileLoadFunction } from './loadFunctions';
 import {
   BackgroundLayer,
-  VectorTileBackgroundLayer,
   WMSBackgroundLayer,
   WMTSBackgroundLayer,
 } from './types';
-
-// MapLibre GL v6 is ESM-only and locates its vector-tile-parsing worker via
-// `import.meta.url` at runtime, which bundlers can't rewrite — every
-// bundler-based app needs this one-time call before any `maplibregl.Map` is
-// constructed (here, transitively, by `MapLibreLayer` below).
-// https://maplibre.org/maplibre-gl-js/docs/guides/v5-to-v6-migration-guide/
-setWorkerUrl(maplibreWorkerUrl);
 
 export const getWMTSLayer = async (
   layerConfig: WMTSBackgroundLayer,
@@ -68,15 +50,8 @@ export const getWMTSLayer = async (
       );
     }
 
-    const wmts = layerConfig.layerName.startsWith('Nibcache')
-      ? new WMTS({
-          ...layerOptions,
-          tileLoadFunction: nibTileLoadFunction,
-        })
-      : new WMTS({ ...layerOptions });
-
     const layer = new TileLayer({
-      source: wmts,
+      source: new WMTS({ ...layerOptions }),
       properties: { id: `bg.${layerConfig.layerName}` },
       preload: 2,
     });
@@ -91,77 +66,11 @@ export const getWMTSLayer = async (
   }
 };
 
-export const getVectorTileLayer = (layerConfig: VectorTileBackgroundLayer) => {
-  const layer = new MapLibreLayer({
-    mapLibreOptions: {
-      style: layerConfig.styleUrl,
-    },
-    properties: {
-      id: `bg.${layerConfig.layerName}`,
-      isVectorTile: true,
-    },
-  });
-
-  // TODO(ol-maplibre-layer): Remove this workaround after upgrading
-  // `@geoblocks/ol-maplibre-layer` to a version that correctly exposes source
-  // attributions without manually reading `sourceCaches` / `tileManagers`.
-  // Upstream package: https://github.com/geoblocks/ol-maplibre-layer
-  layer.getSource()?.setAttributions(() => {
-    const mlMap = layer.mapLibreMap;
-    if (!mlMap?.style) return [];
-
-    type SourceCache = {
-      used: boolean;
-      getSource: () => { attribution?: string };
-    };
-    type MlStyleInternal = {
-      sourceCaches?: Record<string, SourceCache>;
-      tileManagers?: Record<string, SourceCache>;
-    };
-    const style = mlMap.style as unknown as MlStyleInternal;
-    const caches = style.sourceCaches ?? style.tileManagers;
-    if (!caches) return [];
-    return Object.values(caches).flatMap((cache) => {
-      if (!cache.used) return [];
-      try {
-        const { attribution } = cache.getSource();
-        return attribution
-          ? attribution
-              .replace(/&copy;/g, '©')
-              .split(/(<a.*?<\/a>)/)
-              .filter(Boolean)
-          : [];
-      } catch {
-        // getSource() can throw when a MapLibre source has not yet loaded its
-        // first tile (internal state not ready). Skip such caches silently.
-        return [];
-      }
-    });
-  });
-  return layer;
-};
-
-export const getWMSLayer = (
-  layerConfig: WMSBackgroundLayer,
-): TileLayer | ImageLayer<ImageWMS> => {
+export const getWMSLayer = (layerConfig: WMSBackgroundLayer): TileLayer => {
   const store = getDefaultStore();
   const map = store.get(mapAtom);
   const projection = map.getView().getProjection().getCode();
   const properties = { id: `bg.${layerConfig.layerName}` };
-
-  if (layerConfig.useImage) {
-    // TILED is a MapServer tile-alignment hint and has no meaning for a
-    // single GetMap request. Some MapServer configs return an empty PNG when
-    // it's set on a non-aligned request.
-    const { TILED: _tiled, ...imageParams } = layerConfig.props ?? {};
-    return new ImageLayer({
-      source: new ImageWMS({
-        url: layerConfig.url,
-        params: { ...imageParams, SRS: projection },
-      }),
-      properties,
-    });
-  }
 
   const source = new TileWMS({
     url: layerConfig.url,
@@ -176,12 +85,9 @@ export const getWMSLayer = (
 export const getLayerFromConfig = async (
   layerConfig: BackgroundLayer,
   projection?: string,
-): Promise<TileLayer | ImageLayer<ImageWMS> | MapLibreLayer | null> => {
+): Promise<TileLayer | null> => {
   if (layerConfig.type === 'WMTS') {
     return await getWMTSLayer(layerConfig, projection);
-  }
-  if (layerConfig.type === 'VectorTile') {
-    return getVectorTileLayer(layerConfig);
   }
   if (layerConfig.type === 'WMS') {
     return getWMSLayer(layerConfig);

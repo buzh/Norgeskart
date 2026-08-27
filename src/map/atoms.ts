@@ -57,18 +57,11 @@ export const getBackgroundLayerImageName = (
   layerName: BackgroundLayerName,
 ): string => {
   switch (layerName) {
-    case 'Nibcache_web_mercator_v2':
-    case 'Nibcache_UTM32_EUREF89_v2':
-    case 'Nibcache_UTM33_EUREF89_v2':
-    case 'Nibcache_UTM35_EUREF89_v2':
-      return 'Nibcache_web_mercator_v2';
-    case 'nautical-background':
-      return 'sjokartraster'; // Use nautical chart image for nautical background for now
-    case 'Basisdata_NP_Basiskart_Svalbard_WMTS_25833':
-      return 'svalbard';
-    case 'Basisdata_NP_Basiskart_JanMayen_WMTS_25833':
-      return 'jan_mayen';
     case 'lidarHillshade':
+      // Placeholder — drop a real lidarHillshade.png in
+      // public/backgroundlayerImages/ and remove this case.
+      return 'topograatone';
+    case 'lidarProject':
       return 'topograatone';
     case 'empty':
       return 'empty';

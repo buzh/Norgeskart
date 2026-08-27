@@ -4,18 +4,7 @@ import { ProjectionIdentifier } from '../projections/types';
 
 const backgroundLayerOrder = new Map<BackgroundLayerName, number>([
   ['topo', 1],
-  ['topograatone', 2],
-  ['toporaster', 3],
-  ['sjokartraster', 4],
-  ['nautical-background', 5],
-  ['oceanicelectronic', 6],
-  ['Nibcache_web_mercator_v2', 7],
-  ['Nibcache_UTM32_EUREF89_v2', 8],
-  ['Nibcache_UTM33_EUREF89_v2', 9],
-  ['Nibcache_UTM35_EUREF89_v2', 10],
-  ['Basisdata_NP_Basiskart_Svalbard_WMTS_25833', 11],
-  ['Basisdata_NP_Basiskart_JanMayen_WMTS_25833', 12],
-  ['lidarHillshade', 13],
+  ['lidarHillshade', 2],
 ]);
 
 const sortBackgroundLayers = (

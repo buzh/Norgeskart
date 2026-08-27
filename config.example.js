@@ -17,19 +17,9 @@ window.__NK_CONFIG__ = {
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
 
   layerProviderParameters: {
-    norgeIBilder: {
-      baseUrl: 'https://tilecache.norgeibilder.no',
-      // The key baked into the repo is domain-locked to norgeskart.no.
-      // Aerial imagery layer will 401 until you get your own key.
-      apiKey: 'REPLACE_ME',
-    },
     kartverketCache: { baseUrl: 'https://cache.kartverket.no' },
     // Fronted by the wmscache sidecar via Caddy. Change only if you want to
     // bypass the cache and go straight to origin.
     geoNorgeWMS: { baseUrl: '/wms/geonorge/wms' },
-    eccProxy: {
-      wmsUrl: 'https://tnt-proxy.atkv3-prod.kartverket.cloud/wms',
-    },
-    npolar: { baseUrl: 'https://geodata.npolar.no' },
   },
 };
