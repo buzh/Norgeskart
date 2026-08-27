@@ -73,21 +73,10 @@ export const SearchComponent = () => {
         overflowY={'auto'}
         maxW={'450px'}
       >
-        {/* TOPP: kart-flis + søkefelt */}
+        {/* Top row: search + Kartlag chip. Future header controls slot in here. */}
         <Box backgroundColor="#FFFF" p={2} borderRadius={10}>
           <Flex alignItems="center" gap={2}>
-            {/* Kart-flis til venstre */}
-
-            <IconButton
-              display={{ md: 'none' }}
-              icon="layers"
-              variant="tertiary"
-              aria-label={t('search.backgroundChooser.label')}
-              onClick={() => {
-                setShowLayerPicker((s) => !s);
-              }}
-            />
-            <Box position="relative" width="100%">
+            <Box position="relative" flex={1}>
               <Search
                 autoFocus
                 width="100%"
@@ -116,17 +105,21 @@ export const SearchComponent = () => {
                 </Text>
               )}
             </Box>
+            <IconButton
+              icon="layers"
+              variant={showLayerPicker ? 'primary' : 'tertiary'}
+              aria-label={t('search.backgroundChooser.label')}
+              onClick={() => {
+                setShowLayerPicker((s) => !s);
+              }}
+            />
           </Flex>
         </Box>
+        {showLayerPicker && <MapLayerPicker />}
         <SearchResults
           hoveredResult={hoveredResult}
           setHoveredResult={setHoveredResult}
         />
-        {showLayerPicker && (
-          <Box display={{ md: 'none' }}>
-            <MapLayerPicker />
-          </Box>
-        )}
       </Flex>
     </ErrorBoundary>
   );

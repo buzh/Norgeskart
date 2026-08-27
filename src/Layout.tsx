@@ -9,7 +9,6 @@ import {
 import { useAtomValue } from 'jotai';
 import { BottomDrawToolSelector } from './draw/BottomDrawToolSelector';
 import { displayCompassOverlayAtom } from './map/atoms';
-import { MapLayerPicker } from './map/backgroundLayer/MapLayerPicker';
 import { KulturminnerPopup } from './map/featureInfo/KulturminnerPopup';
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
 import { MapComponent } from './map/MapComponent';
@@ -194,11 +193,6 @@ export const Layout = () => {
             <ErrorBoundary fallback={undefined} name={'MapControlButtons'}>
               <MapControlButtons />
             </ErrorBoundary>
-            <Box display={{ base: 'none', md: 'block' }}>
-              <ErrorBoundary fallback={undefined} name={'MapLayerPicker'}>
-                <MapLayerPicker />
-              </ErrorBoundary>
-            </Box>
           </VStack>
         </GridItem>
 

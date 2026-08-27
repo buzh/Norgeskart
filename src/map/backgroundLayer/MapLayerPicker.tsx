@@ -17,7 +17,7 @@ export const MapLayerPicker = () => {
       borderRadius="lg"
       shadow="lg"
       p={3}
-      width="240px"
+      width="100%"
       pointerEvents="auto"
     >
       <Text fontSize="sm" fontWeight="semibold" mb={2}>
