@@ -165,9 +165,6 @@
     },
     "status": {
       "done": "Ferdig",
-      "error": "Feil",
-      "noCoverage": "Inga dekning",
-      "noCoverageDetail": "Kjelda dekkjer ikkje dette området.",
       "partial": "{{painted}}/{{total}} fliser hadde data"
     }
   },

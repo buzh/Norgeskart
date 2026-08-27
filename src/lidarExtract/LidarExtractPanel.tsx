@@ -3,7 +3,7 @@
 // and download the composed canvases. Each source renders at its native
 // ground resolution — no per-run resolution picker.
 
-import { Box, Button, HStack, Icon, Text, VStack } from '@kvib/react';
+import { Box, Button, HStack, Text, VStack } from '@kvib/react';
 import { useAtom } from 'jotai';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -195,9 +195,11 @@ export const LidarExtractPanel = () => {
           <Text fontSize="xs" color="gray.600">
             {t('lidarExtract.results.label')}
           </Text>
-          {run.canvases.map((c) => (
-            <CanvasPreview key={c.id} canvasData={c} />
-          ))}
+          {run.canvases
+            .filter((c) => c.status !== 'noCoverage' && c.status !== 'error')
+            .map((c) => (
+              <CanvasPreview key={c.id} canvasData={c} />
+            ))}
         </VStack>
       )}
     </VStack>
@@ -296,11 +298,8 @@ const SourceRow = ({
 const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const hasPreview =
-    canvasData.status !== 'noCoverage' && canvasData.status !== 'error';
 
   useEffect(() => {
-    if (!hasPreview) return;
     const container = containerRef.current;
     if (!container) return;
     container.replaceChildren(canvasData.canvas);
@@ -308,7 +307,7 @@ const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
     canvasData.canvas.style.height = 'auto';
     canvasData.canvas.style.display = 'block';
     canvasData.canvas.style.imageRendering = 'auto';
-  }, [canvasData.canvas, hasPreview]);
+  }, [canvasData.canvas]);
 
   const download = () => {
     canvasData.canvas.toBlob((blob) => {
@@ -327,11 +326,7 @@ const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
   const progress =
     canvasData.status === 'done'
       ? t('lidarExtract.status.done')
-      : canvasData.status === 'error'
-        ? t('lidarExtract.status.error')
-        : canvasData.status === 'noCoverage'
-          ? t('lidarExtract.status.noCoverage')
-          : `${canvasData.tilesDone}/${canvasData.tilesTotal}`;
+      : `${canvasData.tilesDone}/${canvasData.tilesTotal}`;
 
   const paintedTiles =
     canvasData.tilesDone - canvasData.tilesBlank - canvasData.tilesFailed;
@@ -374,18 +369,7 @@ const CanvasPreview = ({ canvasData }: { canvasData: LidarCanvas }) => {
           })}
         </Text>
       )}
-      {canvasData.status === 'error' && canvasData.error && (
-        <HStack gap={1} mb={1} color="red.700">
-          <Icon icon="warning" />
-          <Text fontSize="10px">{canvasData.error}</Text>
-        </HStack>
-      )}
-      {canvasData.status === 'noCoverage' && (
-        <Text fontSize="10px" color="gray.500">
-          {t('lidarExtract.status.noCoverageDetail')}
-        </Text>
-      )}
-      {hasPreview && <Box ref={containerRef} bg="gray.50" />}
+      <Box ref={containerRef} bg="gray.50" />
     </Box>
   );
 };

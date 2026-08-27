@@ -160,9 +160,6 @@
     },
     "status": {
       "done": "Done",
-      "error": "Error",
-      "noCoverage": "No coverage",
-      "noCoverageDetail": "This source has no data for the selected area.",
       "partial": "{{painted}}/{{total}} tiles had data"
     }
   },

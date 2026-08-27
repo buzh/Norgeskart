@@ -165,9 +165,6 @@
     },
     "status": {
       "done": "Ferdig",
-      "error": "Feil",
-      "noCoverage": "Ingen dekning",
-      "noCoverageDetail": "Kilden dekker ikke dette området.",
       "partial": "{{painted}}/{{total}} fliser hadde data"
     }
   },
