@@ -150,8 +150,11 @@
     "selection": {
       "label": "Utval"
     },
+    "styles": {
+      "label": "Stilar"
+    },
     "sources": {
-      "label": "Kjelder og stilar",
+      "label": "Kjelder",
       "loading": "Les LiDAR-katalog …",
       "none": "Ingen LiDAR-kjelder dekkjer dette området."
     },

@@ -145,8 +145,11 @@
     "selection": {
       "label": "Selection"
     },
+    "styles": {
+      "label": "Styles"
+    },
     "sources": {
-      "label": "Sources and styles",
+      "label": "Sources",
       "loading": "Loading LiDAR catalogue …",
       "none": "No LiDAR sources cover this area."
     },

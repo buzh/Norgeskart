@@ -29,7 +29,9 @@ export const PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
 
 const NATIONAL_CAPS_URL =
   `${NATIONAL_WMS_URL}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`;
-const NATIONAL_STORAGE_KEY = 'lidarExtract.nationalStyles.v1';
+// Bump when the parser filter changes so stale cached lists (e.g. still
+// including the `None` pseudo-style) get discarded on next load.
+const NATIONAL_STORAGE_KEY = 'lidarExtract.nationalStyles.v2';
 const NATIONAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 let nationalInflight: Promise<string[]> | null = null;
@@ -68,7 +70,12 @@ function parseStylesForPrefix(xmlText: string, prefix: string): string[] {
   for (const layer of Array.from(doc.getElementsByTagName('Layer'))) {
     const name = layer.getElementsByTagName('Name')[0]?.textContent?.trim();
     if (!name || !name.startsWith(prefix + ':')) continue;
-    styles.add(name.slice(prefix.length + 1));
+    const suffix = name.slice(prefix.length + 1);
+    // Kartverket advertises a `<prefix>:None` pseudo-layer on the national
+    // DTM WMS that renders as an unstyled near-uniform tile. It's not real
+    // hillshade output — skip it.
+    if (suffix === 'None') continue;
+    styles.add(suffix);
   }
   return Array.from(styles).sort();
 }

@@ -150,8 +150,11 @@
     "selection": {
       "label": "Utvalg"
     },
+    "styles": {
+      "label": "Stiler"
+    },
     "sources": {
-      "label": "Kilder og stiler",
+      "label": "Kilder",
       "loading": "Leser LiDAR-katalog …",
       "none": "Ingen LiDAR-kilder dekker dette området."
     },
