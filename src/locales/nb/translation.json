@@ -165,7 +165,8 @@
     },
     "viewer": {
       "empty": "Ingen bilder ennå …",
-      "close": "Lukk visning"
+      "close": "Lukk visning",
+      "delete": "Fjern bilde (Del)"
     },
     "status": {
       "done": "Ferdig",

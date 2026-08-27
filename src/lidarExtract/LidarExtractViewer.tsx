@@ -32,6 +32,10 @@ export const LidarExtractViewer = () => {
   const [order, setOrder] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  // IDs the user removed with the Del key. Kept in a Set so the
+  // reconcile-order effect doesn't keep re-adding them on the next tile
+  // update. Reset when a new run starts.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const bigViewRef = useRef<HTMLDivElement | null>(null);
 
   const visibleCanvases = useMemo(() => {
@@ -41,9 +45,17 @@ export const LidarExtractViewer = () => {
     );
   }, [run]);
 
+  // Fresh run → wipe local user state (order/deletions/selection).
+  useEffect(() => {
+    setOrder([]);
+    setDeletedIds(new Set());
+    setSelectedIndex(0);
+  }, [run?.runId]);
+
   // Reconcile the drag-reorderable order with the reality of what's
   // currently visible: drop anything that vanished (source turned out to
-  // have no coverage), append anything new that just became visible.
+  // have no coverage), append anything new that just became visible —
+  // except things the user has explicitly deleted.
   useEffect(() => {
     const visibleIds = new Set(visibleCanvases.map((c) => c.id));
     setOrder((prev) => {
@@ -51,10 +63,10 @@ export const LidarExtractViewer = () => {
       const keptSet = new Set(kept);
       const added = visibleCanvases
         .map((c) => c.id)
-        .filter((id) => !keptSet.has(id));
+        .filter((id) => !keptSet.has(id) && !deletedIds.has(id));
       return [...kept, ...added];
     });
-  }, [visibleCanvases]);
+  }, [visibleCanvases, deletedIds]);
 
   const orderedCanvases = useMemo(() => {
     const byId = new Map(visibleCanvases.map((c) => [c.id, c] as const));
@@ -91,13 +103,28 @@ export const LidarExtractViewer = () => {
     el.style.imageRendering = 'auto';
   }, [selected]);
 
-  // Keyboard: arrow keys cycle selection, Escape closes.
+  const deleteCurrent = useCallback(() => {
+    const cur = orderedCanvases[clampedSelected];
+    if (!cur) return;
+    setDeletedIds((prev) => new Set(prev).add(cur.id));
+    setOrder((prev) => prev.filter((id) => id !== cur.id));
+    // selectedIndex is left as-is; the clamp on next render moves it if
+    // it fell off the end.
+  }, [orderedCanvases, clampedSelected]);
+
+  // Keyboard: arrow keys cycle selection, Del removes the current image,
+  // Escape closes.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         close();
+        return;
+      }
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        deleteCurrent();
         return;
       }
       if (orderedCanvases.length === 0) return;
@@ -113,7 +140,7 @@ export const LidarExtractViewer = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, orderedCanvases.length, close]);
+  }, [open, orderedCanvases.length, close, deleteCurrent]);
 
   const onThumbDragStart = (id: string, e: React.DragEvent) => {
     // Firefox refuses to fire dragover/drop unless dataTransfer has data.
@@ -241,6 +268,15 @@ export const LidarExtractViewer = () => {
           >
             PNG
           </Button>
+          <IconButton
+            size="xs"
+            variant="ghost"
+            colorPalette="gray"
+            icon="delete"
+            aria-label={t('lidarExtract.viewer.delete')}
+            onClick={deleteCurrent}
+            disabled={!selected}
+          />
           <IconButton
             size="xs"
             variant="ghost"

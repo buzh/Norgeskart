@@ -165,7 +165,8 @@
     },
     "viewer": {
       "empty": "Ingen bilete enno …",
-      "close": "Lukk visning"
+      "close": "Lukk visning",
+      "delete": "Fjern bilete (Del)"
     },
     "status": {
       "done": "Ferdig",
