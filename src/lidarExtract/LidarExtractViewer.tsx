@@ -244,7 +244,7 @@ export const LidarExtractViewer = () => {
           <IconButton
             size="xs"
             variant="ghost"
-            colorPalette="whiteAlpha"
+            colorPalette="gray"
             icon="close"
             aria-label={t('lidarExtract.viewer.close')}
             onClick={close}
