@@ -16,17 +16,20 @@ import {
   Tooltip,
 } from '@kvib/react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { transformExtent } from 'ol/proj';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import LanguageSwitcher from './languageswitcher/LanguageSwitcher';
-import type { CoverageProject } from './map/backgroundLayer/wfsCoverage';
-import { fetchCoverageInBbox } from './map/backgroundLayer/wfsCoverage';
 import { mapAtom } from './map/atoms';
 import { trackPositionAtom } from './map/geolocation/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
 import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
-import { activeLidarProjectAtom } from './map/layers/config/backgroundLayers/lidarProjects';
+import {
+  activeLidarProjectAtom,
+  fetchLidarProjects,
+  LidarProject,
+} from './map/layers/config/backgroundLayers/lidarProjects';
 import { ThemeLayerName } from './map/layers/themeWMS';
 import { useMapSettings } from './map/mapHooks';
 import { mapToolAtom } from './map/overlay/atoms';
@@ -83,20 +86,30 @@ const ToolButton = ({
   </Tooltip>
 );
 
-// Newest first, then densest, then alphabetical — matches how a user
-// browsing LiDAR would typically want them ranked.
-const sortProjects = (a: CoverageProject, b: CoverageProject): number => {
+// pointDensity in LidarProject is a string like "10pkt" — parse the
+// leading digits so we can sort densest first.
+const densityOrder = (d: string | null): number => {
+  if (!d) return 0;
+  const m = d.match(/^(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+};
+
+// Newest first, then densest, then alphabetical.
+const sortProjects = (a: LidarProject, b: LidarProject): number => {
   const ay = a.year ?? -Infinity;
   const by = b.year ?? -Infinity;
   if (ay !== by) return by - ay;
-  const ad = a.pointDensity ?? -Infinity;
-  const bd = b.pointDensity ?? -Infinity;
+  const ad = densityOrder(a.pointDensity);
+  const bd = densityOrder(b.pointDensity);
   if (ad !== bd) return bd - ad;
   return a.projectName.localeCompare(b.projectName);
 };
 
-const formatDensity = (d: number | null): string =>
-  d == null ? '' : `${d.toFixed(d < 10 ? 1 : 0)} pkt/m²`;
+const bboxIntersects = (
+  a: [number, number, number, number],
+  b: [number, number, number, number],
+): boolean =>
+  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
 
 const LidarPulldownItem = ({
   label,
@@ -158,48 +171,67 @@ export const TopBar = () => {
   );
 
   const [lidarOpen, setLidarOpen] = useState(false);
-  const [inViewProjects, setInViewProjects] = useState<
-    CoverageProject[] | null
-  >(null);
+  const [allProjects, setAllProjects] = useState<LidarProject[] | null>(null);
 
+  // Fetch the full LiDAR project catalogue once (WMS GetCapabilities,
+  // ~1900 rows, cached in localStorage for a week by fetchLidarProjects
+  // itself). Client-side viewport filter then decides what to show in
+  // the pulldown — reliable at any zoom, no more "in-view WFS returned
+  // zero because the viewport is 900m wide" surprises.
   useEffect(() => {
-    if (!lidarOpen) return;
-    const size = map.getSize();
-    if (!size) return;
-    const extent = map.getView().calculateExtent(size);
-    if (!extent) return;
-    // Pad the fetch bbox around the viewport so nearby projects still
-    // surface at close zoom levels. A strict "intersects viewport"
-    // filter at zoom 16+ misses projects whose bbox is a few tens of
-    // metres outside the current screen — annoying because the user
-    // clearly intends "what's around here" not "what strictly overlaps
-    // this rectangle".
-    const cx = (extent[0] + extent[2]) / 2;
-    const cy = (extent[1] + extent[3]) / 2;
-    const hw = (extent[2] - extent[0]) / 2;
-    const hh = (extent[3] - extent[1]) / 2;
-    const pad = 3; // triple each side length
-    const padded: [number, number, number, number] = [
-      cx - hw * pad,
-      cy - hh * pad,
-      cx + hw * pad,
-      cy + hh * pad,
-    ];
-    const projection = map.getView().getProjection().getCode();
-    setInViewProjects(null);
     let cancelled = false;
-    fetchCoverageInBbox(padded, projection)
+    fetchLidarProjects()
       .then((projects) => {
-        if (!cancelled) setInViewProjects(projects.sort(sortProjects));
+        if (!cancelled) setAllProjects(projects);
       })
       .catch((err) => {
-        console.warn('[TopBar] WFS coverage fetch failed', err);
-        if (!cancelled) setInViewProjects([]);
+        console.warn('[TopBar] fetchLidarProjects failed', err);
+        if (!cancelled) setAllProjects([]);
       });
     return () => {
       cancelled = true;
     };
-  }, [lidarOpen, map]);
+  }, []);
+
+  // Recompute the "nearby" list whenever the map settles OR the pulldown
+  // opens. Uses the map view's bbox in EPSG:4326 (LidarProject.bboxLonLat
+  // is lon/lat) with a small padding so a project whose bbox is just off
+  // the edge of the viewport still surfaces.
+  const [nearbyProjects, setNearbyProjects] = useState<LidarProject[]>([]);
+  useEffect(() => {
+    if (!allProjects) return;
+    const recompute = () => {
+      const size = map.getSize();
+      if (!size) return;
+      const extent = map.getView().calculateExtent(size);
+      if (!extent) return;
+      const projection = map.getView().getProjection().getCode();
+      const extentLonLat = transformExtent(extent, projection, 'EPSG:4326') as
+        | [number, number, number, number]
+        | undefined;
+      if (!extentLonLat) return;
+      // Pad by 1.5× to be forgiving at close zoom.
+      const cx = (extentLonLat[0] + extentLonLat[2]) / 2;
+      const cy = (extentLonLat[1] + extentLonLat[3]) / 2;
+      const hw = ((extentLonLat[2] - extentLonLat[0]) / 2) * 1.5;
+      const hh = ((extentLonLat[3] - extentLonLat[1]) / 2) * 1.5;
+      const padded: [number, number, number, number] = [
+        cx - hw,
+        cy - hh,
+        cx + hw,
+        cy + hh,
+      ];
+      const filtered = allProjects
+        .filter((p) => bboxIntersects(p.bboxLonLat, padded))
+        .sort(sortProjects);
+      setNearbyProjects(filtered);
+    };
+    recompute();
+    map.on('moveend', recompute);
+    return () => {
+      map.un('moveend', recompute);
+    };
+  }, [allProjects, map]);
 
   const toggleTool = (name: Exclude<MapTool, null>) => {
     setCurrentMapTool(currentMapTool === name ? null : name);
@@ -227,13 +259,8 @@ export const TopBar = () => {
     setBackgroundLayer('lidarHillshade');
     setLidarOpen(false);
   };
-  const activateProject = (p: CoverageProject) => {
-    setActiveLidarProject({
-      id: p.id,
-      projectName: p.projectName,
-      year: p.year,
-      pointDensity: p.pointDensity,
-    });
+  const activateProject = (p: LidarProject) => {
+    setActiveLidarProject(p);
     setBackgroundLayer('lidarProject');
     setLidarOpen(false);
   };
@@ -348,28 +375,28 @@ export const TopBar = () => {
               <Text fontSize="10px" color="gray.500" px={2}>
                 LiDAR-prosjekter i nærheten
               </Text>
-              {inViewProjects === null && (
+              {allProjects === null && (
                 <Flex align="center" gap={2} p={2}>
                   <Spinner size="xs" />
                   <Text fontSize="xs" color="gray.500">
-                    Henter...
+                    Henter katalog...
                   </Text>
                 </Flex>
               )}
-              {inViewProjects != null && inViewProjects.length === 0 && (
+              {allProjects != null && nearbyProjects.length === 0 && (
                 <Text fontSize="xs" color="gray.500" px={2} py={1}>
                   Ingen LiDAR-datasett dekker dette området. Pan eller zoom
                   til et annet område.
                 </Text>
               )}
-              {inViewProjects?.map((p) => {
+              {nearbyProjects.map((p) => {
                 const active =
                   isLidarProject && activeLidarProject?.id === p.id;
                 const meta = [
                   p.year != null ? String(p.year) : null,
-                  formatDensity(p.pointDensity),
+                  p.pointDensity,
                 ]
-                  .filter((s) => s && s.length > 0)
+                  .filter((s): s is string => !!s && s.length > 0)
                   .join(' · ');
                 return (
                   <LidarPulldownItem
