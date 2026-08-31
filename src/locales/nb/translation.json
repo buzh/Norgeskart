@@ -1,9 +1,5 @@
 {
   "controller": {
-    "maplayers": {
-      "openText": "Temakart",
-      "mobiletext": "Temakart"
-    },
     "draw": {
       "text": "Tegne og måle",
       "mobiletext": "Tegne og måle"
@@ -12,20 +8,8 @@
       "text": "LiDAR-uttrekk",
       "mobiletext": "LiDAR"
     },
-    "settings": {
-      "mobiletext": "Innstillinger",
-      "text": "Innstillinger"
-    },
-    "sharemap": {
-      "text": "Del kart",
-      "mobiletext": "Del"
-    },
-    "help": {
-      "mobiletext": "Hjelp"
-    },
     "export": "Eksport og lagring",
-    "hide": "Minimer",
-    "menuHiddenToast": "Menyen er skjult. Trykk på U-tasten for å vise."
+    "hide": "Minimer"
   },
   "draw": {
     "begin": "Tegn på kartet",
@@ -93,13 +77,6 @@
       "label": "Last opp"
     }
   },
-  "export": {
-    "format": {
-      "label": "Velg filformat",
-      "placeholder": "Velg format"
-    },
-    "heading": "Eksport av tegning"
-  },
   "infoBox": {
     "address": "Adresse",
     "cadastralIdentifier": "Gårds- og bruksnummer",
@@ -120,12 +97,10 @@
           "title": "Kopier koordinater i grader–minutter–sekunder, (f.eks. 62°03'05.49\" N, 5°17'49.96\" E)"
         }
       },
-      "differentCrs": "Vis i",
       "east": "Øst",
       "north": "Nord"
     },
     "coordinateSystem": "Koordinatsystem",
-    "decimalDegrees": "Desimalgrader",
     "heightEstimatedByInterpolation": "Høyde:",
     "in": "i",
     "metersAboveSeaLevel": "moh",
@@ -134,7 +109,6 @@
     "placeinfo": "Stedsnavnfakta",
     "propertyInfo": "Eiendomsinformasjon",
     "roadName": "Vegnavn",
-    "utmCoordinates": "UTM-koordinater",
     "placesNearby": "Steder i nærheten"
   },
   "languageSelector": {
@@ -184,107 +158,8 @@
   "map": {
     "errorMessage": "Noe gikk veldig galt med kartet",
     "settings": {
-      "compass": {
-        "enabled": "Vis kompass",
-        "magneticNorth": "Bruk magnetisk nord"
-      },
       "layers": {
-        "background": {
-          "label": "Velg bakgrunnskart",
-          "placeholder": "Velg"
-        },
-        "mapNames": {
-          "backgroundMaps": {
-            "topo": "Standard",
-            "lidarHillshade": "Terrengskygge (laser)",
-            "empty": "Ingen bakgrunn"
-          }
-        },
-        "projection": {
-          "label": "Velg koordinatsystem",
-          "placeholder": "Velg",
-          "projections": {
-            "epsg25833": {
-              "displayName": "EUREF89 UTM-33"
-            },
-            "epsg25832": {
-              "displayName": "EUREF89 UTM-32"
-            },
-            "epsg25835": {
-              "displayName": "EUREF89 UTM-35"
-            },
-            "epsg3857": {
-              "displayName": "Webmercator"
-            },
-            "epsg4326": {
-              "displayName": "WGS84 Geografisk grader (Lat/Lon)"
-            },
-            "epsg4230": {
-              "displayName": "ED50 Geografiske koordinater"
-            },
-            "epsg25834": {
-              "displayName": "EUREF89 UTM-34"
-            },
-            "epsg25836": {
-              "displayName": "EUREF89 UTM-36"
-            },
-            "epsg23031": {
-              "displayName": "ED50 UTM-31"
-            },
-            "epsg23032": {
-              "displayName": "ED50 UTM-32"
-            },
-            "epsg23033": {
-              "displayName": "ED50 UTM-33"
-            },
-            "epsg23034": {
-              "displayName": "ED50 UTM-34"
-            },
-            "epsg23035": {
-              "displayName": "ED50 UTM-35"
-            },
-            "epsg23036": {
-              "displayName": "ED50 UTM-36"
-            },
-            "epsg27391": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 1"
-            },
-            "epsg27392": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 2"
-            },
-            "epsg27393": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 3"
-            },
-            "epsg27394": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 4"
-            },
-            "epsg27395": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 5"
-            },
-            "epsg27396": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 6"
-            },
-            "epsg27397": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 7"
-            },
-            "epsg27398": {
-              "displayName": "NGO 1948 Gauss-Kruger sone 8"
-            },
-            "epsg4258": {
-              "displayName": "EUREF89 lat/lon"
-            }
-          },
-          "forcedWebMercator": "Nautisk bakgrunnskart krever Webmercator-projeksjon",
-          "lockedByLayer": "Projeksjon er låst til Webmercator av nautisk bakgrunnskart",
-          "popover": {
-            "title": "Koordinatreferansesystem",
-            "body": "Velg et koordinatreferansesystem. Forskjellige systemer har forskjellige nøyaktighet i ulike deler av landet. Vi anbefaler UTM 33 hvis du er usikker."
-          },
-          "showAllProjections": "Vis flere koordinatsystemer"
-        },
         "theme": {
-          "switchedToNauticalBackground": "Bakgrunnskartet er byttet til Nautisk bakgrunnskart",
-          "nauticalBackgroundAlreadyActive": "Nautisk bakgrunnskart er allerede aktivt",
           "label": "Velg temakart",
           "activeLayersCount": "Aktive lag",
           "warningPerformance": "Aktivering av mange lag kan påvirke ytelsen. Vurder å deaktivere ubrukte lag.",
@@ -299,43 +174,10 @@
           }
         }
       }
-    },
-    "controls": {
-      "zoomIn": {
-        "label": "Zoom inn"
-      },
-      "zoomOut": {
-        "label": "Zoom ut"
-      },
-      "rotateLeft": {
-        "label": "Roter venstre"
-      },
-      "orientation": {
-        "label": "Rett opp kartet"
-      },
-      "rotateRight": {
-        "label": "Roter høyre"
-      },
-      "myLocation": {
-        "enable": {
-          "label": "Gå til min posisjon"
-        },
-        "disable": {
-          "label": "Ikke vis posisjon"
-        }
-      },
-      "fullscreen": {
-        "label": "Bruk fullskjerm"
-      },
-      "symbols": {
-        "label": "Tegnforklaring"
-      }
     }
   },
   "mapLayers": {
-    "close": "Lukk kartlaginstillinger",
-    "label": "Temakart",
-    "open": "Åpne kartlaginnstillinger"
+    "label": "Temakart"
   },
   "placeInfo": {
     "errorPlaceNameInfo": "Feil ved henting av stedsnavninformasjon",
@@ -358,15 +200,6 @@
     "subholdingNr": "Bruksnr."
   },
   "search": {
-    "actions": {
-      "shareMap": {
-        "success": "Lenken er kopiert til utklippstavlen",
-        "tooltip": "Del kartet"
-      }
-    },
-    "backgroundChooser": {
-      "label": "Vis kartlagvelger"
-    },
     "addresses": "Adresser",
     "coordinates": "Koordinater",
     "houseNumber": "Husnr",
@@ -420,42 +253,9 @@
       "sharing": "Dele og eksport"
     }
   },
-  "toolbar": {
-    "scale": {
-      "tooltip": "Valgt målestokk tilpasses nærmeste tilgjengelige zoomnivå i kartet. Faktisk målestokk kan derfor avvike noe.",
-      "disabledTooltip": "Målestokkvelgeren er deaktivert fordi dette bakgrunnskartet bruker heltallige zoomnivåer for bedre ytelse."
-    },
-    "crs": {
-      "tooltip": "Velg koordinatsystem"
-    },
-    "coordinates": {
-      "tooltip": "Pekerens koordinater",
-      "east": "Ø",
-      "north": "N"
-    },
-    "legend": {
-      "tooltip": "Vis symbolforklaring",
-      "label": "Tegnforklaring"
-    }
-  },
-  "info": {
-    "settings": {
-      "text": "Informasjon",
-      "base": "Info"
-    }
-  },
   "featureInfo": {
     "title": "Objektinformasjon",
     "loading": "Henter informasjon..."
-  },
-  "legend": {
-    "heading": {
-      "title": "Symbolforklaring",
-      "preamble": "Symbolforklaring for temakart"
-    },
-    "item": {
-      "fallbackMessage": "har ingen tegnforklaring"
-    }
   },
   "about": {
     "heading": "Om oss",
