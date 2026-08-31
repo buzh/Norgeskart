@@ -14,9 +14,7 @@
     "format-secific": "prettier --write ",
     "preview": "vite preview",
     "aword": "node scripts/addWord.js",
-    "rword": "node scripts/removeWord.js",
-    "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "rword": "node scripts/removeWord.js"
   },
   "dependencies": {
     "@geoblocks/ol-maplibre-layer": "^1.0.3",
