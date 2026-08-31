@@ -88,6 +88,12 @@ export const fetchCoverageInBbox = async (
 const parseProject = (node: Element): CoverageProject | null => {
   const name = getFirstDescendantText(node, 'LAS_PROJECT_NAME');
   if (!name) return null;
+  // Skip photogrammetry-derived DTMs. Kartverket ships them under the
+  // same metadata service and they'd show up in the picker as if they
+  // were real lidar acquisitions, but the DTM WMS renders blank tiles
+  // for them. The "Bilde " ("image") prefix is Kartverket's naming
+  // convention that separates them from actual laser scans.
+  if (/^Bilde\b/i.test(name)) return null;
   const year = toFiniteNumber(getFirstDescendantText(node, 'AARSTALL'));
   const pointDensity = toFiniteNumber(
     getFirstDescendantText(node, 'PUNKTTETTHET'),

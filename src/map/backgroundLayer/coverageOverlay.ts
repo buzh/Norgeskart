@@ -4,7 +4,7 @@ import { Feature, Map } from 'ol';
 import { Geometry } from 'ol/geom';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import { Fill, Stroke, Style } from 'ol/style';
+import { Stroke, Style } from 'ol/style';
 import { currentProjectionAtom, mapAtom } from '../atoms';
 import { backgroundLayerAtom } from '../layers/config/backgroundLayers/atoms';
 import {
@@ -31,28 +31,35 @@ export const coveragePickerAtom = atom<CoveragePickerState | null>(null);
 // Density → hue-fixed green ramp: higher pt/m² = darker + more saturated,
 // so at a glance the visually heaviest polygons are the highest-quality
 // captures. Alpha stays low so the underlying topo map remains readable.
-// The overlay is a browse-and-pick tool, not a persistent visualization.
-// Kept faint so the underlying topo remains readable while the user is
-// deciding; activateCoverageProject dismisses the overlay on selection
-// so the chosen dataset shows unobstructed.
-const styleFor = (density: number | null, active: boolean): Style => {
-  const clamped = Math.min(density ?? 0, 20);
-  const lightness = 55 - clamped * 1.5; // 55% → 25%
-  const fillAlpha = active ? 0.3 : 0.15;
-  const fillColor =
-    density == null || density === 0
-      ? `hsla(0, 0%, 55%, ${fillAlpha})`
-      : `hsla(150, 70%, ${lightness}%, ${fillAlpha})`;
+// Deterministic hue per project id. Density-based greens made overlapping
+// polygons visually indistinguishable; hashing to a hue gives each project
+// its own color so stacked outlines are easy to tell apart, and the same
+// project keeps the same color across sessions. Popup rows use the same
+// hue on their leading dot so a row can be visually matched to its
+// polygon on the map.
+export const hueForProject = (id: string): number => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h) % 360;
+};
+
+// Outlines-only. Fill made the topo unreadable when many projects
+// overlap; the overlay is a discovery affordance, not a visualization
+// of "which parts have data" — the WMS hillshade itself does that.
+const styleFor = (id: string, active: boolean): Style => {
+  const hue = hueForProject(id);
   return new Style({
-    fill: new Fill({ color: fillColor }),
     stroke: active
       ? new Stroke({ color: 'rgba(230, 120, 40, 0.95)', width: 3 })
-      : new Stroke({ color: `hsla(150, 55%, 30%, 0.45)`, width: 1 }),
+      : new Stroke({ color: `hsla(${hue}, 75%, 40%, 0.9)`, width: 1.5 }),
   });
 };
 
 // Reprojects a WFS-native (EPSG:25833) feature into the map's current
-// projection, tags it for click hit-testing, and applies the density style.
+// projection, tags it for click hit-testing, and applies the per-project
+// outline style.
 const buildRenderFeature = (
   p: CoverageProject,
   targetProjection: string,
@@ -63,7 +70,7 @@ const buildRenderFeature = (
     clone.getGeometry()?.transform(WFS_SRS, targetProjection);
   }
   clone.set('coverageProject', p);
-  clone.setStyle(styleFor(p.pointDensity, activeId === p.id));
+  clone.setStyle(styleFor(p.id, activeId === p.id));
   return clone;
 };
 

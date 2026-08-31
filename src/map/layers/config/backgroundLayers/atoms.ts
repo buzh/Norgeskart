@@ -49,10 +49,24 @@ export const allConfiguredBackgroundLayers = [
   ...elevationBackgroundLayers,
 ];
 
+// Startup values the URL param may name directly. `lidarProject` is
+// excluded because its concrete acquisition lives in
+// `activeLidarProjectAtom`, which starts null on a fresh visit — leaving
+// the app on `lidarProject` with no active project renders nothing.
+const VALID_STARTUP_LAYERS = new Set<BackgroundLayerName>([
+  'topo',
+  'lidarHillshade',
+  'empty',
+]);
+
 const getDefaultBackgroundLayer = (): BackgroundLayerName => {
-  const layerNameFromUrl = getUrlParameter('backgroundLayer');
-  const finalLayerName = (layerNameFromUrl || 'topo') as BackgroundLayerName;
-  return finalLayerName;
+  const layerNameFromUrl = getUrlParameter(
+    'backgroundLayer',
+  ) as BackgroundLayerName | null;
+  if (layerNameFromUrl && VALID_STARTUP_LAYERS.has(layerNameFromUrl)) {
+    return layerNameFromUrl;
+  }
+  return 'topo';
 };
 
 export const backgroundLayerCapabilitiesCacheAtom = atom<

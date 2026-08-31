@@ -15,17 +15,14 @@ import { activeLidarProjectAtom } from '../layers/config/backgroundLayers/lidarP
 import {
   activateCoverageProject,
   coveragePickerAtom,
+  hueForProject,
 } from './coverageOverlay';
 import type { CoverageProject } from './wfsCoverage';
 
-// Density → same green ramp as the map polygons so users can visually
-// correlate a row's dot with the polygon underneath.
-const dotColorFor = (density: number | null): string => {
-  if (density == null || density === 0) return 'hsl(0, 0%, 55%)';
-  const clamped = Math.min(density, 20);
-  const lightness = 55 - clamped * 1.5;
-  return `hsl(150, 70%, ${lightness}%)`;
-};
+// Same per-project hue as the polygon stroke on the map, so a row's dot
+// can be visually matched to its outline.
+const dotColorFor = (project: CoverageProject): string =>
+  `hsl(${hueForProject(project.id)}, 75%, 40%)`;
 
 // Newest first, then densest, then alphabetical — matches how a user
 // browsing LiDAR would typically want them ranked.
@@ -72,7 +69,7 @@ const ProjectRow = ({
           w="10px"
           h="10px"
           borderRadius="full"
-          bg={dotColorFor(project.pointDensity)}
+          bg={dotColorFor(project)}
           flexShrink={0}
         />
         <Box flex={1} minW={0}>
