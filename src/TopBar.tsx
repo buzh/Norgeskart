@@ -1,13 +1,9 @@
 import {
   Box,
+  Button,
   Flex,
   IconButton,
   MaterialSymbol,
-  Popover,
-  PopoverArrow,
-  PopoverBody,
-  PopoverContent,
-  PopoverTrigger,
   Search,
   Text,
   Tooltip,
@@ -16,9 +12,11 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import LanguageSwitcher from './languageswitcher/LanguageSwitcher';
-import { MapLayerPicker } from './map/backgroundLayer/MapLayerPicker';
+import { showCoverageOverlayAtom } from './map/backgroundLayer/coverageOverlay';
 import { trackPositionAtom } from './map/geolocation/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
+import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
+import { activeLidarProjectAtom } from './map/layers/config/backgroundLayers/lidarProjects';
 import { useMapSettings } from './map/mapHooks';
 import { mapToolAtom } from './map/overlay/atoms';
 import { MeasurePopover } from './measure/MeasurePopover';
@@ -84,6 +82,9 @@ export const TopBar = () => {
   const activeThemeLayers = useAtomValue(activeThemeLayersAtom);
   const [trackPosition, setTrackPosition] = useAtom(trackPositionAtom);
   const { setMapFullScreen } = useMapSettings();
+  const [backgroundLayer, setBackgroundLayer] = useAtom(backgroundLayerAtom);
+  const activeLidarProject = useAtomValue(activeLidarProjectAtom);
+  const [showCoverage, setShowCoverage] = useAtom(showCoverageOverlayAtom);
 
   const toggleTool = (name: Exclude<MapTool, null>) => {
     setCurrentMapTool(currentMapTool === name ? null : name);
@@ -96,6 +97,17 @@ export const TopBar = () => {
       setMapFullScreen(true);
     }
   };
+
+  const isLidarProject = backgroundLayer === 'lidarProject';
+  const lidarChipVariant = showCoverage
+    ? 'primary'
+    : isLidarProject
+      ? 'secondary'
+      : 'tertiary';
+  const lidarChipLabel =
+    isLidarProject && activeLidarProject
+      ? activeLidarProject.projectName
+      : 'Vis LiDAR-dekning';
 
   return (
     <Flex
@@ -138,21 +150,59 @@ export const TopBar = () => {
         )}
       </Box>
 
-      <Popover positioning={{ placement: 'bottom-start', offset: { mainAxis: 8 } }}>
-        <PopoverTrigger asChild>
-          <IconButton
-            icon="map"
-            variant="tertiary"
-            aria-label={t('search.backgroundChooser.label')}
-          />
-        </PopoverTrigger>
-        <PopoverContent width="280px" p={0} borderRadius="lg">
-          <PopoverArrow />
-          <PopoverBody p={0}>
-            <MapLayerPicker />
-          </PopoverBody>
-        </PopoverContent>
-      </Popover>
+      {/* Base map: two direct icon toggles instead of a hidden pulldown. */}
+      <Tooltip content="Standardkart" positioning={{ placement: 'bottom' }}>
+        <IconButton
+          icon="map"
+          aria-label="Standardkart"
+          variant={backgroundLayer === 'topo' ? 'primary' : 'tertiary'}
+          onClick={() => setBackgroundLayer('topo')}
+        />
+      </Tooltip>
+      <Tooltip
+        content="Terrengskygge (nasjonal LiDAR-mosaikk)"
+        positioning={{ placement: 'bottom' }}
+      >
+        <IconButton
+          icon="landscape"
+          aria-label="Terrengskygge (nasjonal LiDAR-mosaikk)"
+          variant={
+            backgroundLayer === 'lidarHillshade' ? 'primary' : 'tertiary'
+          }
+          onClick={() => setBackgroundLayer('lidarHillshade')}
+        />
+      </Tooltip>
+
+      {/* LiDAR project chip. Doubles as coverage-overlay toggle and as the
+          persistent readout of the currently-active project. */}
+      <Tooltip
+        content={
+          isLidarProject
+            ? 'Klikk for å bytte LiDAR-datasett'
+            : 'Slå på LiDAR-dekning for å velge et datasett'
+        }
+        positioning={{ placement: 'bottom' }}
+      >
+        <Button
+          variant={lidarChipVariant}
+          colorPalette="green"
+          size="sm"
+          leftIcon="radar"
+          onClick={() => setShowCoverage((s) => !s)}
+          maxW="220px"
+          overflow="hidden"
+        >
+          <Text
+            fontSize="xs"
+            lineHeight="short"
+            whiteSpace="nowrap"
+            textOverflow="ellipsis"
+            overflow="hidden"
+          >
+            {lidarChipLabel}
+          </Text>
+        </Button>
+      </Tooltip>
 
       <Box borderLeft="1px solid" borderColor="gray.200" h="24px" mx={1} />
 
