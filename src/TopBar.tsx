@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Flex,
+  Icon,
   IconButton,
   MaterialSymbol,
   Popover,
@@ -14,6 +15,7 @@ import {
   Stack,
   Text,
   Tooltip,
+  VStack,
 } from '@kvib/react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { transformExtent } from 'ol/proj';
@@ -41,6 +43,52 @@ import {
   useResetSearchResults,
 } from './search/atoms';
 import type { MapTool } from './Layout';
+
+// Icon + text label stacked vertically. Used for the primary map-mode
+// controls (Standard / LiDAR / Kulturminner) where a persistent label
+// under the icon is worth the extra vertical space.
+const LabelledToggleButton = ({
+  icon,
+  label,
+  tooltip,
+  active,
+  onClick,
+}: {
+  icon: MaterialSymbol;
+  label: string;
+  tooltip?: string;
+  active?: boolean;
+  onClick: () => void;
+}) => (
+  <Tooltip
+    content={tooltip ?? label}
+    positioning={{ placement: 'bottom' }}
+  >
+    <Button
+      variant={active ? 'primary' : 'tertiary'}
+      colorPalette="green"
+      onClick={onClick}
+      aria-label={tooltip ?? label}
+      height="auto"
+      minH="52px"
+      minW="56px"
+      py={1}
+      px={2}
+    >
+      <VStack gap={0} align="center">
+        <Icon icon={icon} size={22} />
+        <Text
+          fontSize="10px"
+          fontWeight="medium"
+          lineHeight="short"
+          mt={0.5}
+        >
+          {label}
+        </Text>
+      </VStack>
+    </Button>
+  </Tooltip>
+);
 
 const ToolButton = ({
   icon,
@@ -322,31 +370,26 @@ export const TopBar = () => {
       </Box>
 
       {/* Base map: Standard topo. */}
-      <Tooltip content="Standardkart" positioning={{ placement: 'bottom' }}>
-        <IconButton
-          icon="map"
-          aria-label="Standardkart"
-          variant={backgroundLayer === 'topo' ? 'primary' : 'tertiary'}
-          onClick={() => setBackgroundLayer('topo')}
-        />
-      </Tooltip>
+      <LabelledToggleButton
+        icon="map"
+        label="Standard"
+        tooltip="Standardkart"
+        active={backgroundLayer === 'topo'}
+        onClick={() => setBackgroundLayer('topo')}
+      />
 
       {/* LiDAR mode toggle. Activating it defaults to the national mosaic;
           the pulldown next to it (only rendered when LiDAR is active)
           lets the user swap to a specific per-project dataset. */}
-      <Tooltip
-        content="LiDAR (nasjonal mosaikk / per-prosjekt)"
-        positioning={{ placement: 'bottom' }}
-      >
-        <IconButton
-          icon="landscape"
-          aria-label="LiDAR"
-          variant={isLidarMode ? 'primary' : 'tertiary'}
-          onClick={() => {
-            if (!isLidarMode) setBackgroundLayer('lidarHillshade');
-          }}
-        />
-      </Tooltip>
+      <LabelledToggleButton
+        icon="landscape"
+        label="LiDAR"
+        tooltip="LiDAR (nasjonal mosaikk / per-prosjekt)"
+        active={isLidarMode}
+        onClick={() => {
+          if (!isLidarMode) setBackgroundLayer('lidarHillshade');
+        }}
+      />
 
       {/* LiDAR pulldown — only surfaces when LiDAR mode is active. Shows
           current selection and lets the user swap between the national
@@ -441,23 +484,21 @@ export const TopBar = () => {
         </Popover>
       )}
 
+      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
+
       {/* Featured overlay: kulturminner (Lokaliteter og enkeltminner).
           Fast one-click toggle for the layer the user opens most often;
           the fuller kulturminner list still lives behind the Temakart
           card. */}
-      <Tooltip
-        content="Lokaliteter og enkeltminner (Kulturminner)"
-        positioning={{ placement: 'bottom' }}
-      >
-        <IconButton
-          icon="castle"
-          aria-label="Lokaliteter og enkeltminner"
-          variant={heritageActive ? 'primary' : 'tertiary'}
-          onClick={() => toggleThemeLayer('heritageSites')}
-        />
-      </Tooltip>
+      <LabelledToggleButton
+        icon="castle"
+        label="Kulturminner"
+        tooltip="Lokaliteter og enkeltminner"
+        active={heritageActive}
+        onClick={() => toggleThemeLayer('heritageSites')}
+      />
 
-      <Box borderLeft="1px solid" borderColor="gray.200" h="24px" mx={1} />
+      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
 
       <ToolButton
         icon="layers"
