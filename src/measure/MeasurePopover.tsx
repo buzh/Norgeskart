@@ -31,7 +31,7 @@ export const MeasurePopover = () => {
   return (
     <Popover
       open={open}
-      positioning={{ placement: 'left' }}
+      positioning={{ placement: 'bottom', offset: { mainAxis: 8 } }}
       closeOnInteractOutside={false}
     >
       <PopoverTrigger asChild>
@@ -39,15 +39,12 @@ export const MeasurePopover = () => {
         <Box as="span">
           <Tooltip
             content={t('measure.label')}
-            positioning={{ placement: 'left' }}
+            positioning={{ placement: 'bottom', offset: { mainAxis: 8 } }}
           >
             <IconButton
-              variant="ghost"
-              colorPalette="green"
-              size="xs"
+              variant={open ? 'primary' : 'tertiary'}
               icon="straighten"
-              aria-label="Måle"
-              backgroundColor={open ? '#D0ECD6' : ''}
+              aria-label={t('measure.label')}
               onClick={toggleMeasureTool}
             />
           </Tooltip>

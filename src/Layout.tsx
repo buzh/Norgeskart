@@ -1,32 +1,23 @@
-import {
-  Box,
-  Flex,
-  Grid,
-  GridItem,
-  VStack,
-  useBreakpointValue,
-} from '@kvib/react';
+import { Box, Flex } from '@kvib/react';
 import { useAtomValue } from 'jotai';
 import { BottomDrawToolSelector } from './draw/BottomDrawToolSelector';
-import { displayCompassOverlayAtom } from './map/atoms';
 import { CoverageOverlapPopup } from './map/backgroundLayer/CoverageOverlapPopup';
 import { KulturminnerPopup } from './map/featureInfo/KulturminnerPopup';
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
 import { MapComponent } from './map/MapComponent';
-import { MapControlButtons } from './map/MapControlButtons';
-import { mapToolAtom, showSearchComponentAtom } from './map/overlay/atoms';
-import { Compass } from './map/overlay/Compass';
-import { LinkLogo } from './map/overlay/LinkLogo';
-import { MapToolButtons } from './map/overlay/MapToolButtons';
+import { mapToolAtom } from './map/overlay/atoms';
 import { MapToolCards } from './map/overlay/MapToolCards';
-import { selectedResultAtom, useSearchEffects } from './search/atoms';
+import { useSearchEffects } from './search/atoms';
 import { useMapClickSearch } from './search/hooks';
 import { InfoBox } from './search/infobox/InfoBox';
 import { SearchComponent } from './search/SearchComponent';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useIsMobileScreen } from './shared/hooks';
-import { Toolbar } from './toolbar/Toolbar';
+import { TopBar } from './TopBar';
 
+// Values referenced by the mapToolAtom in map/overlay/atoms.ts and by the
+// tool-card renderer in map/overlay/MapToolCards.tsx. Kept in this file
+// so any TopBar / other module that toggles the atom uses the same type.
 export type MapTool =
   | 'layers'
   | 'draw'
@@ -37,191 +28,84 @@ export type MapTool =
   | null;
 
 export const Layout = () => {
-  const displayCompassOverlay = useAtomValue(displayCompassOverlayAtom);
-  const showSearchComponent = useAtomValue(showSearchComponentAtom);
   const isMobile = useIsMobileScreen();
-  const isLargeScreen = useBreakpointValue({
-    base: false,
-    lg: true,
-  });
-  const selectedResult = useAtomValue(selectedResultAtom);
   const currentMapTool = useAtomValue(mapToolAtom);
 
   useFeatureInfoClick();
   useSearchEffects();
   useMapClickSearch();
 
-  const isToolOpen = currentMapTool !== null && currentMapTool !== 'measure';
-  const hideLogo = selectedResult !== null;
-  const showDesktopLogo = !isMobile && !hideLogo;
-  const showMobileLogo = isMobile && !hideLogo && !isToolOpen;
-
   return (
     <ErrorBoundary fallback={undefined}>
-      {displayCompassOverlay && <Compass />}
-      <Grid
-        position={'relative'}
-        height={'100dvh'}
-        width={'100dvw'}
-        gridTemplateColumns="repeat(12, 1fr)"
-        gridTemplateRows={{
-          base: 'repeat(4, 1fr)',
-          md: 'repeat(4, 1fr)  120px 40px',
-        }}
-        pointerEvents="auto"
+      <Flex
+        flexDir="column"
+        h="100dvh"
+        w="100dvw"
         bg="gray.200"
-        style={{ overflowY: 'hidden' }}
+        overflow="hidden"
       >
-        <GridItem
-          gridColumn="1 / span 12" /* span all columns */
-          gridRow={{ base: '1 / span 4', md: '1 / -1' }} /* span all rows */
-          zIndex={0}
-        >
-          <ErrorBoundary fallback={undefined} name={'MapComponent'}>
+        <ErrorBoundary fallback={undefined} name="TopBar">
+          <TopBar />
+        </ErrorBoundary>
+
+        <Box flex="1" position="relative" overflow="hidden">
+          <ErrorBoundary fallback={undefined} name="MapComponent">
             <MapComponent />
           </ErrorBoundary>
-        </GridItem>
-        {(showSearchComponent || !isLargeScreen) && (
-          <GridItem
-            gridColumn={{
-              base: '1 / span 12',
-              md: '1 / span 6',
-              lg: '1 / span 4',
-              xl: '1 / span 3',
-            }}
-            gridRow={{ base: '1 / span 3', md: '1 / span 4' }}
-            display={{
-              base: selectedResult == null ? 'block' : 'none',
-              md: 'block',
-            }}
-            zIndex={1}
-            pointerEvents={'none'}
+
+          {/* Left column: search results + any tool card that opens as a
+              panel (Kartlag / Draw / LiDAR extract). Absolute-positioned
+              so it floats over the map. */}
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            bottom={0}
+            w={{ base: '100%', md: '360px', lg: '400px' }}
+            maxW="100%"
+            pt={3}
+            pl={3}
+            pb={3}
+            pointerEvents="none"
+            zIndex={2}
+            overflowY="auto"
           >
-            <ErrorBoundary fallback={undefined} name={'SearchComponent'}>
+            <ErrorBoundary fallback={undefined} name="SearchComponent">
               <SearchComponent />
             </ErrorBoundary>
-          </GridItem>
-        )}
-
-        <GridItem
-          gridColumn={{
-            base: '1 / span 12',
-            md: '1 / span 6',
-            lg: '1 / span 5',
-            xl: '1 / span 4',
-            '2xl': '1 / span 3',
-          }}
-          gridRow={{ base: '2 / span 3', md: '1 / span 4' }}
-          zIndex={2}
-          alignItems={{ base: 'flex-end', md: 'stretch' }}
-          display={{ base: 'flex', md: 'block' }}
-          pointerEvents={'none'}
-        >
-          <ErrorBoundary fallback={undefined} name="MapToolCards">
-            <MapToolCards />
-          </ErrorBoundary>
-        </GridItem>
-
-        <GridItem
-          gridColumn={{
-            base: '1 / span 12',
-            md: '8 / span 7',
-            lg: '9 / span 4',
-            xl: '10 / span 3',
-          }}
-          gridRow={{ base: '1 / span 3', md: '1', lg: '1 / span 3' }}
-          zIndex={2}
-          pointerEvents={'none'}
-        >
-          {showDesktopLogo && (
-            <Box position="absolute" top={4} right={3}>
-              <LinkLogo />
-            </Box>
-          )}
-          <Flex justifyContent={'flex-end'}>
-            <ErrorBoundary fallback={undefined} name={'InfoBox'}>
-              <InfoBox />
+            <ErrorBoundary fallback={undefined} name="MapToolCards">
+              <MapToolCards />
             </ErrorBoundary>
-          </Flex>
-        </GridItem>
+          </Box>
 
-        <GridItem
-          gridColumn={{ base: '1 / span 3' }}
-          gridRow={{ base: 4, md: 5 }}
-          alignContent={{ base: 'end', md: 'end' }}
-          mb={{ base: 3, md: 4 }}
-          ml={{ base: 2, md: 3 }}
-          display={{ base: 'block', md: 'none' }}
-          zIndex={1}
-          pointerEvents={'none'}
-        >
-          {showMobileLogo && <LinkLogo />}
-        </GridItem>
-
-        <GridItem
-          gridColumn={{
-            base: '1 / span 12',
-            md: '2 / span 10',
-            lg: '2 / span 10',
-          }}
-          gridRow={5}
-          alignContent={'end'}
-          justifySelf={{ md: 'center' }}
-          mb={{ base: 0, md: 2 }}
-          zIndex={1}
-          pointerEvents={'none'}
-        >
-          <ErrorBoundary fallback={undefined} name={'MapToolButtons'}>
-            <MapToolButtons />
-          </ErrorBoundary>
-        </GridItem>
-
-        <GridItem
-          justifySelf="end"
-          alignContent="end"
-          gridRow={{ base: 4, md: '3 / span 3' }}
-          gridColumn={'12 / span 3'}
-          mb={{
-            base: 3,
-            md: 2,
-          }}
-          mr={{ base: 2, md: 3 }}
-          display={{ base: isToolOpen ? 'none' : 'block', md: 'block' }}
-          zIndex={1}
-          pointerEvents={'none'}
-        >
-          <VStack alignItems="flex-end" gap={2} pointerEvents="auto">
-            <ErrorBoundary fallback={undefined} name={'MapControlButtons'}>
-              <MapControlButtons />
-            </ErrorBoundary>
-          </VStack>
-        </GridItem>
-
-        {!isMobile && (
-          <GridItem
-            h="40px"
-            alignContent="end"
-            gridRow={6}
-            gridColumn={'1 / -1'}
-            justifyContent={'end'}
-            zIndex={1}
-            pointerEvents={'none'}
+          {/* Right column: coordinate-info / search-result infobox */}
+          <Box
+            position="absolute"
+            top={0}
+            right={0}
+            pt={3}
+            pr={3}
+            pointerEvents="none"
+            zIndex={2}
           >
-            <ErrorBoundary fallback={undefined} name={'Toolbar'}>
-              <Toolbar />
-            </ErrorBoundary>
-          </GridItem>
-        )}
-      </Grid>
+            <Flex justifyContent="flex-end">
+              <ErrorBoundary fallback={undefined} name="InfoBox">
+                <InfoBox />
+              </ErrorBoundary>
+            </Flex>
+          </Box>
+        </Box>
+      </Flex>
+
       {isMobile && currentMapTool === 'draw' && (
-        <ErrorBoundary fallback={undefined} name={'BottomDrawToolSelector'}>
+        <ErrorBoundary fallback={undefined} name="BottomDrawToolSelector">
           <BottomDrawToolSelector />
         </ErrorBoundary>
       )}
-      <ErrorBoundary fallback={undefined} name={'KulturminnerPopup'}>
+      <ErrorBoundary fallback={undefined} name="KulturminnerPopup">
         <KulturminnerPopup />
       </ErrorBoundary>
-      <ErrorBoundary fallback={undefined} name={'CoverageOverlapPopup'}>
+      <ErrorBoundary fallback={undefined} name="CoverageOverlapPopup">
         <CoverageOverlapPopup />
       </ErrorBoundary>
     </ErrorBoundary>
