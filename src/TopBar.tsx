@@ -45,48 +45,72 @@ import {
 import type { MapTool } from './Layout';
 
 // Icon + text label stacked vertically. Used for the primary map-mode
-// controls (Standard / LiDAR / Kulturminner) where a persistent label
-// under the icon is worth the extra vertical space.
+// controls (Standard / LiDAR / Kulturminner / Temakart) where a
+// persistent label under the icon is worth the extra vertical space.
 const LabelledToggleButton = ({
   icon,
   label,
   tooltip,
   active,
+  badge,
   onClick,
 }: {
   icon: MaterialSymbol;
   label: string;
   tooltip?: string;
   active?: boolean;
+  badge?: number;
   onClick: () => void;
 }) => (
   <Tooltip
     content={tooltip ?? label}
     positioning={{ placement: 'bottom' }}
   >
-    <Button
-      variant={active ? 'primary' : 'tertiary'}
-      colorPalette="green"
-      onClick={onClick}
-      aria-label={tooltip ?? label}
-      height="auto"
-      minH="52px"
-      minW="56px"
-      py={1}
-      px={2}
-    >
-      <VStack gap={0} align="center">
-        <Icon icon={icon} size={22} />
+    <Box position="relative">
+      <Button
+        variant={active ? 'primary' : 'tertiary'}
+        colorPalette="green"
+        onClick={onClick}
+        aria-label={tooltip ?? label}
+        height="auto"
+        minH="52px"
+        minW="56px"
+        py={1}
+        px={2}
+      >
+        <VStack gap={0} align="center">
+          <Icon icon={icon} size={22} />
+          <Text
+            fontSize="10px"
+            fontWeight="medium"
+            lineHeight="short"
+            mt={0.5}
+          >
+            {label}
+          </Text>
+        </VStack>
+      </Button>
+      {badge != null && badge > 0 && (
         <Text
+          position="absolute"
+          top="-4px"
+          right="-4px"
+          bg="#FFDD9D"
+          borderRadius="full"
+          border="2px solid white"
+          px={1.5}
+          py={0}
+          minW="18px"
+          textAlign="center"
+          pointerEvents="none"
           fontSize="10px"
-          fontWeight="medium"
-          lineHeight="short"
-          mt={0.5}
+          fontWeight="bold"
+          lineHeight="14px"
         >
-          {label}
+          {badge}
         </Text>
-      </VStack>
-    </Button>
+      )}
+    </Box>
   </Tooltip>
 );
 
@@ -488,8 +512,8 @@ export const TopBar = () => {
 
       {/* Featured overlay: kulturminner (Lokaliteter og enkeltminner).
           Fast one-click toggle for the layer the user opens most often;
-          the fuller kulturminner list still lives behind the Temakart
-          card. */}
+          the full kulturminner list lives behind the adjacent Temakart
+          card — same layout pattern as the LiDAR icon + pulldown. */}
       <LabelledToggleButton
         icon="castle"
         label="Kulturminner"
@@ -498,15 +522,16 @@ export const TopBar = () => {
         onClick={() => toggleThemeLayer('heritageSites')}
       />
 
-      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
-
-      <ToolButton
+      <LabelledToggleButton
         icon="layers"
         label={t('mapLayers.label')}
+        tooltip="Alle kulturminne-lag"
         active={currentMapTool === 'layers'}
         badge={activeThemeLayers.size}
         onClick={() => toggleTool('layers')}
       />
+
+      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
 
       <ToolButton
         icon="edit"
