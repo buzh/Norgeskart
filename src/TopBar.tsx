@@ -25,6 +25,7 @@ import { mapAtom } from './map/atoms';
 import { trackPositionAtom } from './map/geolocation/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
 import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
+import { probeCoverage } from './map/layers/config/backgroundLayers/coverageProbe';
 import {
   activeLidarProjectAtom,
   fetchLidarProjects,
@@ -193,45 +194,52 @@ export const TopBar = () => {
     };
   }, []);
 
-  // Recompute the "nearby" list whenever the map settles OR the pulldown
-  // opens. Uses the map view's bbox in EPSG:4326 (LidarProject.bboxLonLat
-  // is lon/lat) with a small padding so a project whose bbox is just off
-  // the edge of the viewport still surfaces.
+  // Filter the full catalogue to projects that actually have hillshade
+  // pixels at the current viewport center. GetCapabilities bboxes are
+  // axis-aligned rectangles, so a large regional project like "Vestfold
+  // og Telemark 5pkt 2021" (bbox spans two counties) passes a naive
+  // bbox-intersects-viewport test even where its real coverage polygon
+  // doesn't reach. The WMS GetMap probe checks the actual pixel data
+  // per candidate and only keeps ones that come back as real hillshade.
   const [nearbyProjects, setNearbyProjects] = useState<LidarProject[]>([]);
+  const [probing, setProbing] = useState(false);
   useEffect(() => {
-    if (!allProjects) return;
-    const recompute = () => {
-      const size = map.getSize();
-      if (!size) return;
-      const extent = map.getView().calculateExtent(size);
-      if (!extent) return;
-      const projection = map.getView().getProjection().getCode();
-      const extentLonLat = transformExtent(extent, projection, 'EPSG:4326') as
-        | [number, number, number, number]
-        | undefined;
-      if (!extentLonLat) return;
-      // Pad by 1.5× to be forgiving at close zoom.
-      const cx = (extentLonLat[0] + extentLonLat[2]) / 2;
-      const cy = (extentLonLat[1] + extentLonLat[3]) / 2;
-      const hw = ((extentLonLat[2] - extentLonLat[0]) / 2) * 1.5;
-      const hh = ((extentLonLat[3] - extentLonLat[1]) / 2) * 1.5;
-      const padded: [number, number, number, number] = [
-        cx - hw,
-        cy - hh,
-        cx + hw,
-        cy + hh,
-      ];
-      const filtered = allProjects
-        .filter((p) => bboxIntersects(p.bboxLonLat, padded))
-        .sort(sortProjects);
-      setNearbyProjects(filtered);
-    };
-    recompute();
-    map.on('moveend', recompute);
+    if (!lidarOpen || !allProjects) return;
+    const size = map.getSize();
+    const center = map.getView().getCenter();
+    const resolution = map.getView().getResolution();
+    if (!size || !center || resolution == null) return;
+    const extent = map.getView().calculateExtent(size);
+    if (!extent) return;
+    const projection = map.getView().getProjection().getCode();
+    const extentLonLat = transformExtent(extent, projection, 'EPSG:4326') as
+      | [number, number, number, number]
+      | undefined;
+    if (!extentLonLat) return;
+
+    // Fast prefilter: strict bbox intersect (no padding). Anything past
+    // this still needs the WMS probe to confirm real coverage.
+    const bboxCandidates = allProjects
+      .filter((p) => bboxIntersects(p.bboxLonLat, extentLonLat))
+      .sort(sortProjects);
+
+    setProbing(true);
+    let cancelled = false;
+    Promise.all(
+      bboxCandidates.map((p) =>
+        probeCoverage(p.id, center[0], center[1], resolution, projection).then(
+          (covered) => ({ p, covered }),
+        ),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      setNearbyProjects(results.filter((r) => r.covered).map((r) => r.p));
+      setProbing(false);
+    });
     return () => {
-      map.un('moveend', recompute);
+      cancelled = true;
     };
-  }, [allProjects, map]);
+  }, [lidarOpen, allProjects, map]);
 
   const toggleTool = (name: Exclude<MapTool, null>) => {
     setCurrentMapTool(currentMapTool === name ? null : name);
@@ -373,23 +381,28 @@ export const TopBar = () => {
                 mx={1}
               />
               <Text fontSize="10px" color="gray.500" px={2}>
-                LiDAR-prosjekter i nærheten
+                LiDAR-prosjekter som dekker dette punktet
               </Text>
-              {allProjects === null && (
+              {(allProjects === null || probing) && (
                 <Flex align="center" gap={2} p={2}>
                   <Spinner size="xs" />
                   <Text fontSize="xs" color="gray.500">
-                    Henter katalog...
+                    {allProjects === null
+                      ? 'Henter katalog…'
+                      : 'Sjekker dekning…'}
                   </Text>
                 </Flex>
               )}
-              {allProjects != null && nearbyProjects.length === 0 && (
-                <Text fontSize="xs" color="gray.500" px={2} py={1}>
-                  Ingen LiDAR-datasett dekker dette området. Pan eller zoom
-                  til et annet område.
-                </Text>
-              )}
-              {nearbyProjects.map((p) => {
+              {allProjects != null &&
+                !probing &&
+                nearbyProjects.length === 0 && (
+                  <Text fontSize="xs" color="gray.500" px={2} py={1}>
+                    Ingen LiDAR-datasett dekker dette punktet. Prøv et annet
+                    sted.
+                  </Text>
+                )}
+              {!probing &&
+                nearbyProjects.map((p) => {
                 const active =
                   isLidarProject && activeLidarProject?.id === p.id;
                 const meta = [
