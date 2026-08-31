@@ -70,8 +70,8 @@ export const MapLayerPicker = () => {
       </Checkbox>
       {showCoverage && (
         <Text fontSize="10px" color="gray.500" mt={1.5}>
-          Fargenyanse angir punkttetthet. Klikk et område for å bytte til
-          det datasettet.
+          Fargenyanse angir punkttetthet. Klikk et område for å velge
+          mellom overlappende datasett.
         </Text>
       )}
     </Box>

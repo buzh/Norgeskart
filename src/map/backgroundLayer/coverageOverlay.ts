@@ -18,6 +18,16 @@ const WFS_SRS = 'EPSG:25833';
 
 export const showCoverageOverlayAtom = atom<boolean>(false);
 
+// Populated when a click on the coverage overlay hits at least one polygon.
+// The popup component (CoverageOverlapPopup) renders a floating card at
+// `coordinate` listing every project that contains that point so the user
+// can choose among overlapping datasets.
+export type CoveragePickerState = {
+  coordinate: [number, number];
+  projects: CoverageProject[];
+};
+export const coveragePickerAtom = atom<CoveragePickerState | null>(null);
+
 // Density → hue-fixed green ramp: higher pt/m² = darker + more saturated,
 // so at a glance the visually heaviest polygons are the highest-quality
 // captures. Alpha stays low so the underlying topo map remains readable.
@@ -84,7 +94,12 @@ export const coverageOverlayEffect = atomEffect((get) => {
   const targetProjection = get(currentProjectionAtom);
 
   removeExistingOverlay(map);
-  if (!show) return;
+  if (!show) {
+    // Dismiss any open picker popup when the overlay is turned off — the
+    // popup lists project polygons that are no longer being rendered.
+    getDefaultStore().set(coveragePickerAtom, null);
+    return;
+  }
 
   const source = new VectorSource();
   const layer = new VectorLayer({
@@ -130,11 +145,27 @@ export const coverageOverlayEffect = atomEffect((get) => {
   };
 });
 
+// Activates a project as the WMS background source. Exposed so the popup
+// component can wire its row-click handler here without duplicating the
+// LidarProject-shape construction.
+export const activateCoverageProject = (p: CoverageProject) => {
+  const active: ActiveLidarProject = {
+    id: p.id,
+    projectName: p.projectName,
+    year: p.year,
+    pointDensity: p.pointDensity,
+  };
+  const store = getDefaultStore();
+  store.set(activeLidarProjectAtom, active);
+  store.set(backgroundLayerAtom, 'lidarProject');
+};
+
 // Called from other map-click handlers (feature info, search) to decide
-// whether a click landed on a coverage polygon. If it did, activates that
-// project as the background source and returns true so the caller can bail
-// early — this avoids stacking a coordinate-info fetch or a search-marker
-// drop on top of the source switch.
+// whether a click landed on the coverage overlay. If it did, opens the
+// picker popup listing every project containing the click point (there
+// are often multiple overlapping acquisitions per area) and returns true
+// so the caller can bail early — avoids stacking a coordinate-info fetch
+// or a search-marker drop on top of the same click.
 //
 // OL fires `click` and `singleclick` as separate events with different
 // listener lists, so stopPropagation from one wouldn't reach the other;
@@ -143,23 +174,23 @@ export const coverageOverlayEffect = atomEffect((get) => {
 export const handleCoverageClickIfHit = (
   map: Map,
   pixel: [number, number],
+  coordinate: [number, number],
 ): boolean => {
   const store = getDefaultStore();
   if (!store.get(showCoverageOverlayAtom)) return false;
-  const hit = map.forEachFeatureAtPixel(
+  const projects: CoverageProject[] = [];
+  map.forEachFeatureAtPixel(
     pixel,
-    (feature) => feature.get('coverageProject') as CoverageProject | undefined,
+    (feature) => {
+      const p = feature.get('coverageProject') as CoverageProject | undefined;
+      if (p) projects.push(p);
+      // Returning falsy keeps OL iterating so we collect every overlapping
+      // polygon at this pixel, not just the topmost one.
+    },
     { layerFilter: (l) => l.get('id') === OVERLAY_LAYER_ID },
   );
-  if (!hit) return false;
-  const active: ActiveLidarProject = {
-    id: hit.id,
-    projectName: hit.projectName,
-    year: hit.year,
-    pointDensity: hit.pointDensity,
-  };
-  store.set(activeLidarProjectAtom, active);
-  store.set(backgroundLayerAtom, 'lidarProject');
+  if (projects.length === 0) return false;
+  store.set(coveragePickerAtom, { coordinate, projects });
   return true;
 };
 

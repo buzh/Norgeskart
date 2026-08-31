@@ -64,7 +64,11 @@ export const useFeatureInfoClick = () => {
       }
 
       if (
-        handleCoverageClickIfHit(map, e.pixel as [number, number])
+        handleCoverageClickIfHit(
+          map,
+          e.pixel as [number, number],
+          e.coordinate as [number, number],
+        )
       ) {
         return;
       }

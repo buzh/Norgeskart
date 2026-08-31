@@ -92,7 +92,11 @@ export const useMapClickSearch = () => {
         }
         const map = getDefaultStore().get(mapAtom);
         if (
-          handleCoverageClickIfHit(map, e.pixel as [number, number])
+          handleCoverageClickIfHit(
+            map,
+            e.pixel as [number, number],
+            e.coordinate as [number, number],
+          )
         ) {
           return;
         }
