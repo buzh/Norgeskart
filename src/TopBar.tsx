@@ -21,10 +21,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { transformExtent } from 'ol/proj';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import LanguageSwitcher from './languageswitcher/LanguageSwitcher';
 import { mapAtom } from './map/atoms';
-import { trackPositionAtom } from './map/geolocation/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
 import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
 import { probeCoverage } from './map/layers/config/backgroundLayers/coverageProbe';
@@ -34,7 +31,6 @@ import {
   LidarProject,
 } from './map/layers/config/backgroundLayers/lidarProjects';
 import { ThemeLayerName } from './map/layers/themeWMS';
-import { useMapSettings } from './map/mapHooks';
 import { mapToolAtom } from './map/overlay/atoms';
 import { MeasurePopover } from './measure/MeasurePopover';
 import {
@@ -227,7 +223,6 @@ const LidarPulldownItem = ({
 
 export const TopBar = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const map = useAtomValue(mapAtom);
   const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
   const setDisplaySearchResults = useSetAtom(displaySearchResultsAtom);
@@ -236,8 +231,6 @@ export const TopBar = () => {
   const [activeThemeLayers, setActiveThemeLayers] = useAtom(
     activeThemeLayersAtom,
   );
-  const [trackPosition, setTrackPosition] = useAtom(trackPositionAtom);
-  const { setMapFullScreen } = useMapSettings();
   const [backgroundLayer, setBackgroundLayer] = useAtom(backgroundLayerAtom);
   const [activeLidarProject, setActiveLidarProject] = useAtom(
     activeLidarProjectAtom,
@@ -326,14 +319,6 @@ export const TopBar = () => {
     });
   };
   const heritageActive = activeThemeLayers.has('heritageSites');
-
-  const handleFullScreenClick = () => {
-    if (document.fullscreenElement) {
-      setMapFullScreen(false);
-    } else {
-      setMapFullScreen(true);
-    }
-  };
 
   const activateNational = () => {
     setBackgroundLayer('lidarHillshade');
@@ -550,33 +535,6 @@ export const TopBar = () => {
       />
 
       <Box flex="1" minW={1} />
-
-      {typeof navigator !== 'undefined' && navigator.geolocation && (
-        <ToolButton
-          icon={trackPosition ? 'location_disabled' : 'my_location'}
-          label={
-            trackPosition
-              ? t('map.controls.myLocation.disable.label')
-              : t('map.controls.myLocation.enable.label')
-          }
-          active={trackPosition}
-          onClick={() => setTrackPosition((p) => !p)}
-        />
-      )}
-
-      <ToolButton
-        icon="fullscreen"
-        label={t('map.controls.fullscreen.label')}
-        onClick={handleFullScreenClick}
-      />
-
-      <ToolButton
-        icon="help"
-        label={t('controller.help.mobiletext')}
-        onClick={() => navigate('/hjelp')}
-      />
-
-      <LanguageSwitcher variant="icon" />
     </Flex>
   );
 };
