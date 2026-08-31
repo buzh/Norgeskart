@@ -1,12 +1,10 @@
-import { Button, HStack, Stack, Text, toaster, Tooltip } from '@kvib/react';
+import { Button, HStack, Stack, toaster, Tooltip } from '@kvib/react';
 import { useAtomValue } from 'jotai';
 import { transform } from 'ol/proj';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mapAtom } from '../../../map/atoms';
 import { ProjectionIdentifier } from '../../../map/projections/types';
 import { decimalToDMS } from '../../../shared/utils/coordinateCalculations';
-import { ProjectionSelector } from '../../../shared/Components/ProjectionSelector';
 import { CoordinateText } from './CoordinateText';
 
 interface CoordinateInfoProps {
@@ -17,26 +15,24 @@ interface CoordinateInfoProps {
 export const CoordinateInfo = ({ lat, lon, inputCRS }: CoordinateInfoProps) => {
   const map = useAtomValue(mapAtom);
   const { t } = useTranslation();
-  const currentMapProjection = map
+  const projection = map
     .getView()
     .getProjection()
     .getCode() as ProjectionIdentifier;
-  const [selectedProjection, setSelectedProjection] =
-    useState<ProjectionIdentifier>(currentMapProjection);
 
-  const [x, y] = transform([lon, lat], inputCRS, selectedProjection);
+  const [x, y] = transform([lon, lat], inputCRS, projection);
 
   const isGeographic =
-    selectedProjection === 'EPSG:4326' || selectedProjection == 'EPSG:4258'; // should it be flipped for others ? 4230?  || selectedProjection === 'EPSG:4230';
+    projection === 'EPSG:4326' || projection === 'EPSG:4258';
   const showsDMS =
-    selectedProjection === 'EPSG:4326' ||
-    selectedProjection === 'EPSG:4230' ||
-    selectedProjection === 'EPSG:4258';
+    projection === 'EPSG:4326' ||
+    projection === 'EPSG:4230' ||
+    projection === 'EPSG:4258';
   const onCopyClick = () => {
     const decimals = isGeographic ? 7 : 2;
     const coordString = isGeographic
       ? `${y.toFixed(decimals)} ${x.toFixed(decimals)}`
-      : `${x.toFixed(decimals)},${y.toFixed(decimals)}@${selectedProjection}`;
+      : `${x.toFixed(decimals)},${y.toFixed(decimals)}@${projection}`;
 
     navigator.clipboard.writeText(coordString);
     toaster.create({
@@ -64,17 +60,6 @@ export const CoordinateInfo = ({ lat, lon, inputCRS }: CoordinateInfoProps) => {
 
   return (
     <Stack fontSize={14}>
-      <HStack justifyContent="space-between" alignItems="baseline">
-        <Text w={'stretch'}>{t('infoBox.coordinateSection.differentCrs')}</Text>
-
-        <ProjectionSelector
-          value={selectedProjection}
-          onProjectionChange={setSelectedProjection}
-          label={t('infoBox.coordinateSection.differentCrs')}
-          textColor="black"
-        />
-      </HStack>
-
       <CoordinateText
         x={x}
         y={y}

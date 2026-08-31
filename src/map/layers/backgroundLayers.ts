@@ -8,13 +8,3 @@ export type WMTSLayerName = 'topo';
 
 export type BackgroundLayerName =
   WMTSLayerName | WMSLayerName | EmptyLayerName;
-
-export const mapLegacyBackgroundLayerId = (
-  layerId: string,
-): BackgroundLayerName | null => {
-  const legacyIdMap: Record<string, BackgroundLayerName> = {
-    '1001': 'topo',
-  };
-
-  return legacyIdMap[layerId] || null;
-};

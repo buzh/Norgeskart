@@ -19,10 +19,6 @@ export type ThemeLayerName =
   | 'protectedBuildings'
   | 'userReportedHeritage';
 
-// No queryable layers in this fork; the kulturminner layers use WMS
-// GetFeatureInfo directly rather than vector-feature hit-testing.
-export const QUERYABLE_LAYERS: ThemeLayerName[] = [];
-
 export const createThemeLayerFromConfig = (
   config: ThemeLayerConfig,
   layerDef: ThemeLayerDefinition,

@@ -1,22 +1,8 @@
 import { useAtom } from 'jotai';
 import { activeThemeLayersAtom } from './atoms';
-import { themeLayerConfig } from './themeLayerConfigApi';
 import { ThemeLayerName } from './themeWMS';
 
 export const WARNING_THRESHOLD = 15;
-
-export const mapLegacyThemeLayerId = (
-  legacyId: string,
-  projectName?: string,
-): string | undefined => {
-  const layer = themeLayerConfig.layers.find(
-    (l) => l.legacyId === `${projectName ? projectName + '.' : ''}${legacyId}`,
-  );
-
-  if (layer) {
-    return layer.id;
-  }
-};
 
 export const useThemeLayers = () => {
   const [activeLayerSet, setActiveLayerSet] = useAtom(activeThemeLayersAtom);

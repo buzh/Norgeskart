@@ -1,5 +1,4 @@
 import { culturalHeritageConfig } from './config/themeLayers/culturalHeritage';
-import { ThemeLayerName } from './themeWMS';
 
 export interface FieldConfig {
   name: string;
@@ -31,22 +30,6 @@ export interface ThemeLayerCategory {
   minZoom?: number;
 }
 
-export interface ThemeLayerStyle {
-  fill?: {
-    color: string;
-  };
-  stroke?: {
-    color: string;
-    width: number;
-  };
-  text?: {
-    property: string;
-    scale?: number;
-    fill?: { color: string };
-    stroke?: { color: string; width: number };
-  };
-}
-
 export interface ThemeLayerDefinition {
   id: string;
   name: {
@@ -54,16 +37,11 @@ export interface ThemeLayerDefinition {
     nn: string;
     en: string;
   };
-  type?: 'wms' | 'geojson';
   wmsUrl?: string;
-  geojsonUrl?: string;
-  sourceEpsg?: string;
-  style?: ThemeLayerStyle;
   legendUrl?: string;
   layers?: string;
   categoryId: string;
   groupid: number;
-  legacyId?: string;
   queryable?: boolean;
   styles?: string;
   infoFormat?: string;
@@ -97,27 +75,6 @@ export const getThemeLayerById = (
   return config.layers.find((layer) => layer.id === id);
 };
 
-export const getThemeLayerByLegacyId = (
-  config: ThemeLayerConfig,
-  legacyId: string,
-): ThemeLayerDefinition | undefined => {
-  return config.layers.find((layer) => layer.legacyId === legacyId);
-};
-
-export const getThemeLayersByCategory = (
-  config: ThemeLayerConfig,
-  categoryId: string,
-): ThemeLayerDefinition[] => {
-  return config.layers.filter((layer) => layer.categoryId === categoryId);
-};
-
-export const getThemeLayersByGroupId = (
-  config: ThemeLayerConfig,
-  groupid: number,
-): ThemeLayerDefinition[] => {
-  return config.layers.filter((layer) => layer.groupid === groupid);
-};
-
 export const getCategoryById = (
   config: ThemeLayerConfig,
   categoryId: string,
@@ -139,48 +96,6 @@ export const getEffectiveWmsUrl = (
   throw new Error(
     `No wmsUrl found for layer ${layer.id} in category ${layer.categoryId}`,
   );
-};
-
-export const getEffectiveLegendUrl = (
-  config: ThemeLayerConfig,
-  id: ThemeLayerName,
-): string | undefined => {
-  const layer = getThemeLayerById(config, id);
-
-  if (!layer) {
-    return undefined;
-  }
-  if (layer.legendUrl) {
-    return layer.legendUrl;
-  }
-  if (layer.type !== 'geojson') {
-    const wmsUrl = getEffectiveWmsUrl(config, layer);
-    return (
-      wmsUrl +
-      '?SERVICE=wms&REQUEST=GetStyles&VERSION=1.3.0&FORMAT=application/json&Layers=' +
-      layer.layers
-    );
-  }
-  return undefined;
-};
-
-export const getEffectiveLegendImageUrl = (
-  config: ThemeLayerConfig,
-  id: ThemeLayerName,
-) => {
-  const layer = getThemeLayerById(config, id);
-  if (!layer) {
-    return undefined;
-  }
-  if (layer.useLegendGraphic) {
-    const wmsUrl = getEffectiveWmsUrl(config, layer);
-    return (
-      wmsUrl +
-      '?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.3.0&SLD_VERSION=1.1.0&FORMAT=image/png&LAYER=' +
-      layer.layers
-    );
-  }
-  return undefined;
 };
 
 export const getMainCategories = (
@@ -217,11 +132,4 @@ export const getParentCategory = (
 
 export const isMainCategory = (category: ThemeLayerCategory): boolean => {
   return !category.parentId;
-};
-
-export const hasSubcategories = (
-  config: ThemeLayerConfig,
-  categoryId: string,
-): boolean => {
-  return config.categories.some((cat) => cat.parentId === categoryId);
 };
