@@ -15,6 +15,7 @@ import LanguageSwitcher from './languageswitcher/LanguageSwitcher';
 import { showCoverageOverlayAtom } from './map/backgroundLayer/coverageOverlay';
 import { trackPositionAtom } from './map/geolocation/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
+import { ThemeLayerName } from './map/layers/themeWMS';
 import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
 import { activeLidarProjectAtom } from './map/layers/config/backgroundLayers/lidarProjects';
 import { useMapSettings } from './map/mapHooks';
@@ -79,7 +80,19 @@ export const TopBar = () => {
   const setDisplaySearchResults = useSetAtom(displaySearchResultsAtom);
   const resetSearchResults = useResetSearchResults();
   const [currentMapTool, setCurrentMapTool] = useAtom(mapToolAtom);
-  const activeThemeLayers = useAtomValue(activeThemeLayersAtom);
+  const [activeThemeLayers, setActiveThemeLayers] = useAtom(
+    activeThemeLayersAtom,
+  );
+
+  const toggleThemeLayer = (name: ThemeLayerName) => {
+    setActiveThemeLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+  const heritageActive = activeThemeLayers.has('heritageSites');
   const [trackPosition, setTrackPosition] = useAtom(trackPositionAtom);
   const { setMapFullScreen } = useMapSettings();
   const [backgroundLayer, setBackgroundLayer] = useAtom(backgroundLayerAtom);
@@ -202,6 +215,22 @@ export const TopBar = () => {
             {lidarChipLabel}
           </Text>
         </Button>
+      </Tooltip>
+
+      {/* Featured overlay: kulturminner (Lokaliteter og enkeltminner).
+          Fast one-click toggle for the layer the user opens most often;
+          the fuller kulturminner list still lives behind the Temakart
+          card. */}
+      <Tooltip
+        content="Lokaliteter og enkeltminner (Kulturminner)"
+        positioning={{ placement: 'bottom' }}
+      >
+        <IconButton
+          icon="castle"
+          aria-label="Lokaliteter og enkeltminner"
+          variant={heritageActive ? 'primary' : 'tertiary'}
+          onClick={() => toggleThemeLayer('heritageSites')}
+        />
       </Tooltip>
 
       <Box borderLeft="1px solid" borderColor="gray.200" h="24px" mx={1} />

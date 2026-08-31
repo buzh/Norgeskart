@@ -1,8 +1,6 @@
 import ImageLayer from 'ol/layer/Image.js';
 import TileLayer from 'ol/layer/Tile';
-import VectorLayer from 'ol/layer/Vector';
 import { ImageWMS, TileWMS } from 'ol/source';
-import { createGeoJsonThemeLayer } from './themeGeoJson';
 import type {
   ThemeLayerConfig,
   ThemeLayerDefinition,
@@ -13,143 +11,23 @@ import {
   getParentCategory,
 } from './themeLayerConfigApi';
 
-type HistoricalMapsLayerName = 'economicMapFirstEdition' | 'amtMap';
-
-type StedsnavnLayerName =
-  | 'norwegianPlaceNames'
-  | 'luleSamiPlaceNames'
-  | 'northernSamiPlaceNames'
-  | 'skoltSamiPlaceNames'
-  | 'southernSamiPlaceNames'
-  | 'kvenPlaceNames'
-  | 'otherPlaceNames'
-  | 'administrativeAreasPlaceNames'
-  | 'settlementPlaceNames'
-  | 'infrastructurePlaceNames'
-  | 'seaPlaceNames'
-  | 'landTypePlaceNames'
-  | 'freshwaterPlaceNames'
-  | 'terrainPlaceNames'
-  | 'culturePlaceNames'
-  | 'approvedPlaceNames'
-  | 'approvedNamePartPlaceNames'
-  | 'acceptedPlaceNames'
-  | 'internationalPlaceNames'
-  | 'privatePlaceNames'
-  | 'historicalPlaceNames'
-  | 'proposedPlaceNames'
-  | 'unevaluatedPlaceNames'
-  | 'rejectedNamePartPlaceNames'
-  | 'rejectedPlaceNames'
-  | 'caseStatusUntreatedPlaceNames'
-  | 'notToBeProcessedPlaceNames'
-  | 'approvedByAuthorityPlaceNames'
-  | 'collectiveDecisionPlaceNames'
-  | 'collectiveDecisionWithdrawnPlaceNames'
-  | 'caseRaisedPlaceNames'
-  | 'caseDecisionPlaceNames'
-  | 'decisionPostponedPlaceNames'
-  | 'appealDecisionNotWithdrawnPlaceNames'
-  | 'appealDecisionWithdrawnPlaceNames'
-  | 'appealDecisionPostponedPlaceNames'
-  | 'simplifiedDecisionPlaceNames'
-  | 'decision24MonthsPlaceNames'
-  | 'decision12MonthsPlaceNames'
-  | 'decision6MonthsPlaceNames'
-  | 'decision3MonthsPlaceNames'
-  | 'decision1MonthPlaceNames'
-  | 'collectiveDecision24MonthsPlaceNames'
-  | 'collectiveDecision12MonthsPlaceNames'
-  | 'collectiveDecision6MonthsPlaceNames'
-  | 'collectiveDecision3MonthsPlaceNames'
-  | 'collectiveDecision1MonthPlaceNames';
-
-type PropertyLayerName = 'adresses' | 'buildings' | 'parcels';
-type OutdoorsLifeLayerName =
-  | 'hikingTrails'
-  | 'skiingTrails'
-  | 'routeInfoPoints'
-  | 'bikeTrails'
-  | 'waterTrails';
-type FactsLayerName = 'osloMarkaBorder';
-
-type CulturalHeritageLayerName =
+// Fork keeps only Kulturminner theme layers.
+export type ThemeLayerName =
   | 'heritageSites'
   | 'culturalEnvironments'
   | 'sefrakBuildings'
   | 'protectedBuildings'
   | 'userReportedHeritage';
 
-type SjoLayerName =
-  | 'sjoDybdedatakvalitetSjokart'
-  | 'sjoIkkeSjomalt'
-  | 'sjoFarligeBolger'
-  | 'sjoGrunnlinje'
-  | 'sjoTerritorialgrense'
-  | 'sjoTilstotendeSone'
-  | 'sjoNorgesOkonomiskeSone'
-  | 'sjoFiskevernsonen'
-  | 'sjoFiskerisonen'
-  | 'sjoKontinentalsokkel'
-  | 'sjoAvtaltAvgrensningslinje';
-
-type ConfigThemeLayerName =
-  | 'historicalRoute'
-  | 'coastalTrail'
-  | 'culturalTrail'
-  | 'natureTrail'
-  | 'trimTrack'
-  | 'footRouteTypeNotSpecified'
-  | 'machinePrepared'
-  | 'snowmobile'
-  | 'unprepared'
-  | 'preparationNotSpecified'
-  | 'nivBenchmarks'
-  | 'landNetPoints'
-  | 'primaryNetPoints'
-  | 'triangulationPoints'
-  | 'nrlArea'
-  | 'nrlLine'
-  | 'nrlAirspan'
-  | 'nrlMast'
-  | 'nrlPoint'
-  | 'accessibilityRoads'
-  | 'accessibilityHcParkering'
-  | 'accessibilityBuildingEntrance'
-  | 'accessibilityParkingArea'
-  | 'accessibilityToilet'
-  | 'accessibilitySittegruppebenk';
-
-export type ThemeLayerName =
-  | PropertyLayerName
-  | OutdoorsLifeLayerName
-  | FactsLayerName
-  | HistoricalMapsLayerName
-  | StedsnavnLayerName
-  | ConfigThemeLayerName
-  | SjoLayerName
-  | CulturalHeritageLayerName;
-
-export const QUERYABLE_LAYERS: ThemeLayerName[] = [
-  'adresses',
-  'buildings',
-  'parcels',
-  'hikingTrails',
-  'skiingTrails',
-  'routeInfoPoints',
-  'bikeTrails',
-  'waterTrails',
-];
+// No queryable layers in this fork; the kulturminner layers use WMS
+// GetFeatureInfo directly rather than vector-feature hit-testing.
+export const QUERYABLE_LAYERS: ThemeLayerName[] = [];
 
 export const createThemeLayerFromConfig = (
   config: ThemeLayerConfig,
   layerDef: ThemeLayerDefinition,
   projection: string,
-): TileLayer | VectorLayer | ImageLayer<ImageWMS> | null => {
-  if (layerDef.type === 'geojson' && layerDef.geojsonUrl) {
-    return createGeoJsonThemeLayer(layerDef, projection);
-  }
-
+): TileLayer | ImageLayer<ImageWMS> | null => {
   if (!layerDef.layers) {
     console.warn(`Layer ${layerDef.id} has no WMS layers defined`);
     return null;

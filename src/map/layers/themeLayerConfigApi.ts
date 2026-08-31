@@ -1,13 +1,4 @@
-import { borderConfig } from './config/themeLayers/borders';
 import { culturalHeritageConfig } from './config/themeLayers/culturalHeritage';
-import { dekningConfig } from './config/themeLayers/dekning';
-import { fastmerkerLayerConfig } from './config/themeLayers/fastmerker';
-import { historicalMapsConfig } from './config/themeLayers/historicalMaps';
-import { outdoorRecreationLayerConfig } from './config/themeLayers/outdoorRecreation';
-import { placeNamesConfig } from './config/themeLayers/placeNames';
-import { propertyInfoConfig } from './config/themeLayers/propertyInfo';
-import { sjoConfig } from './config/themeLayers/sjo';
-import { tilgjengelighetConfig } from './config/themeLayers/tilgjengelighet';
 import { ThemeLayerName } from './themeWMS';
 
 export interface FieldConfig {
@@ -92,32 +83,12 @@ export interface ThemeLayerConfig {
   layers: ThemeLayerDefinition[];
 }
 
-const getThemeLayerConfig = () => {
-  const mergedConfig: ThemeLayerConfig = {
-    categories: [],
-    layers: [],
-  };
-  const configs: ThemeLayerConfig[] = [
-    propertyInfoConfig,
-    outdoorRecreationLayerConfig,
-    sjoConfig,
-    borderConfig,
-    historicalMapsConfig,
-    tilgjengelighetConfig,
-    placeNamesConfig,
-    fastmerkerLayerConfig,
-    dekningConfig,
-    culturalHeritageConfig,
-  ];
-
-  for (const config of configs) {
-    mergedConfig.categories.push(...config.categories);
-    mergedConfig.layers.push(...config.layers);
-  }
-
-  return mergedConfig;
-};
-export const themeLayerConfig = getThemeLayerConfig();
+// Fork keeps only culturalHeritage — every other original theme
+// (property, sjø, borders, historical maps, place names, fastmerker,
+// coverage, outdoor recreation, accessibility) was dropped as
+// irrelevant to the self-host use case. Point users to upstream
+// Norgeskart if they need any of them.
+export const themeLayerConfig: ThemeLayerConfig = culturalHeritageConfig;
 
 export const getThemeLayerById = (
   config: ThemeLayerConfig,

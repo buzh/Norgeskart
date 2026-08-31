@@ -9,10 +9,8 @@ import {
   Text,
   VStack,
 } from '@kvib/react';
-import { getDefaultStore } from 'jotai';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { backgroundLayerAtom } from '../../../map/layers/config/backgroundLayers/atoms';
 import {
   getDirectLayersForCategory,
   getMainCategories,
@@ -113,16 +111,10 @@ export const MapThemes = () => {
 
   const toggleLayer = useCallback(
     (layerName: ThemeLayerName) => {
-      const checked = isLayerChecked(layerName);
-      if (!checked) {
-        addThemeLayerToMap(layerName);
-
-        if (layerName === 'economicMapFirstEdition') {
-          const store = getDefaultStore();
-          store.set(backgroundLayerAtom, 'empty');
-        }
-      } else {
+      if (isLayerChecked(layerName)) {
         removeThemeLayerFromMap(layerName);
+      } else {
+        addThemeLayerToMap(layerName);
       }
     },
     [addThemeLayerToMap, removeThemeLayerFromMap, isLayerChecked],
