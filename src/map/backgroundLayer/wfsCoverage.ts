@@ -22,7 +22,6 @@ const WFS_URL =
   'https://wfs.geonorge.no/skwms1/wfs.hoyde-hoydedata-metadata-prosjekt';
 const TYPE_NAME = 'metadata_prosjekt:Prosjektavgrensning';
 const SRS = 'EPSG:25833';
-const SRS_URI = 'urn:ogc:def:crs:EPSG::25833';
 
 export type CoverageProject = {
   // Matches the WMS layer-name prefix in wms.hoyde-dtm-prosjekt (Kartverket
@@ -47,17 +46,20 @@ export const fetchCoverageInBbox = async (
   const bbox25833 =
     bboxProjection === SRS ? bbox : transformExtent(bbox, bboxProjection, SRS);
 
-  // Build the query string literally rather than via URLSearchParams —
-  // percent-encoding the `:` in the CRS URI (urn:ogc:def:crs:EPSG::25833)
-  // is accepted by some WFS servers and rejected by others, and Kartverket
-  // is in the picky camp. The fork's confirmed request keeps `:` literal.
-  const bboxParam = `${bbox25833[0]},${bbox25833[1]},${bbox25833[2]},${bbox25833[3]},${SRS_URI}`;
+  // Kartverket's WFS silently ignores the bbox filter unless srsName is
+  // passed as its own query parameter. Appending the CRS URI to the bbox
+  // value (per the WFS spec: `bbox=x,y,x,y,urn:ogc:def:crs:EPSG::25833`)
+  // returns 0 features every time. Same bbox with `srsName=EPSG:25833`
+  // as a separate param returns the intersecting set. Verified against a
+  // known-populated viewport (204039,6578284,221112,6590269): 0 → 16.
+  const bboxParam = `${bbox25833[0]},${bbox25833[1]},${bbox25833[2]},${bbox25833[3]}`;
   const query = [
     'service=WFS',
     'version=2.0.0',
     'request=GetFeature',
     `typeNames=${TYPE_NAME}`,
     `bbox=${bboxParam}`,
+    `srsName=${SRS}`,
   ].join('&');
 
   const res = await fetch(`${WFS_URL}?${query}`);

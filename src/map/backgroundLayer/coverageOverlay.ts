@@ -23,17 +23,19 @@ export const showCoverageOverlayAtom = atom<boolean>(false);
 // captures. Alpha stays low so the underlying topo map remains readable.
 const styleFor = (density: number | null, active: boolean): Style => {
   const clamped = Math.min(density ?? 0, 20);
-  const lightness = 60 - clamped * 1.5; // 60% → 30%
-  const fillAlpha = active ? 0.55 : 0.35;
+  const lightness = 55 - clamped * 1.5; // 55% → 25%
+  const fillAlpha = active ? 0.6 : 0.45;
   const fillColor =
     density == null || density === 0
-      ? `hsla(0, 0%, 60%, ${fillAlpha})`
-      : `hsla(150, 65%, ${lightness}%, ${fillAlpha})`;
+      ? `hsla(0, 0%, 55%, ${fillAlpha})`
+      : `hsla(150, 70%, ${lightness}%, ${fillAlpha})`;
   return new Style({
     fill: new Fill({ color: fillColor }),
+    // Match the fill hue so the outline reads as part of the polygon
+    // rather than an unrelated black artifact on the map.
     stroke: active
       ? new Stroke({ color: 'rgba(230, 120, 40, 0.95)', width: 3 })
-      : new Stroke({ color: 'rgba(30, 90, 50, 0.7)', width: 1 }),
+      : new Stroke({ color: `hsla(150, 55%, 25%, 0.55)`, width: 1 }),
   });
 };
 
