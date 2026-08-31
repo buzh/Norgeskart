@@ -518,6 +518,16 @@ export const TopBar = () => {
 
       <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
 
+      <LabelledToggleButton
+        icon="crop_free"
+        label="LiDAR-uttrekk"
+        tooltip={t('controller.lidarExtract.text')}
+        active={currentMapTool === 'lidarExtract'}
+        onClick={() => toggleTool('lidarExtract')}
+      />
+
+      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
+
       <ToolButton
         icon="edit"
         label={t('controller.draw.text')}
@@ -526,13 +536,6 @@ export const TopBar = () => {
       />
 
       <MeasurePopover />
-
-      <ToolButton
-        icon="crop_free"
-        label={t('controller.lidarExtract.text')}
-        active={currentMapTool === 'lidarExtract'}
-        onClick={() => toggleTool('lidarExtract')}
-      />
 
       <Box flex="1" minW={1} />
     </Flex>
