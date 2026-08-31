@@ -123,8 +123,6 @@ export type NKUrlParameter =
   | 'markerLon'
   | 'zoom'
   | 'drawing'
-  | 'layers' // Legacy parameter from old norgeskart.no
-  | 'project' // Legacy project parameter from old norgeskart.no
   | 'sok'
   | 'showSelection'
   | 'printTool';

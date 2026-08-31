@@ -1,7 +1,16 @@
-# Self-hosting fork of Norgeskart
+# Norgeskart — armchair-archaeology build
 
-Fork of Kartverket's Norgeskart with additions for self-hosting outside the
-official cloud. Working branch: `self-host`.
+Map viewer tailored for reading Norwegian LiDAR terrain against the
+Riksantikvaren heritage register (Kulturminner). Hard fork of
+Kartverket's Norgeskart — not tracking upstream. Working branch:
+`self-host` (deploy shape, not the project's purpose).
+
+Feature scope is deliberately narrow: keep what an amateur reading
+relief-shaded terrain against the heritage record needs (Kulturminner
+theme layers, LiDAR hillshade + per-project LiDAR backgrounds, LiDAR
+tile extract, drawing, place/property search), drop the rest. If
+you're tempted to re-add an upstream Norgeskart feature, ask whether
+this specific use case needs it before wiring it back in.
 
 ## Deploy
 

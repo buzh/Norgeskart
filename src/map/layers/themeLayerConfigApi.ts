@@ -61,11 +61,6 @@ export interface ThemeLayerConfig {
   layers: ThemeLayerDefinition[];
 }
 
-// Fork keeps only culturalHeritage — every other original theme
-// (property, sjø, borders, historical maps, place names, fastmerker,
-// coverage, outdoor recreation, accessibility) was dropped as
-// irrelevant to the self-host use case. Point users to upstream
-// Norgeskart if they need any of them.
 export const themeLayerConfig: ThemeLayerConfig = culturalHeritageConfig;
 
 export const getThemeLayerById = (

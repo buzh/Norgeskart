@@ -1,68 +1,49 @@
-# Norgeskart
+# Norgeskart (armchair-archaeology build)
 
-Kildekode til norgeskart.no som lanseres 17. mars 2026.
+A map viewer tailored for **armchair archaeology on Norwegian public
+data**: Riksantikvaren's Kulturminner register (heritage sites, SEFRAK
+buildings, protected buildings, cultural environments, user-reported
+finds) overlaid on Kartverket's LiDAR hillshade, so terrain relief and
+the heritage record can be read together.
 
-For endringslogg, se [wiki-siden](https://github.com/kartverket/Norgeskart/wiki/Endringslogg).
-## Copyright
+Derived from [Kartverket's Norgeskart](https://github.com/kartverket/Norgeskart);
+this is a hard fork, not tracking upstream.
 
-The content of norgeskart.no and this repository is available under the following licenses:
+## Deploy
 
-Kartverkets logo and font: (C) Kartverket. OpenLayers and all contributions to openlayers, included at /lib/src/openlayers: BSD style - see https://github.com/openlayers/openlayers/blob/master/LICENSE.md Everything else: Public Domain. The solution uses web services from Kartverket which are subject to their own licenses (mostly CC-BY 3.0 Norway) and the Norwegian Geodata law. See http://kartverket.no/data/lisens/ for the license terms and http://kartverket.no/data/ for details on the web ser
-
-The code contents are available under the MIT licence, see the LICENCE file for more details.
-
-## Kom igang
-
-For å kjøre applikasjonen kreves npm og node. Vi prøver å holde oss til current LTS, som nå er 24.
-
-```sh
-npm install &&\
-npm run dev
-```
-
-Skal starte en utviklingsserver og siden skal være mulig å nå på localhost:3000
-
-## Bygge og pakke inn i kontainer
-
-For at applikasjonen skal kjøre på Kartverkets platform bygges den inn i et docker image. For å gjøre disse stegene kreves at du har docker installert og kjørende på maskinen din. For å bygge, pakke sammen og kjøre en docker container gjør du følgende
+Runs as a Docker Compose stack (Caddy-served SPA + `wmscache` nginx
+sidecar that caches every external WMS the app hits). Standard rebuild
+on the host:
 
 ```sh
-npm run build  &&\
-docker build -t norgeskart . &&\
-docker run -p 3000:3000 -d norgeskart
+git pull
+docker compose build --pull norgeskart
+docker compose up -d
+docker compose logs -f norgeskart wmscache
 ```
 
-## Språk
+Caddy inside the container listens on `:3000`; compose maps host
+`3030 → container 3000`.
 
-For å støtte forskjellge språk har vi filer i `src/locales/[ditt språk her]`. Denne kan du redigere manuelt, eller du kan bruke scriptene addWord og removeWord. Disse kan du kjøre på følgende måte
+Runtime config lives in `config.js` (bind-mounted into the container).
+Copy `config.example.js` and edit the endpoints. See
+[`CLAUDE.md`](CLAUDE.md) for the full deploy and services rundown,
+including when to restart `wmscache` and how the WMS proxy paths work.
 
-```sh
-npm run aword -- path.til.det.du.vil.sette "valgfri verdi"
-```
+## Data sources
 
-Hvis du ikke legger ved en verdi får du spørsmål for hver av språkene scriptet finner
+All same-origin from the browser's point of view — the `wmscache`
+nginx sidecar reverse-proxies + caches each upstream:
 
-For å fjerne et ord, selv om det er nøstet kjører du
+- **Kulturminner** (theme layers) — `kart.ra.no/wms/*`, via `/wms/ra/*`
+- **LiDAR hillshade** and per-project LiDAR (background layers) —
+  `wms.geonorge.no/skwms1/*`, via `/wms/geonorge/*`
+- **Matrikkel** (cadastral, for property lookup) —
+  `testapi.norgeskart.no/v1/*`, via `/wms/testapi/*`
 
-```sh
-npm run rword --path.til.det.som.skal.bort
-```
+## Licence
 
-Disse verdiene kan så brukes i en komponent
-
-```js
-import { useTranslation } from 'react-i18next';
-
-const MinKomponent = () => {
-  const { t } = useTranslation();
-  return <>{t('path.til.det.du.vil.sette')}</>;
-};
-```
-
-## Nettleserkompatibilitet
-
-En gang i blandt, kjør følgende for å holde caniuse-db oppdatert
-
-```sh
-npx update-browserslist-db@latest
-```
+MIT — see [`LICENCE`](LICENCE). Upstream copyright by Statens Kartverk
+(The Norwegian Mapping Authority) is preserved as required. Web
+services from Kartverket and Riksantikvaren are subject to their own
+licences (mostly CC-BY 3.0 Norway) and the Norwegian Geodata law.
