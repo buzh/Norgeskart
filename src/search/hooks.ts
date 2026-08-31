@@ -4,7 +4,6 @@ import BaseEvent from 'ol/events/Event';
 import { Geometry } from 'ol/geom';
 import { useCallback, useEffect } from 'react';
 import { mapAtom } from '../map/atoms';
-import { handleCoverageClickIfHit } from '../map/backgroundLayer/coverageOverlay';
 import { hasVisibleLayerWithIdIn } from '../map/featureInfo/featureInfoService';
 import { CULTURAL_HERITAGE_LAYER_IDS } from '../map/layers/config/themeLayers/culturalHeritage';
 import { mapToolAtom } from '../map/overlay/atoms';
@@ -91,15 +90,6 @@ export const useMapClickSearch = () => {
           return;
         }
         const map = getDefaultStore().get(mapAtom);
-        if (
-          handleCoverageClickIfHit(
-            map,
-            e.pixel as [number, number],
-            e.coordinate as [number, number],
-          )
-        ) {
-          return;
-        }
         // If a kulturminner layer is visible, useFeatureInfoClick owns the
         // click result — it may open the compact popup and doesn't want the
         // coordinate InfoBox flashing in first. It will fall back to setting

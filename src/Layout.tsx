@@ -1,7 +1,6 @@
 import { Box, Flex } from '@kvib/react';
 import { useAtomValue } from 'jotai';
 import { BottomDrawToolSelector } from './draw/BottomDrawToolSelector';
-import { CoverageOverlapPopup } from './map/backgroundLayer/CoverageOverlapPopup';
 import { KulturminnerPopup } from './map/featureInfo/KulturminnerPopup';
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
 import { MapComponent } from './map/MapComponent';
@@ -97,9 +96,6 @@ export const Layout = () => {
       )}
       <ErrorBoundary fallback={undefined} name="KulturminnerPopup">
         <KulturminnerPopup />
-      </ErrorBoundary>
-      <ErrorBoundary fallback={undefined} name="CoverageOverlapPopup">
-        <CoverageOverlapPopup />
       </ErrorBoundary>
     </ErrorBoundary>
   );

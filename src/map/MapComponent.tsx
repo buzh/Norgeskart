@@ -8,7 +8,6 @@ import { useDrawSettings } from '../draw/drawControls/hooks/drawSettings.ts';
 import { ErrorBoundary } from '../shared/ErrorBoundary.tsx';
 import { getUrlParameter } from '../shared/utils/urlUtils.ts';
 import { mapAtom, projectionEffect } from './atoms.ts';
-import { coverageOverlayEffect } from './backgroundLayer/coverageOverlay.ts';
 import { trackPostitionAtomEffect } from './geolocation/atoms.ts';
 import { themeLayerEffect } from './layers/atoms.ts';
 import { backgroundLayerAtomEffect } from './layers/config/backgroundLayers/atoms.ts';
@@ -26,7 +25,6 @@ export const MapComponent = () => {
   useAtom(trackPostitionAtomEffect);
   useAtom(projectionEffect);
   useAtom(backgroundLayerAtomEffect);
-  useAtom(coverageOverlayEffect);
 
   useEffect(() => {
     if (mapRef.current) {

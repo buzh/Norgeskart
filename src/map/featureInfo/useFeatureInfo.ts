@@ -6,7 +6,6 @@ import { selectedResultAtom } from '../../search/atoms';
 import { ParsedCoordinate } from '../../shared/utils/coordinateParser';
 import { SearchResult } from '../../types/searchTypes';
 import { mapAtom } from '../atoms';
-import { handleCoverageClickIfHit } from '../backgroundLayer/coverageOverlay';
 import { CULTURAL_HERITAGE_LAYER_IDS } from '../layers/config/themeLayers/culturalHeritage';
 import { ProjectionIdentifier } from '../projections/types';
 import {
@@ -60,16 +59,6 @@ export const useFeatureInfoClick = () => {
       }
 
       if (!(e instanceof MapBrowserEvent)) {
-        return;
-      }
-
-      if (
-        handleCoverageClickIfHit(
-          map,
-          e.pixel as [number, number],
-          e.coordinate as [number, number],
-        )
-      ) {
         return;
       }
 
