@@ -320,6 +320,23 @@ export const TopBar = () => {
   };
   const heritageActive = activeThemeLayers.has('heritageSites');
 
+  const openInNorgeIBilder = () => {
+    const size = map.getSize();
+    if (!size) return;
+    const extent = map.getView().calculateExtent(size);
+    if (!extent) return;
+    const wkid = map
+      .getView()
+      .getProjection()
+      .getCode()
+      .replace(/^EPSG:/, '');
+    const url =
+      `https://norgeibilder.no/?wkid=${wkid}` +
+      `&xmin=${extent[0]}&ymin=${extent[1]}` +
+      `&xmax=${extent[2]}&ymax=${extent[3]}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const activateNational = () => {
     setBackgroundLayer('lidarHillshade');
     setLidarOpen(false);
@@ -524,6 +541,19 @@ export const TopBar = () => {
         tooltip={t('controller.lidarExtract.text')}
         active={currentMapTool === 'lidarExtract'}
         onClick={() => toggleTool('lidarExtract')}
+      />
+
+      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
+
+      {/* External hop to Kartverket's Norge i bilder viewer at the same
+          extent. The site's SPA reads xmin/ymin/xmax/ymax + wkid from
+          the query string (verified against their bundle) and defaults
+          wkid to 25833 — matches our default projection. */}
+      <LabelledToggleButton
+        icon="photo_camera"
+        label="Flyfoto ↗"
+        tooltip="Åpne Norge i bilder for dette utsnittet (ny fane)"
+        onClick={openInNorgeIBilder}
       />
 
       <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
