@@ -18,7 +18,6 @@ import { useDrawSettings } from '../../draw/drawControls/hooks/drawSettings';
 import { LidarExtractPanel } from '../../lidarExtract/LidarExtractPanel';
 import { MapThemes } from '../../settings/map/themes/MapThemes';
 import { useIsMobileScreen } from '../../shared/hooks';
-import { SettingsDrawer } from '../../sidePanel/SettingsDrawer';
 import { activeThemeLayersAtom } from '../layers/atoms';
 import { drawPanelCollapsedAtom, mapToolAtom } from './atoms';
 
@@ -138,14 +137,6 @@ const MapToolCardsBody = () => {
     return (
       <MapToolCard label={<MapLayersCardHeader />} onClose={onClose}>
         <MapThemes />
-      </MapToolCard>
-    );
-  }
-
-  if (currentMapTool === 'settings') {
-    return (
-      <MapToolCard label={t('info.settings.text')} onClose={onClose}>
-        <SettingsDrawer />
       </MapToolCard>
     );
   }

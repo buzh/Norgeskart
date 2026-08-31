@@ -6,7 +6,6 @@ import './i18n';
 import { Layout } from './Layout.tsx';
 import { LidarExtractViewer } from './lidarExtract/LidarExtractViewer.tsx';
 import { useMapSettings } from './map/mapHooks.ts';
-import { MapLegendDrawer } from './map/menu/drawers/MapLegendDrawer.tsx';
 import { MessageBox } from './messages/MessageBox.tsx';
 
 export const App = () => {
@@ -30,7 +29,6 @@ export const App = () => {
   return (
     <>
       <MessageBox />
-      <MapLegendDrawer />
       <LidarExtractViewer />
       <Debug />
       <Routes>

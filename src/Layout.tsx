@@ -18,14 +18,7 @@ import { TopBar } from './TopBar';
 // Values referenced by the mapToolAtom in map/overlay/atoms.ts and by the
 // tool-card renderer in map/overlay/MapToolCards.tsx. Kept in this file
 // so any TopBar / other module that toggles the atom uses the same type.
-export type MapTool =
-  | 'layers'
-  | 'draw'
-  | 'info'
-  | 'settings'
-  | 'measure'
-  | 'lidarExtract'
-  | null;
+export type MapTool = 'layers' | 'draw' | 'measure' | 'lidarExtract' | null;
 
 export const Layout = () => {
   const isMobile = useIsMobileScreen();
