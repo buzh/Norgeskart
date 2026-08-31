@@ -300,7 +300,7 @@ export const TopBar = () => {
             colorPalette="green"
             size="sm"
             leftIcon="radar"
-            rightIcon="expand_more"
+            rightIcon="arrow_drop_down"
             maxW="240px"
             overflow="hidden"
           >
