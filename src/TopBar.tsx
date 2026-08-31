@@ -2,6 +2,7 @@ import {
   Box,
   Flex,
   IconButton,
+  MaterialSymbol,
   Popover,
   PopoverArrow,
   PopoverBody,
@@ -35,7 +36,7 @@ const ToolButton = ({
   badge,
   onClick,
 }: {
-  icon: string;
+  icon: MaterialSymbol;
   label: string;
   active?: boolean;
   badge?: number;
@@ -140,7 +141,7 @@ export const TopBar = () => {
       <Popover positioning={{ placement: 'bottom-start', offset: { mainAxis: 8 } }}>
         <PopoverTrigger asChild>
           <IconButton
-            icon="terrain"
+            icon="map"
             variant="tertiary"
             aria-label={t('search.backgroundChooser.label')}
           />
