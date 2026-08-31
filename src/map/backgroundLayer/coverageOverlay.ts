@@ -45,16 +45,29 @@ export const hueForProject = (id: string): number => {
   return Math.abs(h) % 360;
 };
 
-// Outlines-only. Fill made the topo unreadable when many projects
-// overlap; the overlay is a discovery affordance, not a visualization
-// of "which parts have data" — the WMS hillshade itself does that.
-const styleFor = (id: string, active: boolean): Style => {
+// Outlines-only, drawn as two stacked strokes: a white halo underneath a
+// thicker colored line. The halo separates the coverage boundary from
+// hairline map features (roads, borders) that would otherwise blend
+// into the colored stroke on a busy topo tile.
+const styleFor = (id: string, active: boolean): Style[] => {
   const hue = hueForProject(id);
-  return new Style({
-    stroke: active
-      ? new Stroke({ color: 'rgba(230, 120, 40, 0.95)', width: 3 })
-      : new Stroke({ color: `hsla(${hue}, 75%, 40%, 0.9)`, width: 1.5 }),
-  });
+  return active
+    ? [
+        new Style({
+          stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.9)', width: 6 }),
+        }),
+        new Style({
+          stroke: new Stroke({ color: 'rgba(230, 120, 40, 1)', width: 4 }),
+        }),
+      ]
+    : [
+        new Style({
+          stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.85)', width: 5 }),
+        }),
+        new Style({
+          stroke: new Stroke({ color: `hsla(${hue}, 80%, 40%, 0.95)`, width: 3 }),
+        }),
+      ];
 };
 
 // Reprojects a WFS-native (EPSG:25833) feature into the map's current
