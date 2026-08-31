@@ -168,13 +168,27 @@ export const TopBar = () => {
     if (!size) return;
     const extent = map.getView().calculateExtent(size);
     if (!extent) return;
+    // Pad the fetch bbox around the viewport so nearby projects still
+    // surface at close zoom levels. A strict "intersects viewport"
+    // filter at zoom 16+ misses projects whose bbox is a few tens of
+    // metres outside the current screen — annoying because the user
+    // clearly intends "what's around here" not "what strictly overlaps
+    // this rectangle".
+    const cx = (extent[0] + extent[2]) / 2;
+    const cy = (extent[1] + extent[3]) / 2;
+    const hw = (extent[2] - extent[0]) / 2;
+    const hh = (extent[3] - extent[1]) / 2;
+    const pad = 3; // triple each side length
+    const padded: [number, number, number, number] = [
+      cx - hw * pad,
+      cy - hh * pad,
+      cx + hw * pad,
+      cy + hh * pad,
+    ];
     const projection = map.getView().getProjection().getCode();
     setInViewProjects(null);
     let cancelled = false;
-    fetchCoverageInBbox(
-      [extent[0], extent[1], extent[2], extent[3]],
-      projection,
-    )
+    fetchCoverageInBbox(padded, projection)
       .then((projects) => {
         if (!cancelled) setInViewProjects(projects.sort(sortProjects));
       })
@@ -332,7 +346,7 @@ export const TopBar = () => {
                 mx={1}
               />
               <Text fontSize="10px" color="gray.500" px={2}>
-                LiDAR-prosjekter i visningen
+                LiDAR-prosjekter i nærheten
               </Text>
               {inViewProjects === null && (
                 <Flex align="center" gap={2} p={2}>
