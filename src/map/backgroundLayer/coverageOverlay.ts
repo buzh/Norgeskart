@@ -4,7 +4,7 @@ import { Feature, Map } from 'ol';
 import { Geometry } from 'ol/geom';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import { Stroke, Style } from 'ol/style';
+import { Fill, Stroke, Style } from 'ol/style';
 import { currentProjectionAtom, mapAtom } from '../atoms';
 import { backgroundLayerAtom } from '../layers/config/backgroundLayers/atoms';
 import {
@@ -49,23 +49,32 @@ export const hueForProject = (id: string): number => {
 // thicker colored line. The halo separates the coverage boundary from
 // hairline map features (roads, borders) that would otherwise blend
 // into the colored stroke on a busy topo tile.
+//
+// A fully-transparent Fill is attached to make the polygon interior
+// hit-testable. Without it, forEachFeatureAtPixel would only register
+// clicks that land on the stroke pixels — clicking the middle of a
+// coverage area does nothing, which felt broken.
+const INTERIOR_FILL = new Fill({ color: 'rgba(0, 0, 0, 0)' });
+
 const styleFor = (id: string, active: boolean): Style[] => {
   const hue = hueForProject(id);
   return active
     ? [
         new Style({
-          stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.9)', width: 6 }),
+          stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.9)', width: 18 }),
         }),
         new Style({
-          stroke: new Stroke({ color: 'rgba(230, 120, 40, 1)', width: 4 }),
+          stroke: new Stroke({ color: 'rgba(230, 120, 40, 1)', width: 12 }),
+          fill: INTERIOR_FILL,
         }),
       ]
     : [
         new Style({
-          stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.85)', width: 5 }),
+          stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.85)', width: 15 }),
         }),
         new Style({
-          stroke: new Stroke({ color: `hsla(${hue}, 80%, 40%, 0.95)`, width: 3 }),
+          stroke: new Stroke({ color: `hsla(${hue}, 80%, 40%, 0.95)`, width: 9 }),
+          fill: INTERIOR_FILL,
         }),
       ];
 };
