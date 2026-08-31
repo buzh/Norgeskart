@@ -275,13 +275,10 @@ export const TopBar = () => {
 
   const isLidarProject = backgroundLayer === 'lidarProject';
   const isNationalMosaic = backgroundLayer === 'lidarHillshade';
+  const isLidarMode = isLidarProject || isNationalMosaic;
   const lidarChipLabel = isLidarProject && activeLidarProject
     ? activeLidarProject.projectName
-    : isNationalMosaic
-      ? 'Nasjonal mosaikk'
-      : 'Velg LiDAR';
-  const lidarChipVariant =
-    isLidarProject || isNationalMosaic ? 'secondary' : 'tertiary';
+    : 'Nasjonal mosaikk';
 
   return (
     <Flex
@@ -324,8 +321,7 @@ export const TopBar = () => {
         )}
       </Box>
 
-      {/* Base map: Standard topo. LiDAR variants (Nasjonal + per-project)
-          live in the pulldown to the right. */}
+      {/* Base map: Standard topo. */}
       <Tooltip content="Standardkart" positioning={{ placement: 'bottom' }}>
         <IconButton
           icon="map"
@@ -335,36 +331,54 @@ export const TopBar = () => {
         />
       </Tooltip>
 
-      {/* LiDAR pulldown. Shows current selection; opens a menu of the
-          national mosaic + every LiDAR project intersecting the current
-          viewport. */}
-      <Popover
-        open={lidarOpen}
-        onOpenChange={(e) => setLidarOpen(e.open)}
-        positioning={{ placement: 'bottom-start', offset: { mainAxis: 8 } }}
+      {/* LiDAR mode toggle. Activating it defaults to the national mosaic;
+          the pulldown next to it (only rendered when LiDAR is active)
+          lets the user swap to a specific per-project dataset. */}
+      <Tooltip
+        content="LiDAR (nasjonal mosaikk / per-prosjekt)"
+        positioning={{ placement: 'bottom' }}
       >
-        <PopoverTrigger asChild>
-          <Button
-            variant={lidarChipVariant}
-            colorPalette="green"
-            size="sm"
-            leftIcon="radar"
-            rightIcon="arrow_drop_down"
-            maxW="240px"
-            overflow="hidden"
-          >
-            <Text
-              fontSize="xs"
-              lineHeight="short"
-              whiteSpace="nowrap"
-              textOverflow="ellipsis"
+        <IconButton
+          icon="landscape"
+          aria-label="LiDAR"
+          variant={isLidarMode ? 'primary' : 'tertiary'}
+          onClick={() => {
+            if (!isLidarMode) setBackgroundLayer('lidarHillshade');
+          }}
+        />
+      </Tooltip>
+
+      {/* LiDAR pulldown — only surfaces when LiDAR mode is active. Shows
+          current selection and lets the user swap between the national
+          mosaic and per-project datasets that actually have coverage at
+          the current point. */}
+      {isLidarMode && (
+        <Popover
+          open={lidarOpen}
+          onOpenChange={(e) => setLidarOpen(e.open)}
+          positioning={{ placement: 'bottom-start', offset: { mainAxis: 8 } }}
+        >
+          <PopoverTrigger asChild>
+            <Button
+              variant="secondary"
+              colorPalette="green"
+              size="sm"
+              rightIcon="arrow_drop_down"
+              maxW="240px"
               overflow="hidden"
             >
-              {lidarChipLabel}
-            </Text>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent width="280px" p={0} borderRadius="lg">
+              <Text
+                fontSize="xs"
+                lineHeight="short"
+                whiteSpace="nowrap"
+                textOverflow="ellipsis"
+                overflow="hidden"
+              >
+                {lidarChipLabel}
+              </Text>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent width="280px" p={0} borderRadius="lg">
           <PopoverArrow />
           <PopoverBody p={2}>
             <Stack gap={1}>
@@ -423,8 +437,9 @@ export const TopBar = () => {
               })}
             </Stack>
           </PopoverBody>
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
+      )}
 
       {/* Featured overlay: kulturminner (Lokaliteter og enkeltminner).
           Fast one-click toggle for the layer the user opens most often;
