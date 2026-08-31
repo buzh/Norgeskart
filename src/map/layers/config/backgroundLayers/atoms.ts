@@ -22,9 +22,21 @@ import {
 } from './types';
 import {
   clearBackgroundLayer,
+  getLayerFromConfig,
   getWMSLayer,
   getWMTSLayer,
 } from './utils';
+
+// Kartverket's LiDAR WMS layers return transparent PNGs outside their
+// coverage areas (both wms.hoyde-dtm-nhm-topobathy-25833 and per-project
+// wms.hoyde-dtm-prosjekt behave this way). Rendering them on top of the
+// topo WMTS layer means the topo shines through the transparent tiles,
+// so the user still has geographic context outside the LiDAR footprint
+// instead of an empty grey canvas.
+const NEEDS_TOPO_BASE = new Set<BackgroundLayerName>([
+  'lidarProject',
+  'lidarHillshade',
+]);
 
 const emptyBackgroundLayer: EmptyBackgroundLayer = {
   type: 'Empty',
@@ -94,28 +106,36 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
     try {
       const store = getDefaultStore();
       const map = store.get(mapAtom);
+      const projection = map.getView().getProjection().getCode();
 
-      let layer: TileLayer | null = null;
-      switch (layerConfig.type) {
-        case 'WMTS':
-          layer = await getWMTSLayer(
-            layerConfig,
-            map.getView().getProjection().getCode(),
-          );
-          break;
-        case 'WMS':
-          layer = getWMSLayer(layerConfig);
-          break;
-      }
+      // Build the topo base in parallel with the top layer when the
+      // requested layer needs a fallback underneath — cheaper than doing
+      // them sequentially and keeps the swap atomic (both ready before
+      // clearBackgroundLayer runs).
+      const baseTopoConfig = NEEDS_TOPO_BASE.has(layerName)
+        ? allConfiguredBackgroundLayers.find((l) => l.layerName === 'topo')
+        : undefined;
 
-      if (layer) {
-        clearBackgroundLayer();
-        map.addLayer(layer);
-        setUrlParameter('backgroundLayer', layerName);
+      const [baseLayer, topLayer] = await Promise.all([
+        baseTopoConfig
+          ? getLayerFromConfig(baseTopoConfig, projection)
+          : Promise.resolve(null),
+        layerConfig.type === 'WMTS'
+          ? getWMTSLayer(layerConfig, projection)
+          : layerConfig.type === 'WMS'
+            ? Promise.resolve(getWMSLayer(layerConfig))
+            : Promise.resolve<TileLayer | null>(null),
+      ]);
 
-        if (layerConfig.moveToExtent) {
-          map.getView().fit(layerConfig.moveToExtent, { duration: 200 });
-        }
+      if (!topLayer) return;
+
+      clearBackgroundLayer();
+      if (baseLayer) map.addLayer(baseLayer);
+      map.addLayer(topLayer);
+      setUrlParameter('backgroundLayer', layerName);
+
+      if (layerConfig.moveToExtent) {
+        map.getView().fit(layerConfig.moveToExtent, { duration: 200 });
       }
     } catch (error) {
       console.error(

@@ -31,21 +31,23 @@ export const coveragePickerAtom = atom<CoveragePickerState | null>(null);
 // Density → hue-fixed green ramp: higher pt/m² = darker + more saturated,
 // so at a glance the visually heaviest polygons are the highest-quality
 // captures. Alpha stays low so the underlying topo map remains readable.
+// The overlay is a browse-and-pick tool, not a persistent visualization.
+// Kept faint so the underlying topo remains readable while the user is
+// deciding; activateCoverageProject dismisses the overlay on selection
+// so the chosen dataset shows unobstructed.
 const styleFor = (density: number | null, active: boolean): Style => {
   const clamped = Math.min(density ?? 0, 20);
   const lightness = 55 - clamped * 1.5; // 55% → 25%
-  const fillAlpha = active ? 0.6 : 0.45;
+  const fillAlpha = active ? 0.3 : 0.15;
   const fillColor =
     density == null || density === 0
       ? `hsla(0, 0%, 55%, ${fillAlpha})`
       : `hsla(150, 70%, ${lightness}%, ${fillAlpha})`;
   return new Style({
     fill: new Fill({ color: fillColor }),
-    // Match the fill hue so the outline reads as part of the polygon
-    // rather than an unrelated black artifact on the map.
     stroke: active
       ? new Stroke({ color: 'rgba(230, 120, 40, 0.95)', width: 3 })
-      : new Stroke({ color: `hsla(150, 55%, 25%, 0.55)`, width: 1 }),
+      : new Stroke({ color: `hsla(150, 55%, 30%, 0.45)`, width: 1 }),
   });
 };
 
@@ -147,7 +149,9 @@ export const coverageOverlayEffect = atomEffect((get) => {
 
 // Activates a project as the WMS background source. Exposed so the popup
 // component can wire its row-click handler here without duplicating the
-// LidarProject-shape construction.
+// LidarProject-shape construction. Also dismisses the coverage overlay
+// (which in turn clears the picker popup via coverageOverlayEffect) so
+// the newly-selected dataset shows without polygons on top of it.
 export const activateCoverageProject = (p: CoverageProject) => {
   const active: ActiveLidarProject = {
     id: p.id,
@@ -158,6 +162,7 @@ export const activateCoverageProject = (p: CoverageProject) => {
   const store = getDefaultStore();
   store.set(activeLidarProjectAtom, active);
   store.set(backgroundLayerAtom, 'lidarProject');
+  store.set(showCoverageOverlayAtom, false);
 };
 
 // Called from other map-click handlers (feature info, search) to decide
