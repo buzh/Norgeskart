@@ -288,6 +288,64 @@
     "length": "Length",
     "area": "Area"
   },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "roleAdmin": "Administrator",
+    "dialog": {
+      "title": "Sign in",
+      "subtitle": "Use one of these providers to sign in and save your own finds.",
+      "loading": "Loading sign-in options…",
+      "noProviders": "No sign-in providers are configured yet. Contact an administrator.",
+      "providersError": "Failed to load sign-in options.",
+      "signInWith": "Continue with {{provider}}"
+    }
+  },
+  "finds": {
+    "byOwner": "by {{name}}",
+    "visibility": {
+      "private": "Private",
+      "limited": "Limited",
+      "public": "Public",
+      "limitedHint": "Limited sharing arrives when user groups do. Until then it behaves as private.",
+      "cycleHint": "Click to change visibility"
+    },
+    "actions": {
+      "zoom": "Zoom to",
+      "delete": "Delete"
+    },
+    "mineFunn": {
+      "tabHeading": "My finds",
+      "loading": "Loading finds…",
+      "empty": "You haven't saved any finds yet. Use \"New object\" to get started.",
+      "signInPrompt": "Sign in to see your finds.",
+      "filter": {
+        "mine": "Mine",
+        "all": "All (admin)"
+      }
+    },
+    "newFind": {
+      "tabHeading": "New object",
+      "instructions": "Draw on the map using the tools below. Give the object a title and choose who can see it.",
+      "signInPrompt": "Sign in to save finds.",
+      "form": {
+        "title": "Title",
+        "titlePlaceholder": "Short name for the find",
+        "description": "Description",
+        "descriptionPlaceholder": "Notes, observations, references…",
+        "visibility": "Visibility"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "save": "Save find",
+        "saving": "Saving…"
+      },
+      "errors": {
+        "noGeometry": "Draw something on the map before saving.",
+        "saveFailed": "Could not save the find. Try again."
+      }
+    }
+  },
   "helpPage": {
     "header": {
       "link": "Back to map"

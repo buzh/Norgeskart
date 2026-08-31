@@ -16,6 +16,11 @@ window.__NK_CONFIG__ = {
   // Public service that works directly from the browser.
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
 
+  // Annotations backend (PocketBase). Same-origin path proxied by Caddy
+  // to the `pocketbase` compose service. OAuth providers (Google, GitHub,
+  // …) are configured in the PB admin UI at `${pocketbaseUrl}/_/`.
+  pocketbaseUrl: '/pb',
+
   layerProviderParameters: {
     kartverketCache: { baseUrl: 'https://cache.kartverket.no' },
     // Fronted by the wmscache sidecar via Caddy. Change only if you want to

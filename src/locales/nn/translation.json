@@ -293,6 +293,64 @@
     "length": "Lengd",
     "area": "Areal"
   },
+  "auth": {
+    "signIn": "Logg inn",
+    "signOut": "Logg ut",
+    "roleAdmin": "Administrator",
+    "dialog": {
+      "title": "Logg inn",
+      "subtitle": "Bruk ei av desse tenestene for å logge inn og lagre eigne funn.",
+      "loading": "Hentar innloggingsval…",
+      "noProviders": "Ingen innloggingstenester er sette opp enno. Kontakt ein administrator.",
+      "providersError": "Klarte ikkje å hente innloggingsval.",
+      "signInWith": "Hald fram med {{provider}}"
+    }
+  },
+  "finds": {
+    "byOwner": "av {{name}}",
+    "visibility": {
+      "private": "Privat",
+      "limited": "Avgrensa",
+      "public": "Offentleg",
+      "limitedHint": "Avgrensa deling kjem når brukargrupper er på plass. Fram til då oppfører den seg som privat.",
+      "cycleHint": "Klikk for å byte synlegheit"
+    },
+    "actions": {
+      "zoom": "Zoom til",
+      "delete": "Slett"
+    },
+    "mineFunn": {
+      "tabHeading": "Mine funn",
+      "loading": "Hentar funn…",
+      "empty": "Du har ikkje lagra nokre funn enno. Bruk «Nytt objekt» for å kome i gang.",
+      "signInPrompt": "Logg inn for å sjå dine funn.",
+      "filter": {
+        "mine": "Mine",
+        "all": "Alle (admin)"
+      }
+    },
+    "newFind": {
+      "tabHeading": "Nytt objekt",
+      "instructions": "Teikn på kartet – bruk verktøya under. Gjev objektet ein tittel og vel kven som skal sjå det.",
+      "signInPrompt": "Logg inn for å lagre funn.",
+      "form": {
+        "title": "Tittel",
+        "titlePlaceholder": "Kort namn på funnet",
+        "description": "Skildring",
+        "descriptionPlaceholder": "Notat, observasjonar, referansar…",
+        "visibility": "Synlegheit"
+      },
+      "actions": {
+        "cancel": "Avbryt",
+        "save": "Lagre funn",
+        "saving": "Lagrar…"
+      },
+      "errors": {
+        "noGeometry": "Teikn noko på kartet før du lagrar.",
+        "saveFailed": "Kunne ikkje lagre funnet. Prøv igjen."
+      }
+    }
+  },
   "helpPage": {
     "header": {
       "link": "Tilbake"

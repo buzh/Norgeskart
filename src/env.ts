@@ -11,6 +11,9 @@ type EnvName = 'local' | 'dev' | 'test' | 'prod';
 type Env = {
   apiUrl: string;
   geoNorgeApiBaseUrl: string;
+  // Same-origin path proxied by Caddy → pocketbase container. Overridable
+  // for local `vite dev` where the SPA runs on :5173 and PB on :8090.
+  pocketbaseUrl: string;
   layerProviderParameters: layerProviderParameters;
   envName: EnvName;
 };
@@ -18,6 +21,7 @@ type Env = {
 const LOCAL_ENV: Env = {
   apiUrl: 'https://testapi.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
+  pocketbaseUrl: '/pb',
   layerProviderParameters: {
     kartverketCache: {
       baseUrl: 'https://cache.kartverket.no',
@@ -32,6 +36,7 @@ const LOCAL_ENV: Env = {
 const DEV_ENV: Env = {
   apiUrl: 'https://testapi.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
+  pocketbaseUrl: '/pb',
   layerProviderParameters: {
     kartverketCache: {
       baseUrl: 'https://cache.kartverket.no',
@@ -46,6 +51,7 @@ const DEV_ENV: Env = {
 const PROD_ENV: Env = {
   apiUrl: 'https://api.norgeskart.no',
   geoNorgeApiBaseUrl: 'https://ws.geonorge.no',
+  pocketbaseUrl: '/pb',
   layerProviderParameters: {
     kartverketCache: {
       baseUrl: 'https://cache.kartverket.no',

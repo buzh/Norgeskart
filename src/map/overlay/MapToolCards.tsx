@@ -15,6 +15,8 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DrawControls } from '../../draw/drawControls/DrawControls';
 import { useDrawSettings } from '../../draw/drawControls/hooks/drawSettings';
+import { MyFindsPanel } from '../../finds/MyFindsPanel';
+import { NewFindPanel } from '../../finds/NewFindPanel';
 import { LidarExtractPanel } from '../../lidarExtract/LidarExtractPanel';
 import { MapThemes } from '../../settings/map/themes/MapThemes';
 import { useIsMobileScreen } from '../../shared/hooks';
@@ -145,6 +147,22 @@ const MapToolCardsBody = () => {
     return (
       <MapToolCard label={t('lidarExtract.tabHeading')} onClose={onClose}>
         <LidarExtractPanel />
+      </MapToolCard>
+    );
+  }
+
+  if (currentMapTool === 'myFinds') {
+    return (
+      <MapToolCard label={t('finds.mineFunn.tabHeading')} onClose={onClose}>
+        <MyFindsPanel />
+      </MapToolCard>
+    );
+  }
+
+  if (currentMapTool === 'newFind') {
+    return (
+      <MapToolCard label={t('finds.newFind.tabHeading')} onClose={onClose}>
+        <NewFindPanel />
       </MapToolCard>
     );
   }

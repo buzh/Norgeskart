@@ -21,6 +21,8 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { transformExtent } from 'ol/proj';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AuthButton } from './auth/AuthButton';
+import { isSignedInAtom } from './auth/atoms';
 import { mapAtom } from './map/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
 import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
@@ -228,6 +230,7 @@ export const TopBar = () => {
   const setDisplaySearchResults = useSetAtom(displaySearchResultsAtom);
   const resetSearchResults = useResetSearchResults();
   const [currentMapTool, setCurrentMapTool] = useAtom(mapToolAtom);
+  const isSignedIn = useAtomValue(isSignedInAtom);
   const [activeThemeLayers, setActiveThemeLayers] = useAtom(
     activeThemeLayersAtom,
   );
@@ -567,7 +570,29 @@ export const TopBar = () => {
 
       <MeasurePopover />
 
+      {/* Signed-in-only annotation controls. Hidden entirely for guests
+          rather than shown-disabled — the AuthButton at the right is
+          the discoverable path in. */}
+      {isSignedIn && (
+        <>
+          <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
+          <ToolButton
+            icon="bookmark"
+            label={t('finds.mineFunn.tabHeading')}
+            active={currentMapTool === 'myFinds'}
+            onClick={() => toggleTool('myFinds')}
+          />
+          <ToolButton
+            icon="add_location_alt"
+            label={t('finds.newFind.tabHeading')}
+            active={currentMapTool === 'newFind'}
+            onClick={() => toggleTool('newFind')}
+          />
+        </>
+      )}
+
       <Box flex="1" minW={1} />
+      <AuthButton />
     </Flex>
   );
 };

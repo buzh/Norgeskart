@@ -51,6 +51,18 @@ route {
                 rewrite * /v1{http.request.uri.path}
                 reverse_proxy http://wmscache
         }
+
+        # PocketBase — annotations backend (auth + finds collection).
+        # Kept same-origin so browser auth cookies "just work" and there's
+        # no CORS to configure. The full OAuth2 redirect flow bounces
+        # through /pb/api/oauth2-redirect on the SPA origin. Realtime
+        # (Server-Sent Events) is a plain long-lived GET, no upgrade
+        # needed — Caddy proxies it as-is.
+        handle_path /pb/* {
+                reverse_proxy http://pocketbase:8090 {
+                        flush_interval -1
+                }
+        }
 }
 
 root * /var/www

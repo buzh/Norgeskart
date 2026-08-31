@@ -28,6 +28,7 @@
     "jotai-effect": "^2.4.1",
     "maplibre-gl": "^6.4.1",
     "ol": "^10.10.0",
+    "pocketbase": "^0.21.5",
     "proj4": "^2.21.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

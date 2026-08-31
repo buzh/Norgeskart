@@ -1,6 +1,9 @@
 import { Box, Flex } from '@kvib/react';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
+import { AuthDialog } from './auth/AuthDialog';
+import { pbAuthSyncEffect } from './auth/atoms';
 import { BottomDrawToolSelector } from './draw/BottomDrawToolSelector';
+import { useFindsLayer } from './finds/findsLayer';
 import { KulturminnerPopup } from './map/featureInfo/KulturminnerPopup';
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
 import { MapComponent } from './map/MapComponent';
@@ -17,7 +20,14 @@ import { TopBar } from './TopBar';
 // Values referenced by the mapToolAtom in map/overlay/atoms.ts and by the
 // tool-card renderer in map/overlay/MapToolCards.tsx. Kept in this file
 // so any TopBar / other module that toggles the atom uses the same type.
-export type MapTool = 'layers' | 'draw' | 'measure' | 'lidarExtract' | null;
+export type MapTool =
+  | 'layers'
+  | 'draw'
+  | 'measure'
+  | 'lidarExtract'
+  | 'myFinds'
+  | 'newFind'
+  | null;
 
 export const Layout = () => {
   const isMobile = useIsMobileScreen();
@@ -26,6 +36,11 @@ export const Layout = () => {
   useFeatureInfoClick();
   useSearchEffects();
   useMapClickSearch();
+  // Mounts the finds VectorLayer and hydrates it from PocketBase. Cheap
+  // no-op when signed out (PB rules return an empty list for guests).
+  useFindsLayer();
+  // Subscribe to PB authStore changes → currentUserAtom.
+  useAtom(pbAuthSyncEffect);
 
   return (
     <ErrorBoundary fallback={undefined}>
@@ -96,6 +111,9 @@ export const Layout = () => {
       )}
       <ErrorBoundary fallback={undefined} name="KulturminnerPopup">
         <KulturminnerPopup />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={undefined} name="AuthDialog">
+        <AuthDialog />
       </ErrorBoundary>
     </ErrorBoundary>
   );

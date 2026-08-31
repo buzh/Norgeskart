@@ -12,6 +12,20 @@ services:
       # - ./Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
       - wmscache
+      - pocketbase
+
+  # Annotations backend. Serves the SPA's /pb/* API (proxied by Caddy)
+  # for user auth (OIDC via Google/GitHub/etc.) and the `finds`
+  # collection ("Mine funn"). SQLite-backed; state lives on the
+  # pbdata volume, schema is versioned in ./pocketbase/pb_migrations.
+  # Only reachable from norgeskart over the compose network — Caddy
+  # is the only public entrypoint.
+  pocketbase:
+    build: ./pocketbase
+    restart: unless-stopped
+    volumes:
+      - pbdata:/pb_data
+      - ./pocketbase/pb_migrations:/pb_migrations:ro
 
   # Caching reverse proxy for the Kartverket LiDAR hillshade WMS. Caddy
   # forwards /wms/hoyde-dtm to this service, which caches successful
@@ -32,3 +46,4 @@ services:
 
 volumes:
   wmscache:
+  pbdata:

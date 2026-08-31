@@ -48,6 +48,14 @@ Ports: Caddy inside the container listens on `:3000`; docker-compose maps host
 - **norgeskart** — multi-stage Dockerfile: `node:24-alpine` builds the SPA,
   then `caddy:2.10.0-alpine` serves `/var/www` with the baked-in `Caddyfile`.
   `config.js` is bind-mounted at runtime.
+- **pocketbase** — annotations backend for the "Mine funn" feature. Small
+  in-repo Dockerfile that pins a PocketBase release from GitHub. Serves the
+  SPA's `/pb/*` API (auth, `finds` collection, realtime). SQLite state on
+  the `pbdata` volume; schema versioned in `pocketbase/pb_migrations/`.
+  First-run setup: hit `http://<host>:3030/pb/_/` to create the admin, then
+  enable OAuth providers under Settings → Auth providers (Google, GitHub,
+  Microsoft, generic OIDC…). To grant admin app-role (distinct from PB
+  admin), edit the users record and set `role = "admin"`.
 - **wmscache** — `nginx:1.27-alpine` sidecar. Reverse-proxies + caches
   every external WMS the SPA uses. Currently fronts three upstreams:
   - `wms.geonorge.no/skwms1/*` — Kartverket theme + LiDAR WMS.
@@ -201,6 +209,44 @@ First call: `MISS`. Repeat: `HIT`. Inspect on-disk size:
    category or layer to a format the parser can handle
    (`application/vnd.ogc.gml` works for MapServer via
    `parseXmlFeatureInfo`).
+
+## Annotations (Mine funn)
+
+Users can sign in via OIDC and save "finds" — geometry + title + description
+with a visibility flag (private / limited / public). The feature is split
+across two MapTool panels (`myFinds` and `newFind`) plus a dedicated
+`findsLayer` VectorLayer added to the map.
+
+Key files:
+
+- `src/api/pocketbase.ts` — singleton PB client (`pocketbaseUrl` from env,
+  defaults `/pb`).
+- `src/api/finds.ts` — CRUD + realtime for the `finds` collection.
+- `src/auth/` — atoms (currentUserAtom, roleAtom, isAdminAtom), hooks
+  (useOAuthProviders, useSignIn, useSignOut), AuthButton + AuthDialog.
+- `src/finds/` — MyFindsPanel, NewFindPanel, findsLayer (adds a
+  VectorLayer with id `findsLayer` to the map, hydrates from PB, keeps
+  it in sync via PB realtime).
+- `pocketbase/pb_migrations/1700000000_finds_and_roles.js` — schema.
+
+Data model (finds collection):
+
+- `owner` (relation → users, cascade delete)
+- `title` (text, required)
+- `description` (text, optional)
+- `visibility` ('private' | 'limited' | 'public')
+- `geometry` (json — always a GeoJSON FeatureCollection in EPSG:4326)
+- `bbox` (json — [minLon, minLat, maxLon, maxLat] in EPSG:4326)
+
+Rules (server-enforced by PB):
+
+- read: `visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin"`
+- create: signed in, must own the record
+- update/delete: owner or admin
+
+Adding an OAuth provider: PB admin UI → Settings → Auth providers. No
+code change needed — the SPA's AuthDialog lists whatever the admin has
+enabled via `pb.collection('users').listAuthMethods()`.
 
 ## Adding another background layer
 
