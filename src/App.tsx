@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { Debug } from './debug/Debug.tsx';
 import { HelpPage } from './help/HelpPage.tsx';
 import './i18n';
 import { Layout } from './Layout.tsx';
@@ -30,7 +29,6 @@ export const App = () => {
     <>
       <MessageBox />
       <LidarExtractViewer />
-      <Debug />
       <Routes>
         <Route path="/" element={<Layout />} />
         <Route path="/hjelp" element={<HelpPage />} />

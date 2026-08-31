@@ -24,25 +24,6 @@ route {
                 frame-ancestors *;
         "
         header Permissions-Policy "geolocation=(self), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), accelerometer=(), camera=()"
-        
-        handle /geoportal* {
-                redir https://geonorge-nkg.atkv3-prod.kartverket.cloud/geoportal/?{query} permanent
-                redir https://geonorge-nkg.atkv3-prod.kartverket.cloud/geoportal/ permanent
-        }
-
-        handle /api/styles/* {
-                @options method OPTIONS
-                handle @options {
-                        header Access-Control-Allow-Origin "*"
-                        header Access-Control-Allow-Methods "GET, OPTIONS"
-                        header Access-Control-Allow-Headers "*"
-                        respond 204
-                }
-                reverse_proxy https://dnl.kartverket.no {
-                        header_up Host dnl.kartverket.no
-                        header_down Access-Control-Allow-Origin "*"
-                }
-        }
 
         # Proxies to wmscache. One handler per upstream host — the second
         # path segment picks the host, the rest is passed through to that
