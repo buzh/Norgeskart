@@ -11,6 +11,8 @@ import type { FeatureCollection } from 'geojson';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { createEmpty, extend } from 'ol/extent';
 import { GeoJSON } from 'ol/format';
+import { Circle as CircleGeom } from 'ol/geom';
+import { fromCircle } from 'ol/geom/Polygon';
 import { transformExtent } from 'ol/proj';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -32,6 +34,8 @@ import { mapToolAtom } from '../map/overlay/atoms';
 import { pb } from '../api/pocketbase';
 import { editingFindIdAtom } from './atoms';
 import {
+  FIND_ID_PROPERTY,
+  getFindsLayer,
   setFindHiddenOnLayer,
   upsertFindOnLayer,
 } from './findsLayer';
@@ -60,22 +64,40 @@ const serializeDrawLayer = (
   const features = layer?.getSource()?.getFeatures() ?? [];
   if (features.length === 0) return null;
 
+  // Circle is a valid OL geometry but NOT a GeoJSON one — writeFeatures
+  // throws on it, which used to lose the entire save silently. Convert to
+  // a 64-sided polygon before serializing; keeps a radius prop so the
+  // editor could reconstruct the circle later if we care to.
   const cloned = features.map((f) => {
     const clone = f.clone();
     clone.setId(f.getId());
     const props = getFeaturePropertiesForExport(f);
     if (props) clone.setProperties(props, true);
+    const geom = clone.getGeometry();
+    if (geom instanceof CircleGeom) {
+      clone.set('radius', geom.getRadius(), true);
+      clone.setGeometry(fromCircle(geom, 64));
+    }
     return clone;
   });
 
-  const geoJsonString = geoJson.writeFeatures(cloned, {
-    dataProjection: 'EPSG:4326',
-    featureProjection: mapProjection,
-  });
+  let geoJsonString: string;
+  try {
+    geoJsonString = geoJson.writeFeatures(cloned, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: mapProjection,
+    });
+  } catch (e) {
+    console.warn('[NewFindPanel] writeFeatures threw', e, cloned);
+    return null;
+  }
   const featureCollection = JSON.parse(geoJsonString) as FeatureCollection;
+  console.info(
+    `[NewFindPanel] serialized ${featureCollection.features.length} feature(s) in ${mapProjection} → EPSG:4326`,
+  );
 
   const extent = createEmpty();
-  for (const f of features) {
+  for (const f of cloned) {
     const g = f.getGeometry();
     if (!g) continue;
     extend(extent, g.getExtent());
@@ -239,9 +261,30 @@ export const NewFindPanel = () => {
       // Push to findsLayer immediately — realtime is best-effort, and
       // the record is what we actually want on-screen. Also un-hides the
       // edited record (upsert re-adds it with the normal style).
+      console.info('[NewFindPanel] saved record', {
+        id: saved.id,
+        geometryType: typeof saved.geometry,
+        bbox: saved.bbox,
+      });
       upsertFindOnLayer(saved);
+      // If the persisted find didn't produce any renderable features on
+      // findsLayer, keep the sketch visible so the user can see their
+      // drawing didn't just vanish. Console will tell us why.
+      const rendered =
+        getFindsLayer()
+          ?.getSource()
+          ?.getFeatures()
+          .filter((f) => f.get(FIND_ID_PROPERTY) === saved.id).length ?? 0;
       hydratedIdRef.current = null;
-      closeAndReset();
+      setEditingFindId(null);
+      closePanel(null);
+      if (rendered > 0) {
+        getDrawLayer()?.getSource()?.clear();
+      } else {
+        console.warn(
+          '[NewFindPanel] upsert produced 0 renderable features; keeping sketch visible',
+        );
+      }
     } catch (e) {
       console.warn('[NewFindPanel] save failed', e);
       setError(t('finds.newFind.errors.saveFailed'));
