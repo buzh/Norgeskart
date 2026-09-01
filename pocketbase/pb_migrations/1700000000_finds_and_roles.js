@@ -108,7 +108,8 @@ migrate(
           required: true,
           // GeoJSON blobs can grow — 5 MB per find is plenty for even
           // detailed hand-drawn polygons. Guardrail, not a target.
-          options: { maxSize: 5_000_000 },
+          // (no ES2021 numeric separators — Goja / PB jsvm rejects them)
+          options: { maxSize: 5000000 },
         }),
         new SchemaField({
           id: 'finds_bbox',
