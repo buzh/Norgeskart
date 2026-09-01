@@ -77,13 +77,10 @@ export const AuthButton = () => {
             overflow="hidden"
           >
             {user.avatar ? (
-              <Box
-                as="img"
+              <img
                 src={user.avatar}
                 alt={label}
-                w="100%"
-                h="100%"
-                objectFit="cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
               initials(label)

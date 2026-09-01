@@ -12,7 +12,7 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import { createEmpty, extend } from 'ol/extent';
 import { GeoJSON } from 'ol/format';
 import { transformExtent } from 'ol/proj';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, CSSProperties } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createFind, FindBbox, FindVisibility } from '../api/finds';
@@ -29,6 +29,19 @@ import { mapToolAtom } from '../map/overlay/atoms';
 // unsaved sketch from the plain "Draw" tool, opening Nytt objekt
 // shows it. That's a feature — it means "save this sketch as a
 // find" is one click.
+
+// Minimal styling for the native form controls below. Matches the
+// visual weight of KVIB's Input at size="sm" closely enough that
+// the form doesn't look bolted-on.
+const NATIVE_INPUT_STYLE: CSSProperties = {
+  width: '100%',
+  padding: '4px 8px',
+  fontSize: '14px',
+  border: '1px solid #CBD5E0',
+  borderRadius: '6px',
+  resize: 'vertical',
+  fontFamily: 'inherit',
+};
 
 const geoJson = new GeoJSON();
 
@@ -157,12 +170,12 @@ export const NewFindPanel = () => {
         <Text fontSize="xs" fontWeight="semibold">
           {t('finds.newFind.form.description')}
         </Text>
-        {/* Native textarea rather than a KVIB primitive — the surface
-            of @kvib/react's textarea export isn't visible from this
-            repo (no local node_modules) and the styling is simple
-            enough that raw HTML + a Box wrapper stays consistent. */}
-        <Box
-          as="textarea"
+        {/* Native <textarea>/<select> rather than KVIB primitives —
+            @kvib/react's polymorphic Box types don't accept form-element
+            props, and the visual polish here is minimal. Swap for
+            KVIB Textarea/NativeSelect once we've confirmed their
+            names against a real node_modules. */}
+        <textarea
           value={description}
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
             setDescription(e.target.value)
@@ -170,14 +183,7 @@ export const NewFindPanel = () => {
           placeholder={t('finds.newFind.form.descriptionPlaceholder')}
           rows={3}
           maxLength={20000}
-          w="100%"
-          px={2}
-          py={1}
-          fontSize="sm"
-          borderWidth="1px"
-          borderColor="gray.300"
-          borderRadius="md"
-          resize="vertical"
+          style={NATIVE_INPUT_STYLE}
         />
       </Stack>
 
@@ -185,25 +191,17 @@ export const NewFindPanel = () => {
         <Text fontSize="xs" fontWeight="semibold">
           {t('finds.newFind.form.visibility')}
         </Text>
-        <Box
-          as="select"
+        <select
           value={visibility}
           onChange={(e: ChangeEvent<HTMLSelectElement>) =>
             setVisibility(e.target.value as FindVisibility)
           }
-          w="100%"
-          px={2}
-          py={1}
-          fontSize="sm"
-          borderWidth="1px"
-          borderColor="gray.300"
-          borderRadius="md"
-          bg="white"
+          style={{ ...NATIVE_INPUT_STYLE, background: 'white' }}
         >
           <option value="private">{t('finds.visibility.private')}</option>
           <option value="limited">{t('finds.visibility.limited')}</option>
           <option value="public">{t('finds.visibility.public')}</option>
-        </Box>
+        </select>
         {visibility === 'limited' && (
           <Text fontSize="xs" color="gray.500">
             {t('finds.visibility.limitedHint')}
