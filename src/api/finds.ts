@@ -67,21 +67,41 @@ export const createFind = async (
   input: NewFindInput,
   ownerId: string,
 ): Promise<FindRecord> => {
-  return pb.collection(COLLECTION).create<FindRecord>({
-    owner: ownerId,
-    title: input.title,
-    description: input.description ?? '',
-    visibility: input.visibility,
-    geometry: input.geometry,
-    bbox: input.bbox,
-  });
+  return pb.collection(COLLECTION).create<FindRecord>(
+    {
+      owner: ownerId,
+      title: input.title,
+      description: input.description ?? '',
+      visibility: input.visibility,
+      geometry: input.geometry,
+      bbox: input.bbox,
+    },
+    { expand: 'owner' },
+  );
+};
+
+export type FindPatch = Partial<{
+  title: string;
+  description: string;
+  visibility: FindVisibility;
+  geometry: FeatureCollection;
+  bbox: FindBbox;
+}>;
+
+export const updateFind = async (
+  id: string,
+  patch: FindPatch,
+): Promise<FindRecord> => {
+  return pb
+    .collection(COLLECTION)
+    .update<FindRecord>(id, patch, { expand: 'owner' });
 };
 
 export const updateFindVisibility = async (
   id: string,
   visibility: FindVisibility,
 ): Promise<FindRecord> => {
-  return pb.collection(COLLECTION).update<FindRecord>(id, { visibility });
+  return updateFind(id, { visibility });
 };
 
 export const deleteFind = async (id: string): Promise<void> => {

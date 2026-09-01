@@ -317,6 +317,7 @@
     },
     "actions": {
       "zoom": "Zoom til",
+      "edit": "Rediger",
       "delete": "Slett"
     },
     "mineFunn": {
@@ -324,6 +325,7 @@
       "loading": "Henter funn…",
       "empty": "Du har ikke lagret noen funn enda. Bruk «Nytt objekt» for å komme i gang.",
       "signInPrompt": "Logg inn for å se dine funn.",
+      "confirmDelete": "Slette «{{title}}»? Handlingen kan ikke angres.",
       "filter": {
         "mine": "Mine",
         "all": "Alle (admin)"
@@ -331,7 +333,10 @@
     },
     "newFind": {
       "tabHeading": "Nytt objekt",
+      "tabHeadingEdit": "Rediger funn",
       "instructions": "Tegn på kartet – bruk verktøyene under. Gi objektet en tittel og velg hvem som skal se det.",
+      "instructionsEdit": "Endre tegning, tittel, beskrivelse eller synlighet – lagre for å oppdatere funnet.",
+      "confirmDiscardDraft": "Du har en usikret tegning i tegneverktøyet. Vil du forkaste den for å redigere dette funnet?",
       "signInPrompt": "Logg inn for å lagre funn.",
       "form": {
         "title": "Tittel",
@@ -343,11 +348,13 @@
       "actions": {
         "cancel": "Avbryt",
         "save": "Lagre funn",
+        "saveEdit": "Lagre endringer",
         "saving": "Lagrer…"
       },
       "errors": {
         "noGeometry": "Tegn noe på kartet før du lagrer.",
-        "saveFailed": "Kunne ikke lagre funnet. Prøv igjen."
+        "saveFailed": "Kunne ikke lagre funnet. Prøv igjen.",
+        "loadFailed": "Klarte ikke å hente funnet. Prøv igjen."
       }
     }
   },

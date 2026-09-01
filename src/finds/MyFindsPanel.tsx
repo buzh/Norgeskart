@@ -9,8 +9,9 @@ import {
   Stack,
   Text,
 } from '@kvib/react';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { transformExtent } from 'ol/proj';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -24,12 +25,12 @@ import {
 } from '../api/finds';
 import { currentUserAtom, isAdminAtom } from '../auth/atoms';
 import { mapAtom } from '../map/atoms';
+import { mapToolAtom } from '../map/overlay/atoms';
+import { editingFindIdAtom } from './atoms';
 
 const VISIBILITY_ORDER: FindVisibility[] = ['private', 'limited', 'public'];
 
 // Compact visibility swap — cycles through private → limited → public.
-// A proper dropdown is overkill for three states; the cycle is fast
-// and obvious. Colour codes: red / amber / green.
 const VisibilityToggle = ({
   value,
   onChange,
@@ -38,7 +39,8 @@ const VisibilityToggle = ({
   onChange: (v: FindVisibility) => void;
 }) => {
   const { t } = useTranslation();
-  const next = () => {
+  const next = (e: ReactMouseEvent) => {
+    e.stopPropagation();
     const idx = VISIBILITY_ORDER.indexOf(value);
     onChange(VISIBILITY_ORDER[(idx + 1) % VISIBILITY_ORDER.length]);
   };
@@ -61,23 +63,35 @@ const FindRow = ({
   find,
   isMine,
   onZoom,
+  onEdit,
   onVisibility,
   onDelete,
 }: {
   find: FindRecord;
   isMine: boolean;
   onZoom: (f: FindRecord) => void;
+  onEdit: (f: FindRecord) => void;
   onVisibility: (f: FindRecord, v: FindVisibility) => void;
   onDelete: (f: FindRecord) => void;
 }) => {
   const { t } = useTranslation();
+  // Any click on the row zooms — the icon buttons still stopPropagation
+  // for their own actions so the visibility badge / edit / delete don't
+  // also trigger a zoom.
+  const stop = (fn: () => void) => (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
   return (
     <Box
       borderWidth="1px"
       borderColor="gray.200"
       borderRadius="md"
       p={2}
-      _hover={{ bg: 'gray.50' }}
+      cursor="pointer"
+      _hover={{ bg: 'gray.50', borderColor: 'gray.300' }}
+      onClick={() => onZoom(find)}
+      title={t('finds.actions.zoom')}
     >
       <Flex justify="space-between" align="flex-start" gap={2}>
         <Box flex="1" minW={0}>
@@ -102,15 +116,19 @@ const FindRow = ({
               onChange={(v) => onVisibility(find, v)}
             />
           ) : (
-            <Badge colorPalette="gray">{t(`finds.visibility.${find.visibility}`)}</Badge>
+            <Badge colorPalette="gray">
+              {t(`finds.visibility.${find.visibility}`)}
+            </Badge>
           )}
-          <IconButton
-            icon="my_location"
-            size="xs"
-            variant="ghost"
-            aria-label={t('finds.actions.zoom')}
-            onClick={() => onZoom(find)}
-          />
+          {isMine && (
+            <IconButton
+              icon="edit"
+              size="xs"
+              variant="ghost"
+              aria-label={t('finds.actions.edit')}
+              onClick={stop(() => onEdit(find))}
+            />
+          )}
           {isMine && (
             <IconButton
               icon="delete"
@@ -118,7 +136,7 @@ const FindRow = ({
               variant="ghost"
               colorPalette="red"
               aria-label={t('finds.actions.delete')}
-              onClick={() => onDelete(find)}
+              onClick={stop(() => onDelete(find))}
             />
           )}
         </HStack>
@@ -132,6 +150,8 @@ export const MyFindsPanel = () => {
   const user = useAtomValue(currentUserAtom);
   const isAdmin = useAtomValue(isAdminAtom);
   const map = useAtomValue(mapAtom);
+  const setMapTool = useSetAtom(mapToolAtom);
+  const setEditingFindId = useSetAtom(editingFindIdAtom);
 
   const [items, setItems] = useState<FindRecord[] | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -151,8 +171,6 @@ export const MyFindsPanel = () => {
 
   useEffect(() => {
     load();
-    // Keep the list in sync with realtime edits so a sibling tab's
-    // save shows up here without a manual refresh.
     const unsub = subscribeFinds(() => load());
     return unsub;
   }, [load]);
@@ -161,9 +179,19 @@ export const MyFindsPanel = () => {
     (f: FindRecord) => {
       const projection = map.getView().getProjection().getCode();
       const extent = transformExtent(f.bbox, 'EPSG:4326', projection);
-      map.getView().fit(extent, { padding: [80, 80, 80, 80], maxZoom: 18, duration: 400 });
+      map
+        .getView()
+        .fit(extent, { padding: [80, 80, 80, 80], maxZoom: 18, duration: 400 });
     },
     [map],
+  );
+
+  const editIt = useCallback(
+    (f: FindRecord) => {
+      setEditingFindId(f.id);
+      setMapTool('newFind');
+    },
+    [setEditingFindId, setMapTool],
   );
 
   const changeVisibility = useCallback(
@@ -177,17 +205,20 @@ export const MyFindsPanel = () => {
     [],
   );
 
-  const remove = useCallback(async (f: FindRecord) => {
-    // Deliberately no confirm dialog for the MVP — a delete undo is
-    // more user-friendly and we can add it once the delete rate
-    // suggests it's needed. Refactor point: swap this for the KVIB
-    // AlertDialog if we hear complaints.
-    try {
-      await deleteFind(f.id);
-    } catch (e) {
-      console.warn('[MyFindsPanel] delete failed', e);
-    }
-  }, []);
+  const remove = useCallback(
+    async (f: FindRecord) => {
+      const ok = window.confirm(
+        t('finds.mineFunn.confirmDelete', { title: f.title }),
+      );
+      if (!ok) return;
+      try {
+        await deleteFind(f.id);
+      } catch (e) {
+        console.warn('[MyFindsPanel] delete failed', e);
+      }
+    },
+    [t],
+  );
 
   if (!user) {
     return (
@@ -236,6 +267,7 @@ export const MyFindsPanel = () => {
           find={f}
           isMine={f.owner === user.id}
           onZoom={zoomTo}
+          onEdit={editIt}
           onVisibility={changeVisibility}
           onDelete={remove}
         />

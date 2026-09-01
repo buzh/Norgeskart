@@ -1,4 +1,4 @@
-import { useAtomValue } from 'jotai';
+import { getDefaultStore, useAtomValue } from 'jotai';
 import { Feature } from 'ol';
 import { GeoJSON } from 'ol/format';
 import VectorLayer from 'ol/layer/Vector';
@@ -19,20 +19,21 @@ import { mapAtom } from '../map/atoms';
 export const FIND_ID_PROPERTY = '__findId';
 export const FINDS_LAYER_ID = 'findsLayer';
 
+// Saturated orange with a real fill so shapes stand out against the LiDAR
+// hillshade (which is dark and low-contrast). Solid stroke; thick enough
+// to read at low zoom, thin enough not to overwhelm a fresh sketch.
 const findsStyle = new Style({
-  stroke: new Stroke({ color: '#8B4513', width: 2 }),
-  fill: new Fill({ color: 'rgba(139, 69, 19, 0.15)' }),
+  stroke: new Stroke({ color: '#D2691E', width: 3 }),
+  fill: new Fill({ color: 'rgba(210, 105, 30, 0.35)' }),
   image: new CircleStyle({
-    radius: 6,
-    fill: new Fill({ color: '#8B4513' }),
+    radius: 7,
+    fill: new Fill({ color: '#D2691E' }),
     stroke: new Stroke({ color: '#ffffff', width: 2 }),
   }),
 });
 
 const geoJson = new GeoJSON();
 
-// Turn one PB `finds` record into OL features in the map projection.
-// The stored geometry is a FeatureCollection in EPSG:4326.
 const hydrateFeatures = (
   rec: FindRecord,
   targetProjection: string,
@@ -48,8 +49,13 @@ const hydrateFeatures = (
   return features;
 };
 
-// Replace every feature belonging to `recId` in the source with the
-// hydrated features from `rec`. Used for create (recId new) + update.
+const removeByFindId = (source: VectorSource, findId: string) => {
+  const doomed = source
+    .getFeatures()
+    .filter((f) => f.get(FIND_ID_PROPERTY) === findId);
+  for (const f of doomed) source.removeFeature(f);
+};
+
 const upsert = (
   source: VectorSource,
   rec: FindRecord,
@@ -59,11 +65,46 @@ const upsert = (
   source.addFeatures(hydrateFeatures(rec, targetProjection));
 };
 
-const removeByFindId = (source: VectorSource, findId: string) => {
-  const doomed = source
-    .getFeatures()
-    .filter((f) => f.get(FIND_ID_PROPERTY) === findId);
-  for (const f of doomed) source.removeFeature(f);
+// Module-level access to the layer/source. Matches the pattern used by
+// getDrawLayer — lets non-hook callers (NewFindPanel, MyFindsPanel) push
+// changes without wiring an atom through jotai.
+export const getFindsLayer = (): VectorLayer | null => {
+  const map = getDefaultStore().get(mapAtom);
+  const layer = map
+    .getLayers()
+    .getArray()
+    .find((l) => l.get('id') === FINDS_LAYER_ID);
+  return (layer as VectorLayer | undefined) ?? null;
+};
+
+// Push a record onto the layer immediately after createFind/updateFind —
+// don't wait for the realtime subscription (SSE can lag, drop, or fail
+// silently through a proxy, and we already have the record in hand).
+export const upsertFindOnLayer = (rec: FindRecord) => {
+  const layer = getFindsLayer();
+  const source = layer?.getSource();
+  if (!source) return;
+  const map = getDefaultStore().get(mapAtom);
+  const projection = map.getView().getProjection().getCode();
+  upsert(source, rec, projection);
+};
+
+export const removeFindFromLayer = (id: string) => {
+  const source = getFindsLayer()?.getSource();
+  if (!source) return;
+  removeByFindId(source, id);
+};
+
+// Temporarily hide a find while its owner edits it — the draft lives in
+// the draw layer during that window and we don't want the persisted copy
+// showing through underneath. Callers must restore on save/cancel.
+export const setFindHiddenOnLayer = (id: string, hidden: boolean) => {
+  const source = getFindsLayer()?.getSource();
+  if (!source) return;
+  for (const f of source.getFeatures()) {
+    if (f.get(FIND_ID_PROPERTY) !== id) continue;
+    f.setStyle(hidden ? new Style(undefined) : findsStyle);
+  }
 };
 
 // Mount from Layout. Idempotent — safe to call in strict mode.
@@ -75,9 +116,6 @@ export const useFindsLayer = () => {
   const user = useAtomValue(currentUserAtom);
 
   useEffect(() => {
-    // Reuse the layer across mounts (this hook is only called from
-    // Layout, but React strict mode double-invokes effects; without
-    // this we'd end up with two layers stacked).
     let layer = map
       .getLayers()
       .getArray()
@@ -117,11 +155,7 @@ export const useFindsLayer = () => {
     return () => {
       cancelled = true;
       unsub();
-      // Deliberately do NOT remove the layer — leaving it lets the next
-      // mount reuse the same layer + zIndex without a visible flicker.
       source.clear();
     };
-    // Only re-run when the identity of the signed-in principal changes.
   }, [map, user?.id]);
 };
-

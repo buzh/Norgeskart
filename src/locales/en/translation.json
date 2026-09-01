@@ -312,6 +312,7 @@
     },
     "actions": {
       "zoom": "Zoom to",
+      "edit": "Edit",
       "delete": "Delete"
     },
     "mineFunn": {
@@ -319,6 +320,7 @@
       "loading": "Loading finds…",
       "empty": "You haven't saved any finds yet. Use \"New object\" to get started.",
       "signInPrompt": "Sign in to see your finds.",
+      "confirmDelete": "Delete \"{{title}}\"? This cannot be undone.",
       "filter": {
         "mine": "Mine",
         "all": "All (admin)"
@@ -326,7 +328,10 @@
     },
     "newFind": {
       "tabHeading": "New object",
+      "tabHeadingEdit": "Edit find",
       "instructions": "Draw on the map using the tools below. Give the object a title and choose who can see it.",
+      "instructionsEdit": "Change the drawing, title, description, or visibility – save to update the find.",
+      "confirmDiscardDraft": "You have an unsaved sketch in the drawing tool. Discard it to edit this find?",
       "signInPrompt": "Sign in to save finds.",
       "form": {
         "title": "Title",
@@ -338,11 +343,13 @@
       "actions": {
         "cancel": "Cancel",
         "save": "Save find",
+        "saveEdit": "Save changes",
         "saving": "Saving…"
       },
       "errors": {
         "noGeometry": "Draw something on the map before saving.",
-        "saveFailed": "Could not save the find. Try again."
+        "saveFailed": "Could not save the find. Try again.",
+        "loadFailed": "Could not load the find. Try again."
       }
     }
   },

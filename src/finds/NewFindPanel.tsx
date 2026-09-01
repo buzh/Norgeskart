@@ -8,31 +8,39 @@ import {
   Text,
 } from '@kvib/react';
 import type { FeatureCollection } from 'geojson';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { createEmpty, extend } from 'ol/extent';
 import { GeoJSON } from 'ol/format';
 import { transformExtent } from 'ol/proj';
 import type { ChangeEvent, CSSProperties } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createFind, FindBbox, FindVisibility } from '../api/finds';
+import {
+  createFind,
+  FindBbox,
+  FindRecord,
+  FindVisibility,
+  updateFind,
+} from '../api/finds';
 import { currentUserAtom } from '../auth/atoms';
 import { DrawControls } from '../draw/drawControls/DrawControls';
+import { useDrawSettings } from '../draw/drawControls/hooks/drawSettings';
 import { getDrawLayer } from '../draw/drawControls/hooks/mapLayers';
 import { getFeaturePropertiesForExport } from '../draw/utils/featureUtils';
 import { mapAtom } from '../map/atoms';
 import { mapToolAtom } from '../map/overlay/atoms';
+import { pb } from '../api/pocketbase';
+import { editingFindIdAtom } from './atoms';
+import {
+  setFindHiddenOnLayer,
+  upsertFindOnLayer,
+} from './findsLayer';
 
-// Reuses the existing drawLayer so the user gets every draw tool
-// (freehand, polygon, line, point, text) verbatim — no separate
-// annotation-mode duplication. Trade-off: if the user has an
-// unsaved sketch from the plain "Draw" tool, opening Nytt objekt
-// shows it. That's a feature — it means "save this sketch as a
-// find" is one click.
+// Reuses the shared draw layer so the user gets every draw tool
+// (freehand, polygon, line, point, text) verbatim — no annotation-mode
+// duplication. In edit mode we seed the layer with the find's saved
+// features and reveal them via the normal draw UI.
 
-// Minimal styling for the native form controls below. Matches the
-// visual weight of KVIB's Input at size="sm" closely enough that
-// the form doesn't look bolted-on.
 const NATIVE_INPUT_STYLE: CSSProperties = {
   width: '100%',
   padding: '4px 8px',
@@ -52,8 +60,6 @@ const serializeDrawLayer = (
   const features = layer?.getSource()?.getFeatures() ?? [];
   if (features.length === 0) return null;
 
-  // Match the export path so style + text overlays survive the round
-  // trip through PB → findsLayer hydration.
   const cloned = features.map((f) => {
     const clone = f.clone();
     clone.setId(f.getId());
@@ -68,7 +74,6 @@ const serializeDrawLayer = (
   });
   const featureCollection = JSON.parse(geoJsonString) as FeatureCollection;
 
-  // Bbox in map projection first, then transform to 4326 for storage.
   const extent = createEmpty();
   for (const f of features) {
     const g = f.getGeometry();
@@ -90,12 +95,92 @@ export const NewFindPanel = () => {
   const user = useAtomValue(currentUserAtom);
   const map = useAtomValue(mapAtom);
   const closePanel = useSetAtom(mapToolAtom);
+  const [editingFindId, setEditingFindId] = useAtom(editingFindIdAtom);
+  const { setDrawLayerFeatures } = useDrawSettings();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<FindVisibility>('private');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrating, setHydrating] = useState(false);
+
+  // Seed the panel from the record we're editing exactly once per open.
+  // We track the id we've already hydrated so effect re-runs don't reset
+  // the user's in-progress edits.
+  const hydratedIdRef = useRef<string | null>(null);
+  const isEditing = editingFindId != null;
+
+  useEffect(() => {
+    if (!isEditing) {
+      hydratedIdRef.current = null;
+      return;
+    }
+    if (hydratedIdRef.current === editingFindId) return;
+
+    let cancelled = false;
+    setHydrating(true);
+    setError(null);
+
+    (async () => {
+      let rec: FindRecord;
+      try {
+        rec = await pb.collection('finds').getOne<FindRecord>(editingFindId!);
+      } catch (e) {
+        console.warn('[NewFindPanel] load for edit failed', e);
+        if (!cancelled) setError(t('finds.newFind.errors.loadFailed'));
+        if (!cancelled) setHydrating(false);
+        return;
+      }
+      if (cancelled) return;
+
+      // Refuse to blow away an unsaved sketch without asking. The user
+      // may have drawn something under "Draw" and just clicked "Edit" on
+      // an old find — bailing here is safer than silently discarding.
+      const drawSource = getDrawLayer()?.getSource();
+      const existing = drawSource?.getFeatures() ?? [];
+      if (existing.length > 0) {
+        const ok = window.confirm(t('finds.newFind.confirmDiscardDraft'));
+        if (!ok) {
+          setEditingFindId(null);
+          setHydrating(false);
+          return;
+        }
+      }
+
+      // Hide the persisted copy on findsLayer so the draft doesn't
+      // double-render underneath while editing.
+      setFindHiddenOnLayer(rec.id, true);
+
+      const projection = map.getView().getProjection().getCode();
+      setDrawLayerFeatures(rec.geometry, 'EPSG:4326', true);
+      // Reset the view to the find so the user sees what they're editing.
+      const extent = transformExtent(rec.bbox, 'EPSG:4326', projection);
+      map
+        .getView()
+        .fit(extent, { padding: [80, 80, 80, 80], maxZoom: 18, duration: 400 });
+
+      setTitle(rec.title);
+      setDescription(rec.description ?? '');
+      setVisibility(rec.visibility);
+      hydratedIdRef.current = rec.id;
+      setHydrating(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editingFindId, isEditing, map, setDrawLayerFeatures, setEditingFindId, t]);
+
+  // On unmount / mode change, restore the persisted find if we hid it and
+  // the caller didn't already do so. Belt-and-braces for React strict
+  // mode remounts and browser back-navigation.
+  useEffect(() => {
+    return () => {
+      const hydrated = hydratedIdRef.current;
+      if (hydrated) setFindHiddenOnLayer(hydrated, false);
+    };
+  }, []);
 
   if (!user) {
     return (
@@ -105,7 +190,20 @@ export const NewFindPanel = () => {
     );
   }
 
-  const canSave = title.trim().length > 0 && !saving;
+  const canSave = title.trim().length > 0 && !saving && !hydrating;
+
+  const closeAndReset = () => {
+    setEditingFindId(null);
+    getDrawLayer()?.getSource()?.clear();
+    closePanel(null);
+  };
+
+  const onCancel = () => {
+    const hydrated = hydratedIdRef.current;
+    if (hydrated) setFindHiddenOnLayer(hydrated, false);
+    hydratedIdRef.current = null;
+    closeAndReset();
+  };
 
   const onSave = async () => {
     setError(null);
@@ -117,21 +215,33 @@ export const NewFindPanel = () => {
     }
     setSaving(true);
     try {
-      await createFind(
-        {
+      let saved: FindRecord;
+      if (isEditing && editingFindId) {
+        saved = await updateFind(editingFindId, {
           title: title.trim(),
-          description: description.trim() || undefined,
+          description: description.trim(),
           visibility,
           geometry: payload.featureCollection,
           bbox: payload.bbox,
-        },
-        user.id,
-      );
-      // Clear the draw layer so the user isn't confused about "did it
-      // save?" — the persisted find will re-render from findsLayer's
-      // realtime subscription in a moment.
-      getDrawLayer()?.getSource()?.clear();
-      closePanel(null);
+        });
+      } else {
+        saved = await createFind(
+          {
+            title: title.trim(),
+            description: description.trim() || undefined,
+            visibility,
+            geometry: payload.featureCollection,
+            bbox: payload.bbox,
+          },
+          user.id,
+        );
+      }
+      // Push to findsLayer immediately — realtime is best-effort, and
+      // the record is what we actually want on-screen. Also un-hides the
+      // edited record (upsert re-adds it with the normal style).
+      upsertFindOnLayer(saved);
+      hydratedIdRef.current = null;
+      closeAndReset();
     } catch (e) {
       console.warn('[NewFindPanel] save failed', e);
       setError(t('finds.newFind.errors.saveFailed'));
@@ -140,15 +250,21 @@ export const NewFindPanel = () => {
     }
   };
 
+  const headingKey = isEditing
+    ? 'finds.newFind.instructionsEdit'
+    : 'finds.newFind.instructions';
+  const saveLabel = saving
+    ? t('finds.newFind.actions.saving')
+    : isEditing
+      ? t('finds.newFind.actions.saveEdit')
+      : t('finds.newFind.actions.save');
+
   return (
     <Stack gap={3}>
       <Text fontSize="xs" color="gray.600">
-        {t('finds.newFind.instructions')}
+        {t(headingKey)}
       </Text>
 
-      {/* Full draw toolbar. Owning this here rather than requiring the
-          user to also open the standalone "Draw" panel keeps Nytt
-          objekt self-contained. */}
       <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={2}>
         <DrawControls />
       </Box>
@@ -170,11 +286,6 @@ export const NewFindPanel = () => {
         <Text fontSize="xs" fontWeight="semibold">
           {t('finds.newFind.form.description')}
         </Text>
-        {/* Native <textarea>/<select> rather than KVIB primitives —
-            @kvib/react's polymorphic Box types don't accept form-element
-            props, and the visual polish here is minimal. Swap for
-            KVIB Textarea/NativeSelect once we've confirmed their
-            names against a real node_modules. */}
         <textarea
           value={description}
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
@@ -217,7 +328,7 @@ export const NewFindPanel = () => {
 
       <Flex justify="flex-end">
         <HStack>
-          <Button size="sm" variant="tertiary" onClick={() => closePanel(null)}>
+          <Button size="sm" variant="tertiary" onClick={onCancel}>
             {t('finds.newFind.actions.cancel')}
           </Button>
           <Button
@@ -227,9 +338,7 @@ export const NewFindPanel = () => {
             onClick={onSave}
             disabled={!canSave}
           >
-            {saving
-              ? t('finds.newFind.actions.saving')
-              : t('finds.newFind.actions.save')}
+            {saveLabel}
           </Button>
         </HStack>
       </Flex>

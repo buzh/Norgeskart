@@ -10,11 +10,13 @@ import {
   VStack,
 } from '@kvib/react';
 
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DrawControls } from '../../draw/drawControls/DrawControls';
 import { useDrawSettings } from '../../draw/drawControls/hooks/drawSettings';
+import { editingFindIdAtom } from '../../finds/atoms';
+import { setFindHiddenOnLayer } from '../../finds/findsLayer';
 import { MyFindsPanel } from '../../finds/MyFindsPanel';
 import { NewFindPanel } from '../../finds/NewFindPanel';
 import { LidarExtractPanel } from '../../lidarExtract/LidarExtractPanel';
@@ -104,6 +106,8 @@ const MapToolCardsBody = () => {
   const [, setCollapsed] = useAtom(drawPanelCollapsedAtom);
   const { drawType } = useDrawSettings();
   const [currentMapTool, setCurrentMapTool] = useAtom(mapToolAtom);
+  const editingFindId = useAtomValue(editingFindIdAtom);
+  const setEditingFindId = useSetAtom(editingFindIdAtom);
 
   const drawTypeLabels: Record<string, string> = {
     Move: t('draw.controls.tool.label.edit'),
@@ -160,8 +164,19 @@ const MapToolCardsBody = () => {
   }
 
   if (currentMapTool === 'newFind') {
+    const label = editingFindId
+      ? t('finds.newFind.tabHeadingEdit')
+      : t('finds.newFind.tabHeading');
+    // Close via the card's × must also unhide the persisted find and
+    // drop edit state, otherwise the map stays with a gap where the
+    // hidden record used to render.
+    const onCloseEdit = () => {
+      if (editingFindId) setFindHiddenOnLayer(editingFindId, false);
+      setEditingFindId(null);
+      onClose();
+    };
     return (
-      <MapToolCard label={t('finds.newFind.tabHeading')} onClose={onClose}>
+      <MapToolCard label={label} onClose={onCloseEdit}>
         <NewFindPanel />
       </MapToolCard>
     );
