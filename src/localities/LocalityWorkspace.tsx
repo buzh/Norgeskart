@@ -17,6 +17,7 @@ import { transformExtent } from 'ol/proj';
 import type { ChangeEvent, CSSProperties, FocusEvent, MouseEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createAttachment } from '../api/attachments';
 import {
   deleteLocality,
   LocalityBbox,
@@ -41,6 +42,8 @@ import { lidarExtractSelectionAtom } from '../lidarExtract/atoms';
 import { LidarExtractPanel } from '../lidarExtract/LidarExtractPanel';
 import { mapAtom } from '../map/atoms';
 import { BilderSection } from './BilderSection';
+import { KulturminnerSection } from './KulturminnerSection';
+import { captureLocalityScreenshot } from './screenshot';
 import {
   activeLocalityAtom,
   adjustingLocalityAtom,
@@ -276,6 +279,7 @@ export const LocalityWorkspace = ({
   const [adjusting, setAdjusting] = useAtom(adjustingLocalityAtom);
   const [, setLidarSelection] = useAtom(lidarExtractSelectionAtom);
   const [lidarOpen, setLidarOpen] = useState(false);
+  const [shooting, setShooting] = useState(false);
   const { setDrawLayerFeatures } = useDrawSettings();
 
   const isMine = user != null && user.id === locality.owner;
@@ -519,6 +523,35 @@ export const LocalityWorkspace = ({
     setLidarSelection(null);
   };
 
+  // Capture the current view cropped to the rectangle → Bilder. The
+  // BilderSection realtime subscription picks the new attachment up.
+  const takeScreenshot = async () => {
+    if (!user || shooting) return;
+    setShooting(true);
+    try {
+      const blob = await captureLocalityScreenshot(map, locality.bbox);
+      if (!blob) {
+        window.alert(t('localities.tools.screenshotFailed'));
+        return;
+      }
+      await createAttachment(
+        {
+          locality: locality.id,
+          kind: 'screenshot',
+          caption: `${t('localities.tools.screenshotCaption')} ${new Date().toLocaleDateString('nb-NO')}`,
+        },
+        user.id,
+        blob,
+        'skjermbilde.png',
+      );
+    } catch (e) {
+      console.warn('[LocalityWorkspace] screenshot failed', e);
+      window.alert(t('localities.tools.screenshotFailed'));
+    } finally {
+      setShooting(false);
+    }
+  };
+
   const zoomToFunn = (f: LocalityFindRecord) => {
     const extent = getFunnExtentOnLayer(f.id);
     if (!extent) return;
@@ -709,6 +742,9 @@ export const LocalityWorkspace = ({
         )}
       </Stack>
 
+      {/* Kjente kulturminner — "is this already registered?" up front. */}
+      <KulturminnerSection locality={locality} />
+
       {/* Funn */}
       <Stack gap={2}>
         <Flex justify="space-between" align="center">
@@ -821,7 +857,7 @@ export const LocalityWorkspace = ({
       <Stack gap={2}>
         <Heading size="xs">{t('localities.tools.heading')}</Heading>
         {!lidarOpen ? (
-          <Flex>
+          <HStack>
             <Button
               size="xs"
               variant="secondary"
@@ -831,7 +867,21 @@ export const LocalityWorkspace = ({
             >
               {t('localities.tools.lidarExtract')}
             </Button>
-          </Flex>
+            {isMine && (
+              <Button
+                size="xs"
+                variant="secondary"
+                colorPalette="green"
+                leftIcon="photo_camera"
+                disabled={shooting}
+                onClick={takeScreenshot}
+              >
+                {shooting
+                  ? t('localities.tools.screenshotTaking')
+                  : t('localities.tools.screenshot')}
+              </Button>
+            )}
+          </HStack>
         ) : (
           <Stack
             gap={2}

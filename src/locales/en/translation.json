@@ -388,7 +388,19 @@
     "tools": {
       "heading": "Tools",
       "lidarExtract": "LiDAR extract",
-      "closeLidar": "Close LiDAR extract"
+      "closeLidar": "Close LiDAR extract",
+      "screenshot": "Screenshot",
+      "screenshotTaking": "Taking screenshot…",
+      "screenshotCaption": "Screenshot",
+      "screenshotFailed": "Could not take a screenshot. Make sure the locality is visible on the map."
+    },
+    "kulturminner": {
+      "heading": "Known cultural heritage",
+      "loading": "Checking the register…",
+      "empty": "No registered cultural heritage in this area.",
+      "error": "Could not check the heritage register.",
+      "unnamed": "(unnamed)",
+      "openLink": "Open in Kulturminnesøk"
     }
   },
   "helpPage": {

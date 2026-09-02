@@ -393,7 +393,19 @@
     "tools": {
       "heading": "Verktøy",
       "lidarExtract": "LiDAR-uttrekk",
-      "closeLidar": "Lukk LiDAR-uttrekk"
+      "closeLidar": "Lukk LiDAR-uttrekk",
+      "screenshot": "Skjermbilete",
+      "screenshotTaking": "Tek skjermbilete…",
+      "screenshotCaption": "Skjermbilete",
+      "screenshotFailed": "Kunne ikkje ta skjermbilete. Sørg for at lokaliteten er synleg i kartet."
+    },
+    "kulturminner": {
+      "heading": "Kjende kulturminne",
+      "loading": "Sjekkar registeret…",
+      "empty": "Ingen registrerte kulturminne i området.",
+      "error": "Klarte ikkje å sjekke kulturminneregisteret.",
+      "unnamed": "(utan namn)",
+      "openLink": "Opne i Kulturminnesøk"
     }
   },
   "helpPage": {

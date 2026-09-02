@@ -40,6 +40,16 @@ route {
                 reverse_proxy http://wmscache
         }
 
+        # wfs.geonorge.no/skwms1/* — Kartverket WFS namespace. Used by the
+        # lokalitet workspace's "kjente kulturminner" readout
+        # (wfs.kulturminner GetFeature). Distinct internal prefix so it
+        # can't be confused with wms.geonorge.no's /skwms1/ in wmscache;
+        # nginx rewrites it back to /skwms1/ before forwarding.
+        handle_path /wfs/geonorge/* {
+                rewrite * /wfs-skwms1{http.request.uri.path}
+                reverse_proxy http://wmscache
+        }
+
         # kart.ra.no/wms/* — Riksantikvaren Kulturminner WMS.
         handle_path /wms/ra/* {
                 rewrite * /wms{http.request.uri.path}

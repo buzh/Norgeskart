@@ -157,13 +157,24 @@ Deployable: yes — this is the visible cutover; old finds UI gone.
   same-origin-safe because all tiles already come via the same-origin
   `/wms/*` proxies — verify no remaining cross-origin image source
   taints the canvas.
-- "Kjente kulturminner her": query the RA services for features inside
-  the rectangle. Investigate first: kart.ra.no is MapServer, so WFS
-  `GetFeature` with `BBOX` against the same host likely works through
-  a new `handle_path /wfs/ra/*` (or reuse `/wms/ra/` if the path
-  allows) — needs a capabilities check. Fallback: grid of
-  GetFeatureInfo probes via the existing `parseXmlFeatureInfo` path.
-  Render as a compact list in the workspace header area.
+- "Kjente kulturminner her": kart.ra.no has WFS **disabled** (checked
+  2026-09: "WFS request not enabled"). Used GeoNorge's redistribution
+  instead: `wfs.geonorge.no/skwms1/wfs.kulturminner`, feature type
+  `app:Lokalitet`, GML 3.2 only (DOMParsed — fields: navn,
+  lokalitetskategori, vernetype, antallEnkeltminner,
+  linkKulturminnesøk). Proxied same-origin as `/wfs/geonorge/*` →
+  nginx `/wfs-skwms1/` alias → `wfs.geonorge.no/skwms1/`, deliberately
+  uncached so register data stays fresh.
+
+## Backlog (agreed, not yet scheduled)
+
+- **More LiDAR styles as background layers**: expose `helning_prosent`
+  and `multiskyggerelieff` (styles of the same DTM WMS the hillshade
+  uses) as background layers in the "Kart" menu, so annotation can
+  happen directly on them — some features read better there than on
+  plain `skyggerelieff`. Follow the "Adding another background layer"
+  recipe in CLAUDE.md; same `/wms/geonorge/...` proxy path, only the
+  STYLES param differs.
 
 ## Stage 7 — polish pass
 
