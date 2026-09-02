@@ -53,9 +53,10 @@ export const meetsSizeBar = (
 ): boolean => areaRatio >= filters.minAreaRatio;
 
 // How many entries (primary + secondary combined) ever get a footprint
-// fetched/rendered and a list row. Bounds WFS/render cost regardless of
-// catalogue size at low zoom — not user-adjustable, it's a performance
-// bound rather than a relevance preference.
+// rendered and a list row. Applied after the WFS response is in, so it
+// bounds drawing and list length only — download and parse cost is
+// bounded by the extent guard in map/lidarFootprintsLayer.ts. Not
+// user-adjustable: a performance bound, not a relevance preference.
 export const RENDER_CAP = 25;
 
 type RelevanceInput = {
@@ -99,18 +100,26 @@ export type LidarViewportEntry = {
   areaRatio: number;
 };
 
+export type LidarViewportStatus =
+  // Not in LiDAR mode — nothing fetched, nothing drawn.
+  | 'idle'
+  | 'loading'
+  | 'ready'
+  // Viewport too wide to ask the WFS about; the user has to zoom in
+  // before coverage can be shown at all.
+  | 'zoomedOut'
+  | 'error';
+
 export type LidarViewportState = {
-  loading: boolean;
+  status: LidarViewportStatus;
   primary: LidarViewportEntry[];
   secondary: LidarViewportEntry[];
 };
 
-export const EMPTY_LIDAR_VIEWPORT: LidarViewportState = {
-  loading: false,
-  primary: [],
-  secondary: [],
-};
+export const emptyLidarViewport = (
+  status: LidarViewportStatus,
+): LidarViewportState => ({ status, primary: [], secondary: [] });
 
 export const lidarViewportAtom = atom<LidarViewportState>(
-  EMPTY_LIDAR_VIEWPORT,
+  emptyLidarViewport('idle'),
 );

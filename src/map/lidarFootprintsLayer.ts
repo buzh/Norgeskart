@@ -26,13 +26,15 @@ import {
 } from './layers/config/backgroundLayers/lidarFootprints';
 import {
   activeLidarProjectAtom,
+  activeLidarStyleAtom,
   bboxIntersects,
   fetchLidarProjects,
+  resolveLidarStyle,
   sortProjectsByRelevance,
 } from './layers/config/backgroundLayers/lidarProjects';
 import {
   classifyRelevance,
-  EMPTY_LIDAR_VIEWPORT,
+  emptyLidarViewport,
   lidarFilterSettingsAtom,
   lidarViewportAtom,
   LidarViewportEntry,
@@ -40,6 +42,15 @@ import {
 
 export const LIDAR_FOOTPRINTS_LAYER_ID = 'lidarFootprintsLayer';
 const PROJECT_ID_PROPERTY = '__lidarProjectId';
+
+// Widest viewport (longer side, in metres) we'll ask the Prosjekt-
+// avgrensning WFS about. Measured against the live service: a 20 km box
+// returns ~1 MB of GeoJSON, a county-sized 150 km box 7.7 MB, and a
+// whole-Norway box never answers at all — the upstream gives up with a
+// 504 after 30 s, which is also where the /wfs-skwms1/ proxy would cut
+// it. Past this width the honest answer is "zoom in", not a half-minute
+// spinner ending in an empty list.
+const MAX_FOOTPRINT_EXTENT_M = 50_000;
 
 type Tier = 'primary' | 'secondary' | 'active';
 
@@ -89,6 +100,7 @@ export const useLidarFootprintsLayer = () => {
   const backgroundLayer = useAtomValue(backgroundLayerAtom);
   const activeLidarProject = useAtomValue(activeLidarProjectAtom);
   const setActiveLidarProject = useSetAtom(activeLidarProjectAtom);
+  const setActiveLidarStyle = useSetAtom(activeLidarStyleAtom);
   const setBackgroundLayer = useSetAtom(backgroundLayerAtom);
   const filters = useAtomValue(lidarFilterSettingsAtom);
   const viewport = useAtomValue(lidarViewportAtom);
@@ -106,10 +118,14 @@ export const useLidarFootprintsLayer = () => {
   // Fetch + classify on viewport change while LiDAR mode is active.
   useEffect(() => {
     if (!isLidarMode) {
-      setViewport(EMPTY_LIDAR_VIEWPORT);
+      setViewport(emptyLidarViewport('idle'));
       return;
     }
     let cancelled = false;
+    // Panning fires refreshes faster than the WFS answers them; only the
+    // newest one may write to the atom, or a slow early response can
+    // overwrite the coverage for where the user actually ended up.
+    let latestRequest = 0;
 
     const refresh = () => {
       const size = map.getSize();
@@ -127,7 +143,22 @@ export const useLidarFootprintsLayer = () => {
         | undefined;
       if (!extentLonLat) return;
 
-      setViewport((prev) => ({ ...prev, loading: true }));
+      // Claimed before the extent check too, so a fetch started while
+      // zoomed in can't land afterwards and overwrite the guard state.
+      const request = ++latestRequest;
+      const isStale = () => cancelled || request !== latestRequest;
+
+      if (
+        Math.max(extent[2] - extent[0], extent[3] - extent[1]) >
+        MAX_FOOTPRINT_EXTENT_M
+      ) {
+        setViewport((prev) =>
+          prev.status === 'zoomedOut' ? prev : emptyLidarViewport('zoomedOut'),
+        );
+        return;
+      }
+
+      setViewport((prev) => ({ ...prev, status: 'loading' }));
 
       fetchLidarProjects()
         .then((allProjects) => {
@@ -140,7 +171,7 @@ export const useLidarFootprintsLayer = () => {
 
           return fetchLidarFootprints(extent, projection, candidates).then(
             (matches) => {
-              if (cancelled) return;
+              if (isStale()) return;
               const entries: LidarViewportEntry[] = candidates.map(
                 (project) => {
                   const match = matches.get(project.id);
@@ -155,13 +186,13 @@ export const useLidarFootprintsLayer = () => {
                 },
               );
               const classified = classifyRelevance(entries, filters);
-              setViewport({ loading: false, ...classified });
+              setViewport({ status: 'ready', ...classified });
             },
           );
         })
         .catch((err) => {
           console.warn('[lidarFootprintsLayer] refresh failed', err);
-          if (!cancelled) setViewport(EMPTY_LIDAR_VIEWPORT);
+          if (!isStale()) setViewport(emptyLidarViewport('error'));
         });
     };
 
@@ -221,6 +252,9 @@ export const useLidarFootprintsLayer = () => {
       const entry = allEntries.find((e2) => e2.project.id === hitId);
       if (!entry) return;
       setActiveLidarProject(entry.project);
+      setActiveLidarStyle((prev) =>
+        resolveLidarStyle(entry.project.styles, prev),
+      );
       setBackgroundLayer('lidarProject');
     };
 
@@ -228,5 +262,12 @@ export const useLidarFootprintsLayer = () => {
     return () => {
       map.un('singleclick', onClick);
     };
-  }, [map, isLidarMode, viewport, setActiveLidarProject, setBackgroundLayer]);
+  }, [
+    map,
+    isLidarMode,
+    viewport,
+    setActiveLidarProject,
+    setActiveLidarStyle,
+    setBackgroundLayer,
+  ]);
 };

@@ -47,6 +47,28 @@ export const TIER_A_STYLES = [
   'helning_prosent',
 ];
 
+// Picks the style to show for a dataset the user just activated: keep
+// the one they were already looking at if this dataset publishes it
+// (a style choice should survive a dataset switch), otherwise the most
+// diagnostic style it does publish.
+//
+// Every entry point that changes the active dataset must go through
+// this. The national mosaic publishes *only* `skyggerelieff`, while
+// every per-project dataset publishes four — and asking the national
+// WMS for a per-project style doesn't fail loudly: it answers HTTP 200,
+// Content-Type image/png, with a ~100 byte JSON error body. That is
+// small enough for retryBlankTileLoadFunction to treat as a blank tile
+// and accept, so the background just silently goes empty.
+export const resolveLidarStyle = (
+  published: string[],
+  preferred: string,
+): string =>
+  published.includes(preferred)
+    ? preferred
+    : (TIER_A_STYLES.find((s) => published.includes(s)) ??
+      published[0] ??
+      DEFAULT_LIDAR_PROJECT_STYLE);
+
 // Styles that are advertised but not useful to show anywhere:
 //   - `None`: the "no style" placeholder (renders a near-uniform PNG).
 //   - `dynamisk_farget_hoyde`: Kartverket picks a per-tile colour ramp

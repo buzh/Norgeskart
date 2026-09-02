@@ -36,6 +36,7 @@ import {
   fetchLidarProjects,
   fetchNationalLidarStyles,
   LidarProject,
+  resolveLidarStyle,
   TIER_A_STYLES,
 } from './map/layers/config/backgroundLayers/lidarProjects';
 import {
@@ -330,23 +331,19 @@ export const TopBar = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Picks the best default style for a newly-activated dataset: the
-  // first tier-A (most diagnostic) style it publishes, else whatever it
-  // has, else the app-wide default.
-  const firstStyleFor = (styles: string[]): string =>
-    TIER_A_STYLES.find((s) => styles.includes(s)) ??
-    styles[0] ??
-    DEFAULT_LIDAR_PROJECT_STYLE;
-
+  // Both activation paths clamp the style to what the target dataset
+  // actually publishes (see resolveLidarStyle) — the national mosaic
+  // publishes only skyggerelieff, so carrying e.g. helning_prosent over
+  // from a project would render an empty background.
   const activateNational = () => {
     setBackgroundLayer('lidarHillshade');
-    setActiveLidarStyle(firstStyleFor(nationalStyles));
+    setActiveLidarStyle((prev) => resolveLidarStyle(nationalStyles, prev));
     setLidarOpen(false);
   };
   const activateProject = (p: LidarProject) => {
     setActiveLidarProject(p);
     setBackgroundLayer('lidarProject');
-    setActiveLidarStyle(firstStyleFor(p.styles));
+    setActiveLidarStyle((prev) => resolveLidarStyle(p.styles, prev));
     setLidarOpen(false);
   };
 
@@ -429,7 +426,7 @@ export const TopBar = () => {
         active={isLidarMode}
         badge={relevantCount}
         onClick={() => {
-          if (!isLidarMode) setBackgroundLayer('lidarHillshade');
+          if (!isLidarMode) activateNational();
         }}
       />
 
@@ -570,7 +567,7 @@ export const TopBar = () => {
               <Text fontSize="10px" color="gray.500" px={2}>
                 LiDAR-prosjekter som dekker dette punktet
               </Text>
-              {(allProjects === null || viewport.loading) && (
+              {(allProjects === null || viewport.status === 'loading') && (
                 <Flex align="center" gap={2} p={2}>
                   <Spinner size="xs" />
                   <Text fontSize="xs" color="gray.500">
@@ -580,8 +577,23 @@ export const TopBar = () => {
                   </Text>
                 </Flex>
               )}
+              {/* Coverage can't be answered for a whole-country viewport —
+                  the boundary WFS times out rather than replying, so say
+                  so instead of spinning into an empty list. */}
+              {viewport.status === 'zoomedOut' && (
+                <Text fontSize="xs" color="gray.500" px={2} py={1}>
+                  Zoom inn for å se hvilke LiDAR-prosjekter som dekker
+                  området.
+                </Text>
+              )}
+              {viewport.status === 'error' && (
+                <Text fontSize="xs" color="gray.500" px={2} py={1}>
+                  Fikk ikke hentet prosjektomriss akkurat nå. Prøv igjen, eller
+                  zoom litt inn.
+                </Text>
+              )}
               {allProjects != null &&
-                !viewport.loading &&
+                viewport.status === 'ready' &&
                 viewport.primary.length === 0 &&
                 viewport.secondary.length === 0 && (
                   <Text fontSize="xs" color="gray.500" px={2} py={1}>
@@ -589,7 +601,7 @@ export const TopBar = () => {
                     sted.
                   </Text>
                 )}
-              {!viewport.loading &&
+              {viewport.status === 'ready' &&
                 viewport.primary.map((entry) => {
                   const p = entry.project;
                   const active =
@@ -610,7 +622,7 @@ export const TopBar = () => {
                     />
                   );
                 })}
-              {!viewport.loading && viewport.secondary.length > 0 && (
+              {viewport.status === 'ready' && viewport.secondary.length > 0 && (
                 <>
                   <Box
                     as="button"

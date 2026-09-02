@@ -10,6 +10,11 @@
 // Routed same-origin through wmscache (/wfs/geonorge/ →
 // wfs.geonorge.no/skwms1/, uncached — same path shape as
 // api/kulturminnerWfs.ts).
+//
+// Responses are large and neither cached nor compressed on the way here
+// (~1 MB for a 20 km viewport, 7.7 MB for a county), so callers must
+// bound the extent they ask about — see MAX_FOOTPRINT_EXTENT_M in
+// map/lidarFootprintsLayer.ts.
 
 import GeoJSON from 'ol/format/GeoJSON';
 import { Geometry } from 'ol/geom';
@@ -28,12 +33,20 @@ export type LidarFootprint = {
   areaM2: number;
 };
 
-// The WFS's LAS_PROJECT_NAME doesn't carry the point-density token that
-// wms.hoyde-dtm-prosjekt's layer names do (e.g. "Flatanger 2013" vs
-// "Flatanger 10pkt 2013") — strip it so both sides normalize the same.
-const normalize = (name: string): string =>
-  name
-    .toLowerCase()
+// Both catalogues normally spell a project identically, point-density
+// token included ("Selbu 5pkt 2007" on either side), so the full name is
+// the primary key. Stripping that token up front is what breaks: 81 name
+// groups in the WMS catalogue (169 of 1934 projects) differ by nothing
+// else — Selbu 2pkt / 024pkt / 5pkt 2007, Gjerdrum 5pkt / 50pkt 2021 —
+// and all their sibling footprints would collapse onto whichever
+// candidate matched first, leaving the rest undrawn.
+const normalizeName = (name: string): string =>
+  name.toLowerCase().replace(/\s+/g, ' ').trim();
+
+// Fallback key for the rare one-sided spelling, tried only when the full
+// name finds nothing.
+const stripDensity = (normalized: string): string =>
+  normalized
     .replace(/\b\d+\s*(pkt|pnt)\b/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -110,20 +123,32 @@ export function fetchLidarFootprints(
       featureProjection: projection,
     });
 
-    // Index the catalogue by normalized name, keeping every candidate so
+    // Index the catalogue under both keys, keeping every candidate so
     // same-name matches can be disambiguated by year.
-    const byName = new Map<string, LidarProject[]>();
-    for (const p of projects) {
-      const bucket = byName.get(normalize(p.projectName)) ?? [];
+    const byExactName = new Map<string, LidarProject[]>();
+    const byStrippedName = new Map<string, LidarProject[]>();
+    const index = (
+      map: Map<string, LidarProject[]>,
+      key: string,
+      p: LidarProject,
+    ) => {
+      const bucket = map.get(key) ?? [];
       bucket.push(p);
-      byName.set(normalize(p.projectName), bucket);
+      map.set(key, bucket);
+    };
+    for (const p of projects) {
+      const exact = normalizeName(p.projectName);
+      index(byExactName, exact, p);
+      index(byStrippedName, stripDensity(exact), p);
     }
 
     const out = new Map<string, LidarFootprint>();
     for (const feature of features) {
       const props = feature.getProperties() as WfsProperties;
       if (!props.LAS_PROJECT_NAME) continue;
-      const candidates = byName.get(normalize(props.LAS_PROJECT_NAME));
+      const exact = normalizeName(props.LAS_PROJECT_NAME);
+      const candidates =
+        byExactName.get(exact) ?? byStrippedName.get(stripDensity(exact));
       if (!candidates || candidates.length === 0) continue;
       const wfsYear =
         props.AARSTALL != null ? Number(props.AARSTALL) : null;
