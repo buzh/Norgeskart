@@ -262,8 +262,17 @@ const LidarDisclosure = ({
   </Flex>
 );
 
-const projectMeta = (p: LidarProject): string =>
-  [p.year != null ? String(p.year) : null, p.pointDensity]
+// Worth a column of its own because it's what the list is ordered by:
+// how much of the current screen this project's footprint paints.
+const coverageLabel = (ratio: number): string | null =>
+  ratio <= 0 ? null : ratio < 0.01 ? '<1%' : `${Math.round(ratio * 100)}%`;
+
+const projectMeta = (entry: LidarViewportEntry): string =>
+  [
+    entry.project.year != null ? String(entry.project.year) : null,
+    entry.project.pointDensity,
+    coverageLabel(entry.areaRatio),
+  ]
     .filter((s): s is string => !!s && s.length > 0)
     .join(' · ');
 
@@ -424,7 +433,7 @@ export const TopBar = () => {
     <LidarPulldownItem
       key={entry.project.id}
       label={entry.project.projectName}
-      meta={projectMeta(entry.project)}
+      meta={projectMeta(entry)}
       active={isLidarProject && activeLidarProject?.id === entry.project.id}
       onActivate={() => activateProject(entry.project)}
       onHover={(hovering) =>
@@ -659,7 +668,7 @@ export const TopBar = () => {
                 mx={1}
               />
               <Text fontSize="10px" color="gray.500" px={2}>
-                Prosjekter i utsnittet — hold over for å se dekningen
+                Prosjekter, mest dekning først. Hold over for omriss.
               </Text>
               {/* The list is the only part that grows without bound, so
                   it — not the whole popover — is what scrolls; the
@@ -704,8 +713,8 @@ export const TopBar = () => {
                   viewport.primary.length === 0 &&
                   viewport.secondary.length === 0 && (
                     <Text fontSize="xs" color="gray.500" px={2} py={1}>
-                      Ingen LiDAR-datasett dekker dette punktet. Prøv et
-                      annet sted.
+                      Ingen LiDAR-prosjekter dekker dette utsnittet. Bruk
+                      nasjonal mosaikk, eller prøv et annet sted.
                     </Text>
                   )}
                 {viewport.status === 'ready' &&

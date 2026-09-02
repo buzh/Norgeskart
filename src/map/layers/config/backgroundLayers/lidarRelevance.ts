@@ -7,7 +7,7 @@
 
 import { atom } from 'jotai';
 import { Geometry } from 'ol/geom';
-import { LidarProject } from './lidarProjects';
+import { LidarProject, sortProjectsByRelevance } from './lidarProjects';
 
 export type LidarFilterSettings = {
   // Projects older than this are demoted, unless the density grandfather
@@ -16,8 +16,9 @@ export type LidarFilterSettings = {
   // A project with pointDensity >= 5 pkt/m² counts as meeting the year
   // bar even if it's a bit older than minYear.
   grandfatherDense: boolean;
-  // Projects whose real footprint area is smaller than this fraction of
-  // the current viewport area are demoted.
+  // Projects painting less than this fraction of the viewport are
+  // demoted — a project clipping one corner of the screen is rarely the
+  // one you meant to open.
   minAreaRatio: number;
 };
 
@@ -64,9 +65,9 @@ type RelevanceInput = {
   areaRatio: number;
 };
 
-// `sorted` must already be in display-priority order (newest/densest
-// first — see sortProjectsByRelevance in lidarProjects.ts); this only
-// tiers and caps, it doesn't re-sort.
+// `sorted` must already be in display-priority order (most on-screen
+// coverage first — see sortByOnScreenCoverage below); this only tiers
+// and caps, it doesn't re-sort.
 export const classifyRelevance = <T extends RelevanceInput>(
   sorted: T[],
   filters: LidarFilterSettings,
@@ -94,10 +95,29 @@ export const lidarFilterSettingsAtom = atom<LidarFilterSettings>(
 // single fetch/classify pass instead of duplicating the WFS call.
 export type LidarViewportEntry = {
   project: LidarProject;
-  // Real WFS polygon parts; empty for the rare project with no match
-  // (still listed, just nothing drawn on the map).
+  // Real WFS polygon parts, at least one of which touches the viewport —
+  // a project without a footprint on screen never becomes an entry.
   geometries: Geometry[];
+  // Fraction of the viewport those polygons actually paint, 0..1 (see
+  // viewportCoverage). Both the size bar and the list order read this.
   areaRatio: number;
+};
+
+// Display order for the picker: whatever covers most of what the user is
+// looking at, first. Coverage is bucketed at 5% so that near-identical
+// candidates fall back to newest/densest instead of swapping places on
+// sampling noise as the map is panned.
+const COVERAGE_BUCKET = 0.05;
+
+export const sortByOnScreenCoverage = (
+  a: LidarViewportEntry,
+  b: LidarViewportEntry,
+): number => {
+  const bucket = (ratio: number) => Math.round(ratio / COVERAGE_BUCKET);
+  return (
+    bucket(b.areaRatio) - bucket(a.areaRatio) ||
+    sortProjectsByRelevance(a.project, b.project)
+  );
 };
 
 export type LidarViewportStatus =

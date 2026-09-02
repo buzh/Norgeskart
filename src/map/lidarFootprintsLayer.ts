@@ -12,25 +12,23 @@
 import { useAtomValue, useSetAtom } from 'jotai';
 import { Feature } from 'ol';
 import type { FeatureLike } from 'ol/Feature';
-import { fromExtent as polygonFromExtent } from 'ol/geom/Polygon';
 import VectorLayer from 'ol/layer/Vector';
 import type OlMap from 'ol/Map';
 import { transformExtent } from 'ol/proj';
 import VectorSource from 'ol/source/Vector';
-import { getArea } from 'ol/sphere';
 import { Fill, Stroke, Style } from 'ol/style';
 import { useEffect } from 'react';
 import { mapAtom } from './atoms';
 import { backgroundLayerAtom } from './layers/config/backgroundLayers/atoms';
 import {
-  bboxAreaEstimateM2,
   fetchLidarFootprints,
+  touchesExtent,
+  viewportCoverage,
 } from './layers/config/backgroundLayers/lidarFootprints';
 import {
   activeLidarProjectAtom,
   bboxIntersects,
   fetchLidarProjects,
-  sortProjectsByRelevance,
 } from './layers/config/backgroundLayers/lidarProjects';
 import {
   classifyRelevance,
@@ -40,6 +38,7 @@ import {
   lidarPickerOpenAtom,
   lidarViewportAtom,
   LidarViewportEntry,
+  sortByOnScreenCoverage,
 } from './layers/config/backgroundLayers/lidarRelevance';
 
 export const LIDAR_FOOTPRINTS_LAYER_ID = 'lidarFootprintsLayer';
@@ -177,29 +176,31 @@ export const useLidarFootprintsLayer = () => {
 
       fetchLidarProjects()
         .then((allProjects) => {
-          const candidates = allProjects
-            .filter((p) => bboxIntersects(p.bboxLonLat, extentLonLat))
-            .sort(sortProjectsByRelevance);
-          const viewportAreaM2 = getArea(polygonFromExtent(extent), {
-            projection,
-          });
+          // Catalogue bboxes are a coarse prefilter — they cut ~1900
+          // projects down to something the name join can chew through.
+          // What actually qualifies a project for the list is its WFS
+          // footprint touching the viewport, decided below.
+          const candidates = allProjects.filter((p) =>
+            bboxIntersects(p.bboxLonLat, extentLonLat),
+          );
 
           return fetchLidarFootprints(extent, projection, candidates).then(
             (matches) => {
               if (isStale()) return;
-              const entries: LidarViewportEntry[] = candidates.map(
-                (project) => {
-                  const match = matches.get(project.id);
-                  const areaM2 =
-                    match?.areaM2 ?? bboxAreaEstimateM2(project.bboxLonLat);
-                  return {
-                    project,
-                    geometries: match?.geometries ?? [],
-                    areaRatio:
-                      viewportAreaM2 > 0 ? areaM2 / viewportAreaM2 : 0,
-                  };
-                },
-              );
+              const entries: LidarViewportEntry[] = [];
+              for (const project of candidates) {
+                const geometries = matches.get(project.id)?.geometries;
+                // No footprint back from the WFS, or one that only came
+                // back because its envelope overlaps: the project has
+                // nothing on this screen, so it isn't in this list.
+                if (!geometries || !touchesExtent(geometries, extent)) continue;
+                entries.push({
+                  project,
+                  geometries,
+                  areaRatio: viewportCoverage(geometries, extent),
+                });
+              }
+              entries.sort(sortByOnScreenCoverage);
               const classified = classifyRelevance(entries, filters);
               setViewport({ status: 'ready', ...classified });
             },

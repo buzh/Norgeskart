@@ -18,8 +18,6 @@
 
 import GeoJSON from 'ol/format/GeoJSON';
 import { Geometry } from 'ol/geom';
-import { fromExtent as polygonFromExtent } from 'ol/geom/Polygon';
-import { getArea } from 'ol/sphere';
 import { LidarProject } from './lidarProjects';
 
 const WFS_URL = '/wfs/geonorge/wfs.hoyde-hoydedata-metadata-prosjekt';
@@ -30,7 +28,6 @@ export type LidarFootprint = {
   // A project can appear as several disjoint WFS features (sub-areas);
   // keep every part rather than merging geometry.
   geometries: Geometry[];
-  areaM2: number;
 };
 
 // Both catalogues normally spell a project identically, point-density
@@ -166,12 +163,9 @@ export function fetchLidarFootprints(
       if (!geometry) continue;
 
       const existing = out.get(match.id);
-      const areaM2 =
-        (existing?.areaM2 ?? 0) + getArea(geometry, { projection });
       out.set(match.id, {
         project: match,
         geometries: [...(existing?.geometries ?? []), geometry],
-        areaM2,
       });
     }
     return out;
@@ -182,9 +176,52 @@ export function fetchLidarFootprints(
   return promise;
 }
 
-// Rough area estimate for the rare project with no WFS match, used only
-// to feed the size-relevance rule — not drawn on the map.
-export const bboxAreaEstimateM2 = (
-  bboxLonLat: [number, number, number, number],
-): number =>
-  getArea(polygonFromExtent(bboxLonLat), { projection: 'EPSG:4326' });
+// How much of the viewport a project's footprint actually paints, 0..1.
+//
+// Sampled on a grid rather than clipped analytically: OL has no polygon
+// intersection, and a topology library is a lot of bytes for a number
+// that only orders a list. A 24×24 grid resolves under 0.2% of the
+// screen — far finer than either the ordering or the "minste andel av
+// synsfeltet" filter can act on.
+//
+// `extent` and `geometries` must be in the same (projected, metric)
+// coordinate system, which they are: readFeatures reprojects to the
+// view's projection.
+const COVERAGE_GRID = 24;
+
+export const viewportCoverage = (
+  geometries: Geometry[],
+  extent: [number, number, number, number],
+): number => {
+  if (geometries.length === 0) return 0;
+  const cellW = (extent[2] - extent[0]) / COVERAGE_GRID;
+  const cellH = (extent[3] - extent[1]) / COVERAGE_GRID;
+  if (cellW <= 0 || cellH <= 0) return 0;
+
+  // Boundary polygons run to thousands of vertices, and the sample can't
+  // see detail finer than a cell anyway. getSimplifiedGeometry takes a
+  // *squared* tolerance.
+  const tolerance = Math.min(cellW, cellH);
+  const simplified = geometries.map((g) =>
+    g.getSimplifiedGeometry(tolerance * tolerance),
+  );
+
+  let hits = 0;
+  for (let ix = 0; ix < COVERAGE_GRID; ix++) {
+    const x = extent[0] + (ix + 0.5) * cellW;
+    for (let iy = 0; iy < COVERAGE_GRID; iy++) {
+      const y = extent[1] + (iy + 0.5) * cellH;
+      if (simplified.some((g) => g.intersectsCoordinate([x, y]))) hits++;
+    }
+  }
+  return hits / (COVERAGE_GRID * COVERAGE_GRID);
+};
+
+// Whether any part of the footprint falls inside the viewport at all.
+// Cheaper and stricter than the coverage sample: a project that clips a
+// corner still belongs in the list (bottom of it), but one the WFS
+// returned only because its envelope overlaps does not.
+export const touchesExtent = (
+  geometries: Geometry[],
+  extent: [number, number, number, number],
+): boolean => geometries.some((g) => g.intersectsExtent(extent));
