@@ -17,6 +17,9 @@ import { Box, Button, HStack, IconButton, Text, VStack } from '@kvib/react';
 import { useAtom, useAtomValue } from 'jotai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createAttachment } from '../api/attachments';
+import { currentUserAtom } from '../auth/atoms';
+import { activeLocalityAtom } from '../localities/atoms';
 import {
   LidarCanvas,
   lidarExtractRunAtom,
@@ -29,6 +32,11 @@ export const LidarExtractViewer = () => {
   const { t } = useTranslation();
   const [open, setOpen] = useAtom(lidarExtractViewerOpenAtom);
   const run = useAtomValue(lidarExtractRunAtom);
+  const activeLocality = useAtomValue(activeLocalityAtom);
+  const user = useAtomValue(currentUserAtom);
+  // Canvas ids already kept as attachments this run, plus in-flight ones.
+  const [keptIds, setKeptIds] = useState<Set<string>>(new Set());
+  const [keepingId, setKeepingId] = useState<string | null>(null);
   const [order, setOrder] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -56,6 +64,7 @@ export const LidarExtractViewer = () => {
   useEffect(() => {
     setOrder([]);
     setDeletedIds(new Set());
+    setKeptIds(new Set());
     setSelectedIndex(0);
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -274,6 +283,47 @@ export const LidarExtractViewer = () => {
     setDraggingId(null);
   };
 
+  // "Behold": store the selected canvas as a Bilde on the open lokalitet
+  // instead of (only) downloading it. The workspace's Bilder section
+  // picks it up via the attachments realtime subscription.
+  const keep = () => {
+    if (!selected || !run || !activeLocality || !user) return;
+    if (keptIds.has(selected.id) || keepingId) return;
+    const cur = selected;
+    setKeepingId(cur.id);
+    cur.canvas.toBlob((blob) => {
+      if (!blob) {
+        setKeepingId(null);
+        return;
+      }
+      createAttachment(
+        {
+          locality: activeLocality.id,
+          kind: 'extract',
+          caption: `${cur.sourceLabel} · ${cur.style}`,
+          meta: {
+            sourceKey: cur.sourceKey,
+            sourceLabel: cur.sourceLabel,
+            style: cur.style,
+            metresPerPx: cur.metresPerPx,
+            bbox25833: run.bbox25833,
+          },
+        },
+        user.id,
+        blob,
+        `${sanitizeFilename(cur.sourceLabel)}_${cur.style}.png`,
+      )
+        .then(() => {
+          setKeptIds((prev) => new Set(prev).add(cur.id));
+        })
+        .catch((e) => {
+          console.warn('[LidarExtractViewer] keep failed', e);
+          window.alert(t('lidarExtract.viewer.keepFailed'));
+        })
+        .finally(() => setKeepingId(null));
+    }, 'image/png');
+  };
+
   const download = () => {
     if (!selected) return;
     selected.canvas.toBlob((blob) => {
@@ -371,6 +421,27 @@ export const LidarExtractViewer = () => {
                 onClick={resetZoom}
               />
             </>
+          )}
+          {activeLocality && (
+            <Button
+              size="xs"
+              variant="ghost"
+              colorPalette="gray"
+              leftIcon={
+                selected && keptIds.has(selected.id) ? 'check' : 'bookmark_add'
+              }
+              onClick={keep}
+              disabled={
+                !selected ||
+                selected.status !== 'done' ||
+                keptIds.has(selected.id) ||
+                keepingId != null
+              }
+            >
+              {selected && keptIds.has(selected.id)
+                ? t('lidarExtract.viewer.kept')
+                : t('lidarExtract.viewer.keep')}
+            </Button>
           )}
           <Button
             size="xs"

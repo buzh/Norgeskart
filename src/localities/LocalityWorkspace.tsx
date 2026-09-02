@@ -37,7 +37,10 @@ import { currentUserAtom } from '../auth/atoms';
 import { DrawControls } from '../draw/drawControls/DrawControls';
 import { useDrawSettings } from '../draw/drawControls/hooks/drawSettings';
 import { getDrawLayer } from '../draw/drawControls/hooks/mapLayers';
+import { lidarExtractSelectionAtom } from '../lidarExtract/atoms';
+import { LidarExtractPanel } from '../lidarExtract/LidarExtractPanel';
 import { mapAtom } from '../map/atoms';
+import { BilderSection } from './BilderSection';
 import {
   activeLocalityAtom,
   adjustingLocalityAtom,
@@ -271,6 +274,8 @@ export const LocalityWorkspace = ({
   const [, setActiveLocality] = useAtom(activeLocalityAtom);
   const [draftActive, setDraftActive] = useAtom(funnDraftActiveAtom);
   const [adjusting, setAdjusting] = useAtom(adjustingLocalityAtom);
+  const [, setLidarSelection] = useAtom(lidarExtractSelectionAtom);
+  const [lidarOpen, setLidarOpen] = useState(false);
   const { setDrawLayerFeatures } = useDrawSettings();
 
   const isMine = user != null && user.id === locality.owner;
@@ -308,14 +313,16 @@ export const LocalityWorkspace = ({
   // selected (creation flow: drag first, name after).
   const isFreshRecord = locality.name === t('localities.defaultName');
 
-  // Draft/adjust cleanup when the workspace closes or swaps lokalitet.
+  // Draft/adjust/lidar cleanup when the workspace closes or swaps
+  // lokalitet.
   useEffect(() => {
     return () => {
       setDraftActive(false);
       setAdjusting(false);
+      setLidarSelection(null);
       getDrawLayer()?.getSource()?.clear();
     };
-  }, [locality.id, setDraftActive, setAdjusting]);
+  }, [locality.id, setDraftActive, setAdjusting, setLidarSelection]);
 
   const loadFunn = useCallback(async () => {
     try {
@@ -481,6 +488,35 @@ export const LocalityWorkspace = ({
     } finally {
       setSavingFunn(false);
     }
+  };
+
+  // LiDAR extract seeded with the lokalitet's rectangle — no manual box
+  // drag needed inside the workspace (the panel's "tegn på nytt" still
+  // allows a custom sub-box).
+  const openLidar = () => {
+    if (draftActive) cancelDraft();
+    setAdjusting(false);
+    const mapProjection = map.getView().getProjection().getCode();
+    setLidarSelection({
+      bboxMap: transformExtent(
+        locality.bbox,
+        'EPSG:4326',
+        mapProjection,
+      ) as [number, number, number, number],
+      mapProjection,
+      bbox25833: transformExtent(
+        locality.bbox,
+        'EPSG:4326',
+        'EPSG:25833',
+      ) as [number, number, number, number],
+      bboxLonLat: locality.bbox,
+    });
+    setLidarOpen(true);
+  };
+
+  const closeLidar = () => {
+    setLidarOpen(false);
+    setLidarSelection(null);
   };
 
   const zoomToFunn = (f: LocalityFindRecord) => {
@@ -774,6 +810,51 @@ export const LocalityWorkspace = ({
             onDelete={removeFunn}
           />
         ))}
+      </Stack>
+
+      {/* Bilder */}
+      {user && (
+        <BilderSection locality={locality} userId={user.id} isMine={isMine} />
+      )}
+
+      {/* Verktøy */}
+      <Stack gap={2}>
+        <Heading size="xs">{t('localities.tools.heading')}</Heading>
+        {!lidarOpen ? (
+          <Flex>
+            <Button
+              size="xs"
+              variant="secondary"
+              colorPalette="green"
+              leftIcon="crop_free"
+              onClick={openLidar}
+            >
+              {t('localities.tools.lidarExtract')}
+            </Button>
+          </Flex>
+        ) : (
+          <Stack
+            gap={2}
+            borderWidth="1px"
+            borderColor="gray.200"
+            borderRadius="md"
+            p={2}
+          >
+            <Flex justify="space-between" align="center">
+              <Text fontSize="sm" fontWeight="semibold">
+                {t('localities.tools.lidarExtract')}
+              </Text>
+              <IconButton
+                icon="close"
+                size="xs"
+                variant="ghost"
+                aria-label={t('localities.tools.closeLidar')}
+                onClick={closeLidar}
+              />
+            </Flex>
+            <LidarExtractPanel />
+          </Stack>
+        )}
       </Stack>
     </Stack>
   );

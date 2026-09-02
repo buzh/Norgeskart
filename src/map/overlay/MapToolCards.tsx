@@ -11,7 +11,6 @@ import {
 
 import { useAtom } from 'jotai';
 import { useTranslation } from 'react-i18next';
-import { LidarExtractPanel } from '../../lidarExtract/LidarExtractPanel';
 import { LocalitiesPanel } from '../../localities/LocalitiesPanel';
 import { MapThemes } from '../../settings/map/themes/MapThemes';
 import { useIsMobileScreen } from '../../shared/hooks';
@@ -95,14 +94,6 @@ const MapToolCardsBody = () => {
     return (
       <MapToolCard label={<MapLayersCardHeader />} onClose={onClose}>
         <MapThemes />
-      </MapToolCard>
-    );
-  }
-
-  if (currentMapTool === 'lidarExtract') {
-    return (
-      <MapToolCard label={t('lidarExtract.tabHeading')} onClose={onClose}>
-        <LidarExtractPanel />
       </MapToolCard>
     );
   }

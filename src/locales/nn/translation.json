@@ -141,7 +141,10 @@
       "empty": "Ingen bilete enno …",
       "close": "Lukk visning",
       "delete": "Fjern bilete (Del)",
-      "resetZoom": "Nullstill zoom (0)"
+      "resetZoom": "Nullstill zoom (0)",
+      "keep": "Behald",
+      "kept": "Lagra",
+      "keepFailed": "Kunne ikkje lagre biletet til lokaliteten. Prøv igjen."
     },
     "status": {
       "done": "Ferdig",
@@ -376,6 +379,21 @@
         "delete": "Slett"
       },
       "growConfirm": "Funnet ligg utanfor lokaliteten sitt område. Utvide området slik at det dekkjer funnet?"
+    },
+    "bilder": {
+      "heading": "Bilete",
+      "upload": "Last opp",
+      "uploading": "Lastar opp…",
+      "loading": "Hentar bilete…",
+      "empty": "Ingen bilete enno. Køyr eit LiDAR-uttrekk og trykk «Behald», eller last opp eit bilete.",
+      "confirmDelete": "Slette biletet? Handlinga kan ikkje angrast.",
+      "uploadFailed": "Kunne ikkje laste opp biletet. Prøv igjen.",
+      "delete": "Slett biletet"
+    },
+    "tools": {
+      "heading": "Verktøy",
+      "lidarExtract": "LiDAR-uttrekk",
+      "closeLidar": "Lukk LiDAR-uttrekk"
     }
   },
   "helpPage": {

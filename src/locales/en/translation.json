@@ -136,7 +136,10 @@
       "empty": "No images yet …",
       "close": "Close viewer",
       "delete": "Remove image (Del)",
-      "resetZoom": "Reset zoom (0)"
+      "resetZoom": "Reset zoom (0)",
+      "keep": "Keep",
+      "kept": "Saved",
+      "keepFailed": "Could not save the image to the locality. Try again."
     },
     "status": {
       "done": "Done",
@@ -371,6 +374,21 @@
         "delete": "Delete"
       },
       "growConfirm": "The find extends beyond the locality's area. Grow the area so it covers the find?"
+    },
+    "bilder": {
+      "heading": "Images",
+      "upload": "Upload",
+      "uploading": "Uploading…",
+      "loading": "Loading images…",
+      "empty": "No images yet. Run a LiDAR extract and press \"Keep\", or upload an image.",
+      "confirmDelete": "Delete the image? This cannot be undone.",
+      "uploadFailed": "Could not upload the image. Try again.",
+      "delete": "Delete the image"
+    },
+    "tools": {
+      "heading": "Tools",
+      "lidarExtract": "LiDAR extract",
+      "closeLidar": "Close LiDAR extract"
     }
   },
   "helpPage": {

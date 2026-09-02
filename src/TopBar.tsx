@@ -543,16 +543,6 @@ export const TopBar = () => {
 
       <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
 
-      <LabelledToggleButton
-        icon="crop_free"
-        label="LiDAR-uttrekk"
-        tooltip={t('controller.lidarExtract.text')}
-        active={currentMapTool === 'lidarExtract'}
-        onClick={() => toggleTool('lidarExtract')}
-      />
-
-      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
-
       {/* External hop to Kartverket's Norge i bilder viewer at the same
           extent. The site's SPA reads xmin/ymin/xmax/ymax + wkid from
           the query string (verified against their bundle) and defaults

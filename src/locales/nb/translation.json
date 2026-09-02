@@ -141,7 +141,10 @@
       "empty": "Ingen bilder ennå …",
       "close": "Lukk visning",
       "delete": "Fjern bilde (Del)",
-      "resetZoom": "Tilbakestill zoom (0)"
+      "resetZoom": "Tilbakestill zoom (0)",
+      "keep": "Behold",
+      "kept": "Lagret",
+      "keepFailed": "Kunne ikke lagre bildet til lokaliteten. Prøv igjen."
     },
     "status": {
       "done": "Ferdig",
@@ -376,6 +379,21 @@
         "delete": "Slett"
       },
       "growConfirm": "Funnet ligger utenfor lokalitetens område. Utvide området slik at det dekker funnet?"
+    },
+    "bilder": {
+      "heading": "Bilder",
+      "upload": "Last opp",
+      "uploading": "Laster opp…",
+      "loading": "Henter bilder…",
+      "empty": "Ingen bilder enda. Kjør et LiDAR-uttrekk og trykk «Behold», eller last opp et bilde.",
+      "confirmDelete": "Slette bildet? Handlingen kan ikke angres.",
+      "uploadFailed": "Kunne ikke laste opp bildet. Prøv igjen.",
+      "delete": "Slett bildet"
+    },
+    "tools": {
+      "heading": "Verktøy",
+      "lidarExtract": "LiDAR-uttrekk",
+      "closeLidar": "Lukk LiDAR-uttrekk"
     }
   },
   "helpPage": {
