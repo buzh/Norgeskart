@@ -13,6 +13,7 @@ import {
   Search,
   Spinner,
   Stack,
+  Switch,
   Text,
   Tooltip,
   VStack,
@@ -27,12 +28,21 @@ import { creatingLocalityAtom } from './localities/atoms';
 import { mapAtom } from './map/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
 import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
-import { probeCoverage } from './map/layers/config/backgroundLayers/coverageProbe';
 import {
   activeLidarProjectAtom,
+  activeLidarStyleAtom,
+  bboxIntersects,
+  DEFAULT_LIDAR_PROJECT_STYLE,
   fetchLidarProjects,
+  fetchNationalLidarStyles,
   LidarProject,
+  TIER_A_STYLES,
 } from './map/layers/config/backgroundLayers/lidarProjects';
+import {
+  DEFAULT_LIDAR_FILTERS,
+  lidarFilterSettingsAtom,
+  lidarViewportAtom,
+} from './map/layers/config/backgroundLayers/lidarRelevance';
 import { ThemeLayerName } from './map/layers/themeWMS';
 import { mapToolAtom } from './map/overlay/atoms';
 import { MeasurePopover } from './measure/MeasurePopover';
@@ -42,6 +52,30 @@ import {
   useResetSearchResults,
 } from './search/atoms';
 import type { MapTool } from './Layout';
+
+// Small count pill, absolutely positioned over whatever it's nested in.
+// Shared by the LiDAR/Kartlag toggle buttons and the style-pulldown chip.
+const CountBadge = ({ value }: { value?: number }) =>
+  value != null && value > 0 ? (
+    <Text
+      position="absolute"
+      top="-4px"
+      right="-4px"
+      bg="#FFDD9D"
+      borderRadius="full"
+      border="2px solid white"
+      px={1.5}
+      py={0}
+      minW="18px"
+      textAlign="center"
+      pointerEvents="none"
+      fontSize="10px"
+      fontWeight="bold"
+      lineHeight="14px"
+    >
+      {value}
+    </Text>
+  ) : null;
 
 // Icon + text label stacked vertically. Used for the primary map-mode
 // controls (Standard / LiDAR / Kulturminner / Temakart) where a
@@ -89,26 +123,7 @@ const LabelledToggleButton = ({
           </Text>
         </VStack>
       </Button>
-      {badge != null && badge > 0 && (
-        <Text
-          position="absolute"
-          top="-4px"
-          right="-4px"
-          bg="#FFDD9D"
-          borderRadius="full"
-          border="2px solid white"
-          px={1.5}
-          py={0}
-          minW="18px"
-          textAlign="center"
-          pointerEvents="none"
-          fontSize="10px"
-          fontWeight="bold"
-          lineHeight="14px"
-        >
-          {badge}
-        </Text>
-      )}
+      <CountBadge value={badge} />
     </Box>
   </Tooltip>
 );
@@ -134,54 +149,12 @@ const ToolButton = ({
         variant={active ? 'primary' : 'tertiary'}
         onClick={onClick}
       />
-      {badge != null && badge > 0 && (
-        <Text
-          position="absolute"
-          top="-4px"
-          right="-4px"
-          bg="#FFDD9D"
-          borderRadius="full"
-          border="2px solid white"
-          px={1.5}
-          py={0}
-          minW="18px"
-          textAlign="center"
-          pointerEvents="none"
-          fontSize="10px"
-          fontWeight="bold"
-          lineHeight="14px"
-        >
-          {badge}
-        </Text>
-      )}
+      <CountBadge value={badge} />
     </Box>
   </Tooltip>
 );
 
-// pointDensity in LidarProject is a string like "10pkt" — parse the
-// leading digits so we can sort densest first.
-const densityOrder = (d: string | null): number => {
-  if (!d) return 0;
-  const m = d.match(/^(\d+)/);
-  return m ? parseInt(m[1], 10) : 0;
-};
-
-// Newest first, then densest, then alphabetical.
-const sortProjects = (a: LidarProject, b: LidarProject): number => {
-  const ay = a.year ?? -Infinity;
-  const by = b.year ?? -Infinity;
-  if (ay !== by) return by - ay;
-  const ad = densityOrder(a.pointDensity);
-  const bd = densityOrder(b.pointDensity);
-  if (ad !== bd) return bd - ad;
-  return a.projectName.localeCompare(b.projectName);
-};
-
-const bboxIntersects = (
-  a: [number, number, number, number],
-  b: [number, number, number, number],
-): boolean =>
-  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+const CURRENT_YEAR = new Date().getFullYear();
 
 const LidarPulldownItem = ({
   label,
@@ -245,13 +218,26 @@ export const TopBar = () => {
   );
 
   const [lidarOpen, setLidarOpen] = useState(false);
+  const [styleOpen, setStyleOpen] = useState(false);
+  const [moreProjectsOpen, setMoreProjectsOpen] = useState(false);
+  const [moreStylesOpen, setMoreStylesOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [allProjects, setAllProjects] = useState<LidarProject[] | null>(null);
+  const [nationalStyles, setNationalStyles] = useState<string[]>([]);
+  const [filters, setFilters] = useAtom(lidarFilterSettingsAtom);
+  const [activeLidarStyle, setActiveLidarStyle] = useAtom(
+    activeLidarStyleAtom,
+  );
+  // Coverage-confirmed, tiered, capped viewport data — fetched once (in
+  // lidarFootprintsLayer.ts, mounted from Layout) and shared with the map
+  // footprint overlay so both read off a single WFS call.
+  const viewport = useAtomValue(lidarViewportAtom);
 
   // Fetch the full LiDAR project catalogue once (WMS GetCapabilities,
   // ~1900 rows, cached in localStorage for a week by fetchLidarProjects
-  // itself). Client-side viewport filter then decides what to show in
-  // the pulldown — reliable at any zoom, no more "in-view WFS returned
-  // zero because the viewport is 900m wide" surprises.
+  // itself) — feeds the cheap, always-on badge count below. The
+  // viewport-scoped, coverage-confirmed list shown inside the popover
+  // comes from lidarViewportAtom instead.
   useEffect(() => {
     let cancelled = false;
     fetchLidarProjects()
@@ -267,52 +253,51 @@ export const TopBar = () => {
     };
   }, []);
 
-  // Filter the full catalogue to projects that actually have hillshade
-  // pixels at the current viewport center. GetCapabilities bboxes are
-  // axis-aligned rectangles, so a large regional project like "Vestfold
-  // og Telemark 5pkt 2021" (bbox spans two counties) passes a naive
-  // bbox-intersects-viewport test even where its real coverage polygon
-  // doesn't reach. The WMS GetMap probe checks the actual pixel data
-  // per candidate and only keeps ones that come back as real hillshade.
-  const [nearbyProjects, setNearbyProjects] = useState<LidarProject[]>([]);
-  const [probing, setProbing] = useState(false);
+  // Style options for the national mosaic (per-project styles come from
+  // activeLidarProject.styles directly, already in the catalogue).
   useEffect(() => {
-    if (!lidarOpen || !allProjects) return;
-    const size = map.getSize();
-    const center = map.getView().getCenter();
-    const resolution = map.getView().getResolution();
-    if (!size || !center || resolution == null) return;
-    const extent = map.getView().calculateExtent(size);
-    if (!extent) return;
-    const projection = map.getView().getProjection().getCode();
-    const extentLonLat = transformExtent(extent, projection, 'EPSG:4326') as
-      | [number, number, number, number]
-      | undefined;
-    if (!extentLonLat) return;
-
-    // Fast prefilter: strict bbox intersect (no padding). Anything past
-    // this still needs the WMS probe to confirm real coverage.
-    const bboxCandidates = allProjects
-      .filter((p) => bboxIntersects(p.bboxLonLat, extentLonLat))
-      .sort(sortProjects);
-
-    setProbing(true);
     let cancelled = false;
-    Promise.all(
-      bboxCandidates.map((p) =>
-        probeCoverage(p.id, center[0], center[1], resolution, projection).then(
-          (covered) => ({ p, covered }),
-        ),
-      ),
-    ).then((results) => {
-      if (cancelled) return;
-      setNearbyProjects(results.filter((r) => r.covered).map((r) => r.p));
-      setProbing(false);
-    });
+    fetchNationalLidarStyles()
+      .then((styles) => {
+        if (!cancelled) setNationalStyles(styles);
+      })
+      .catch(() => {
+        if (!cancelled) setNationalStyles([DEFAULT_LIDAR_PROJECT_STYLE]);
+      });
     return () => {
       cancelled = true;
     };
-  }, [lidarOpen, allProjects, map]);
+  }, []);
+
+  // Badge on the LiDAR button: how many catalogued projects intersect the
+  // current viewport. Cheap (pure array filter over the already-loaded
+  // catalogue, no network) so it runs continuously regardless of whether
+  // LiDAR mode is even on — the amount of available data should be
+  // discoverable before the user ever clicks in.
+  const [relevantCount, setRelevantCount] = useState(0);
+  useEffect(() => {
+    if (!allProjects) return;
+    const recompute = () => {
+      const size = map.getSize();
+      const center = map.getView().getCenter();
+      if (!size || !center) return;
+      const extent = map.getView().calculateExtent(size);
+      const projection = map.getView().getProjection().getCode();
+      const extentLonLat = transformExtent(extent, projection, 'EPSG:4326') as
+        | [number, number, number, number]
+        | undefined;
+      if (!extentLonLat) return;
+      setRelevantCount(
+        allProjects.filter((p) => bboxIntersects(p.bboxLonLat, extentLonLat))
+          .length,
+      );
+    };
+    recompute();
+    map.on('moveend', recompute);
+    return () => {
+      map.un('moveend', recompute);
+    };
+  }, [allProjects, map]);
 
   const toggleTool = (name: Exclude<MapTool, null>) => {
     setCurrentMapTool(currentMapTool === name ? null : name);
@@ -345,13 +330,23 @@ export const TopBar = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  // Picks the best default style for a newly-activated dataset: the
+  // first tier-A (most diagnostic) style it publishes, else whatever it
+  // has, else the app-wide default.
+  const firstStyleFor = (styles: string[]): string =>
+    TIER_A_STYLES.find((s) => styles.includes(s)) ??
+    styles[0] ??
+    DEFAULT_LIDAR_PROJECT_STYLE;
+
   const activateNational = () => {
     setBackgroundLayer('lidarHillshade');
+    setActiveLidarStyle(firstStyleFor(nationalStyles));
     setLidarOpen(false);
   };
   const activateProject = (p: LidarProject) => {
     setActiveLidarProject(p);
     setBackgroundLayer('lidarProject');
+    setActiveLidarStyle(firstStyleFor(p.styles));
     setLidarOpen(false);
   };
 
@@ -361,6 +356,18 @@ export const TopBar = () => {
   const lidarChipLabel = isLidarProject && activeLidarProject
     ? activeLidarProject.projectName
     : 'Nasjonal mosaikk';
+
+  const activeDatasetStyles =
+    isLidarProject && activeLidarProject
+      ? activeLidarProject.styles
+      : nationalStyles;
+  const tierAStyles = TIER_A_STYLES.filter((s) =>
+    activeDatasetStyles.includes(s),
+  );
+  const tierBStyles = activeDatasetStyles.filter(
+    (s) => !TIER_A_STYLES.includes(s),
+  );
+  const showStylePicker = activeDatasetStyles.length > 1;
 
   return (
     <Flex
@@ -420,6 +427,7 @@ export const TopBar = () => {
         label="LiDAR"
         tooltip="LiDAR (nasjonal mosaikk / per-prosjekt)"
         active={isLidarMode}
+        badge={relevantCount}
         onClick={() => {
           if (!isLidarMode) setBackgroundLayer('lidarHillshade');
         }}
@@ -427,8 +435,8 @@ export const TopBar = () => {
 
       {/* LiDAR pulldown — only surfaces when LiDAR mode is active. Shows
           current selection and lets the user swap between the national
-          mosaic and per-project datasets that actually have coverage at
-          the current point. */}
+          mosaic and per-project datasets confirmed (by real WFS footprint
+          polygon, see lidarFootprintsLayer.ts) to cover the viewport. */}
       {isLidarMode && (
         <Popover
           open={lidarOpen}
@@ -455,10 +463,98 @@ export const TopBar = () => {
               </Text>
             </Button>
           </PopoverTrigger>
-          <PopoverContent width="280px" p={0} borderRadius="lg">
+          <PopoverContent width="300px" p={0} borderRadius="lg">
           <PopoverArrow />
           <PopoverBody p={2}>
             <Stack gap={1}>
+              <Flex align="center" justify="space-between" px={1}>
+                <Text fontSize="10px" color="gray.500">
+                  LiDAR-datasett
+                </Text>
+                <Tooltip content="Filter" positioning={{ placement: 'top' }}>
+                  <IconButton
+                    icon="tune"
+                    aria-label="Filter"
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => setFilterOpen(!filterOpen)}
+                  />
+                </Tooltip>
+              </Flex>
+
+              {/* Closed by default — relevance rules only ever reprioritize
+                  (primary vs "flere lag"), never hide data, so dialing
+                  these back always reveals more of the same catalogue. */}
+              {filterOpen && (
+                <Box bg="gray.50" borderRadius="md" p={2} mb={1}>
+                  <Stack gap={2}>
+                    <Box>
+                      <Text fontSize="xs" color="gray.700">
+                        Vis som hovedliste fra år: {filters.minYear}
+                      </Text>
+                      <input
+                        type="range"
+                        min={2000}
+                        max={CURRENT_YEAR}
+                        value={filters.minYear}
+                        onChange={(e) =>
+                          setFilters({
+                            ...filters,
+                            minYear: Number(e.target.value),
+                          })
+                        }
+                        style={{ width: '100%' }}
+                      />
+                    </Box>
+                    <Switch
+                      checked={filters.grandfatherDense}
+                      onCheckedChange={(e) =>
+                        setFilters({
+                          ...filters,
+                          grandfatherDense: e.checked,
+                        })
+                      }
+                    >
+                      <Text fontSize="xs">
+                        Regn ≥5 pkt/m² som nytt nok
+                      </Text>
+                    </Switch>
+                    <Box>
+                      <Text fontSize="xs" color="gray.700">
+                        Minste andel av synsfeltet:{' '}
+                        {Math.round(filters.minAreaRatio * 100)}%
+                      </Text>
+                      <input
+                        type="range"
+                        min={0}
+                        max={50}
+                        step={5}
+                        value={Math.round(filters.minAreaRatio * 100)}
+                        onChange={(e) =>
+                          setFilters({
+                            ...filters,
+                            minAreaRatio: Number(e.target.value) / 100,
+                          })
+                        }
+                        style={{ width: '100%' }}
+                      />
+                    </Box>
+                    {(filters.minYear !== DEFAULT_LIDAR_FILTERS.minYear ||
+                      !filters.grandfatherDense ||
+                      filters.minAreaRatio !==
+                        DEFAULT_LIDAR_FILTERS.minAreaRatio) && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => setFilters(DEFAULT_LIDAR_FILTERS)}
+                      >
+                        Tilbakestill filter
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
+              )}
+
               <LidarPulldownItem
                 label="Nasjonal mosaikk"
                 meta="Kartverket høydedata (hele Norge)"
@@ -474,46 +570,179 @@ export const TopBar = () => {
               <Text fontSize="10px" color="gray.500" px={2}>
                 LiDAR-prosjekter som dekker dette punktet
               </Text>
-              {(allProjects === null || probing) && (
+              {(allProjects === null || viewport.loading) && (
                 <Flex align="center" gap={2} p={2}>
                   <Spinner size="xs" />
                   <Text fontSize="xs" color="gray.500">
                     {allProjects === null
                       ? 'Henter katalog…'
-                      : 'Sjekker dekning…'}
+                      : 'Henter omriss…'}
                   </Text>
                 </Flex>
               )}
               {allProjects != null &&
-                !probing &&
-                nearbyProjects.length === 0 && (
+                !viewport.loading &&
+                viewport.primary.length === 0 &&
+                viewport.secondary.length === 0 && (
                   <Text fontSize="xs" color="gray.500" px={2} py={1}>
                     Ingen LiDAR-datasett dekker dette punktet. Prøv et annet
                     sted.
                   </Text>
                 )}
-              {!probing &&
-                nearbyProjects.map((p) => {
-                const active =
-                  isLidarProject && activeLidarProject?.id === p.id;
-                const meta = [
-                  p.year != null ? String(p.year) : null,
-                  p.pointDensity,
-                ]
-                  .filter((s): s is string => !!s && s.length > 0)
-                  .join(' · ');
-                return (
-                  <LidarPulldownItem
-                    key={p.id}
-                    label={p.projectName}
-                    meta={meta}
-                    active={active}
-                    onClick={() => activateProject(p)}
-                  />
-                );
-              })}
+              {!viewport.loading &&
+                viewport.primary.map((entry) => {
+                  const p = entry.project;
+                  const active =
+                    isLidarProject && activeLidarProject?.id === p.id;
+                  const meta = [
+                    p.year != null ? String(p.year) : null,
+                    p.pointDensity,
+                  ]
+                    .filter((s): s is string => !!s && s.length > 0)
+                    .join(' · ');
+                  return (
+                    <LidarPulldownItem
+                      key={p.id}
+                      label={p.projectName}
+                      meta={meta}
+                      active={active}
+                      onClick={() => activateProject(p)}
+                    />
+                  );
+                })}
+              {!viewport.loading && viewport.secondary.length > 0 && (
+                <>
+                  <Box
+                    as="button"
+                    onClick={() => setMoreProjectsOpen(!moreProjectsOpen)}
+                    textAlign="left"
+                    w="full"
+                    py={1}
+                    px={2}
+                    borderRadius="md"
+                    _hover={{ bg: 'gray.50' }}
+                    cursor="pointer"
+                  >
+                    <Text fontSize="xs" color="gray.600">
+                      {moreProjectsOpen ? '▾' : '▸'} {viewport.secondary.length}{' '}
+                      flere lag
+                    </Text>
+                  </Box>
+                  {moreProjectsOpen &&
+                    viewport.secondary.map((entry) => {
+                      const p = entry.project;
+                      const active =
+                        isLidarProject && activeLidarProject?.id === p.id;
+                      const meta = [
+                        p.year != null ? String(p.year) : null,
+                        p.pointDensity,
+                      ]
+                        .filter((s): s is string => !!s && s.length > 0)
+                        .join(' · ');
+                      return (
+                        <LidarPulldownItem
+                          key={p.id}
+                          label={p.projectName}
+                          meta={meta}
+                          active={active}
+                          onClick={() => activateProject(p)}
+                        />
+                      );
+                    })}
+                </>
+              )}
             </Stack>
           </PopoverBody>
+          </PopoverContent>
+        </Popover>
+      )}
+
+      {/* Style pulldown — sits next to the dataset chip whenever the
+          active dataset publishes more than one styled variant. Cycling
+          skyggerelieff / multiskyggerelieff / helning_prosent is the
+          fast path; anything else (helning_grader, ...) sits behind
+          "flere lag" here too. */}
+      {isLidarMode && showStylePicker && (
+        <Popover
+          open={styleOpen}
+          onOpenChange={(e) => setStyleOpen(e.open)}
+          positioning={{ placement: 'bottom-start', offset: { mainAxis: 8 } }}
+        >
+          <PopoverTrigger asChild>
+            <Box position="relative" display="inline-block">
+              <Button
+                variant="secondary"
+                colorPalette="green"
+                size="sm"
+                rightIcon="arrow_drop_down"
+                maxW="180px"
+                overflow="hidden"
+              >
+                <Text
+                  fontSize="xs"
+                  lineHeight="short"
+                  whiteSpace="nowrap"
+                  textOverflow="ellipsis"
+                  overflow="hidden"
+                >
+                  {activeLidarStyle}
+                </Text>
+              </Button>
+              <CountBadge value={activeDatasetStyles.length} />
+            </Box>
+          </PopoverTrigger>
+          <PopoverContent width="220px" p={0} borderRadius="lg">
+            <PopoverArrow />
+            <PopoverBody p={2}>
+              <Stack gap={1}>
+                <Text fontSize="10px" color="gray.500" px={2}>
+                  Visningsstil
+                </Text>
+                {tierAStyles.map((style) => (
+                  <LidarPulldownItem
+                    key={style}
+                    label={style}
+                    active={activeLidarStyle === style}
+                    onClick={() => {
+                      setActiveLidarStyle(style);
+                      setStyleOpen(false);
+                    }}
+                  />
+                ))}
+                {tierBStyles.length > 0 && (
+                  <>
+                    <Box
+                      as="button"
+                      onClick={() => setMoreStylesOpen(!moreStylesOpen)}
+                      textAlign="left"
+                      w="full"
+                      py={1}
+                      px={2}
+                      borderRadius="md"
+                      _hover={{ bg: 'gray.50' }}
+                      cursor="pointer"
+                    >
+                      <Text fontSize="xs" color="gray.600">
+                        {moreStylesOpen ? '▾' : '▸'} {tierBStyles.length}{' '}
+                        flere lag
+                      </Text>
+                    </Box>
+                    {moreStylesOpen &&
+                      tierBStyles.map((style) => (
+                        <LidarPulldownItem
+                          key={style}
+                          label={style}
+                          active={activeLidarStyle === style}
+                          onClick={() => {
+                            setActiveLidarStyle(style);
+                            setStyleOpen(false);
+                          }}
+                        />
+                      ))}
+                  </>
+                )}
+              </Stack>
+            </PopoverBody>
           </PopoverContent>
         </Popover>
       )}

@@ -7,9 +7,16 @@
 // layer suffixes advertised in GetCapabilities under a given prefix.
 
 import {
+  bboxIntersects,
   fetchLidarProjects,
+  fetchNationalLidarStyles,
   LidarProject,
+  NATIONAL_LAYER_PREFIX,
+  NATIONAL_WMS_URL,
+  sortProjectsByRelevance,
 } from '../map/layers/config/backgroundLayers/lidarProjects';
+
+export { fetchNationalLidarStyles };
 
 export type LidarSource = {
   key: string;
@@ -22,92 +29,7 @@ export type LidarSource = {
   styles: string[];
 };
 
-export const NATIONAL_WMS_URL =
-  '/wms/geonorge/wms.hoyde-dtm-nhm-topobathy-25833';
-export const NATIONAL_LAYER_PREFIX = 'NHM_DTM_TOPOBATHY_25833';
 export const PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
-
-// Styles that are advertised but not useful here. Filtered out both when
-// parsing national caps and when mapping per-project sources.
-//   - `None`: national's "no style" placeholder (renders a near-uniform PNG).
-//   - `dynamisk_farget_hoyde`: Kartverket picks a per-tile colour ramp
-//     from the local elevation range, so adjacent tiles get incompatible
-//     palettes and the stitched output has visible seams. No workaround
-//     from the client side.
-const EXCLUDED_STYLES = new Set<string>(['None', 'dynamisk_farget_hoyde']);
-
-const NATIONAL_CAPS_URL =
-  `${NATIONAL_WMS_URL}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`;
-// Bump when the parser filter changes so stale cached lists (e.g. still
-// including the `None` pseudo-style) get discarded on next load.
-const NATIONAL_STORAGE_KEY = 'lidarExtract.nationalStyles.v2';
-const NATIONAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-let nationalInflight: Promise<string[]> | null = null;
-
-// Enumerate style suffixes advertised for the national DTM layer prefix.
-// Falls back to the styles known to be published if the caps fetch fails.
-export function fetchNationalLidarStyles(): Promise<string[]> {
-  if (nationalInflight) return nationalInflight;
-  const cached = readNationalCache();
-  if (cached) return Promise.resolve(cached);
-  nationalInflight = (async () => {
-    try {
-      const res = await fetch(NATIONAL_CAPS_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const xml = await res.text();
-      const styles = parseStylesForPrefix(xml, NATIONAL_LAYER_PREFIX);
-      const out = styles.length > 0 ? styles : NATIONAL_FALLBACK_STYLES;
-      writeNationalCache(out);
-      return out;
-    } catch {
-      return NATIONAL_FALLBACK_STYLES;
-    }
-  })().finally(() => {
-    nationalInflight = null;
-  });
-  return nationalInflight;
-}
-
-// Kept as a floor so the UI still has something to offer when caps is down.
-const NATIONAL_FALLBACK_STYLES = ['skyggerelieff'];
-
-function parseStylesForPrefix(xmlText: string, prefix: string): string[] {
-  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
-  if (doc.getElementsByTagName('parsererror').length > 0) return [];
-  const styles = new Set<string>();
-  for (const layer of Array.from(doc.getElementsByTagName('Layer'))) {
-    const name = layer.getElementsByTagName('Name')[0]?.textContent?.trim();
-    if (!name || !name.startsWith(prefix + ':')) continue;
-    const suffix = name.slice(prefix.length + 1);
-    if (EXCLUDED_STYLES.has(suffix)) continue;
-    styles.add(suffix);
-  }
-  return Array.from(styles).sort();
-}
-
-function readNationalCache(): string[] | null {
-  try {
-    const raw = localStorage.getItem(NATIONAL_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { ts: number; styles: string[] };
-    if (Date.now() - parsed.ts > NATIONAL_TTL_MS) return null;
-    return parsed.styles;
-  } catch {
-    return null;
-  }
-}
-
-function writeNationalCache(styles: string[]) {
-  try {
-    localStorage.setItem(
-      NATIONAL_STORAGE_KEY,
-      JSON.stringify({ ts: Date.now(), styles }),
-    );
-  } catch {
-    /* quota / unavailable */
-  }
-}
 
 // Produce the sortable, filtered list of sources for a selection bbox given
 // in EPSG:4326 (lon/lat). National mosaic is always first. Projects are
@@ -133,7 +55,7 @@ export async function enumerateLidarSources(
 
   const overlapping = projects
     .filter((p) => bboxIntersects(p.bboxLonLat, bboxLonLat))
-    .sort(byRecency)
+    .sort(sortProjectsByRelevance)
     .map(projectToSource);
 
   return [national, ...overlapping];
@@ -148,31 +70,8 @@ function projectToSource(p: LidarProject): LidarSource {
     pointDensity: p.pointDensity,
     wmsUrl: PROJECT_WMS_URL,
     layerPrefix: p.projectName,
-    styles: p.styles.filter((s) => !EXCLUDED_STYLES.has(s)),
+    styles: p.styles,
   };
-}
-
-function bboxIntersects(
-  a: [number, number, number, number],
-  b: [number, number, number, number],
-): boolean {
-  return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
-}
-
-function byRecency(a: LidarProject, b: LidarProject): number {
-  const ay = a.year ?? -Infinity;
-  const by = b.year ?? -Infinity;
-  if (ay !== by) return by - ay;
-  const ad = densityOrder(a.pointDensity);
-  const bd = densityOrder(b.pointDensity);
-  if (ad !== bd) return bd - ad;
-  return a.projectName.localeCompare(b.projectName);
-}
-
-function densityOrder(d: string | null): number {
-  if (!d) return 0;
-  const m = d.match(/^(\d+)/);
-  return m ? parseInt(m[1], 10) : 0;
 }
 
 // Best-guess native ground resolution per source, used to pick a

@@ -21,7 +21,7 @@ const CAPS_URL =
   '/wms/geonorge/wms.hoyde-dtm-prosjekt?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0';
 // Bump when the parser output shape or filtering changes so cached
 // entries from an older schema are ignored.
-const STORAGE_KEY = 'lidarProjects.v3';
+const STORAGE_KEY = 'lidarProjects.v4';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // The project the picker most recently activated as the background source.
@@ -29,8 +29,30 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // 'lidarProject' to build the actual WMS request.
 export const activeLidarProjectAtom = atom<LidarProject | null>(null);
 
+// The styled variant (skyggerelieff, multiskyggerelieff, ...) currently
+// shown for whichever dataset is active (national mosaic or a project).
+// Read by the background-layer effect alongside activeLidarProjectAtom.
+export const activeLidarStyleAtom = atom<string>('skyggerelieff');
+
 export const LIDAR_PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
 export const DEFAULT_LIDAR_PROJECT_STYLE = 'skyggerelieff';
+
+// The three most diagnostic variants for reading archaeology in terrain —
+// shown first, in this order, in the style pulldown. Anything else
+// (helning_grader and whatever else a dataset happens to publish) sits
+// behind that pulldown's "flere lag" overflow.
+export const TIER_A_STYLES = [
+  'skyggerelieff',
+  'multiskyggerelieff',
+  'helning_prosent',
+];
+
+// Styles that are advertised but not useful to show anywhere:
+//   - `None`: the "no style" placeholder (renders a near-uniform PNG).
+//   - `dynamisk_farget_hoyde`: Kartverket picks a per-tile colour ramp
+//     from the local elevation range, so adjacent tiles get incompatible
+//     palettes — looks broken as a background layer.
+const EXCLUDED_STYLES = new Set<string>(['None', 'dynamisk_farget_hoyde']);
 
 type CachedEntry = { ts: number; projects: LidarProject[] };
 
@@ -97,7 +119,9 @@ function parseCapabilities(xmlText: string): LidarProject[] {
       year: parseYear(projectName),
       pointDensity: parsePointDensity(projectName),
       bboxLonLat,
-      styles: Array.from(styles).sort(),
+      styles: Array.from(styles)
+        .filter((s) => !EXCLUDED_STYLES.has(s))
+        .sort(),
     });
   }
   return out;
@@ -174,5 +198,117 @@ function writeCache(projects: LidarProject[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entry));
   } catch {
     // Ignore quota / unavailable storage.
+  }
+}
+
+// pointDensity is a string like "10pkt" — parse the leading digits so we
+// can sort/compare densest first. Shared by the TopBar picker and the
+// footprint-layer relevance classification.
+export const densityOrder = (d: string | null): number => {
+  if (!d) return 0;
+  const m = d.match(/^(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+};
+
+// Newest first, then densest, then alphabetical — the display order for
+// every LiDAR project list in the app.
+export const sortProjectsByRelevance = (
+  a: LidarProject,
+  b: LidarProject,
+): number => {
+  const ay = a.year ?? -Infinity;
+  const by = b.year ?? -Infinity;
+  if (ay !== by) return by - ay;
+  const ad = densityOrder(a.pointDensity);
+  const bd = densityOrder(b.pointDensity);
+  if (ad !== bd) return bd - ad;
+  return a.projectName.localeCompare(b.projectName);
+};
+
+export const bboxIntersects = (
+  a: [number, number, number, number],
+  b: [number, number, number, number],
+): boolean => a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+
+// --- National mosaic styles ---
+//
+// wms.hoyde-dtm-nhm-topobathy-25833 publishes the same kind of styled
+// variants as the per-project WMS, under one fixed layer prefix instead
+// of one per acquisition. Moved here (from lidarExtract/sources.ts, which
+// re-exports it) so the TopBar style pulldown and the LiDAR-uttrekk tool
+// share one fetch/cache instead of hitting GetCapabilities twice.
+
+export const NATIONAL_WMS_URL =
+  '/wms/geonorge/wms.hoyde-dtm-nhm-topobathy-25833';
+export const NATIONAL_LAYER_PREFIX = 'NHM_DTM_TOPOBATHY_25833';
+
+const NATIONAL_CAPS_URL =
+  `${NATIONAL_WMS_URL}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`;
+// Bump when the parser filter changes so stale cached lists (e.g. still
+// including the `None` pseudo-style) get discarded on next load.
+const NATIONAL_STORAGE_KEY = 'lidarProjects.nationalStyles.v1';
+const NATIONAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Kept as a floor so the UI still has something to offer when caps is down.
+const NATIONAL_FALLBACK_STYLES = [DEFAULT_LIDAR_PROJECT_STYLE];
+
+let nationalInflight: Promise<string[]> | null = null;
+
+export function fetchNationalLidarStyles(): Promise<string[]> {
+  if (nationalInflight) return nationalInflight;
+  const cached = readNationalCache();
+  if (cached) return Promise.resolve(cached);
+  nationalInflight = (async () => {
+    try {
+      const res = await fetch(NATIONAL_CAPS_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const xml = await res.text();
+      const styles = parseStylesForPrefix(xml, NATIONAL_LAYER_PREFIX);
+      const out = styles.length > 0 ? styles : NATIONAL_FALLBACK_STYLES;
+      writeNationalCache(out);
+      return out;
+    } catch {
+      return NATIONAL_FALLBACK_STYLES;
+    }
+  })().finally(() => {
+    nationalInflight = null;
+  });
+  return nationalInflight;
+}
+
+function parseStylesForPrefix(xmlText: string, prefix: string): string[] {
+  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  if (doc.getElementsByTagName('parsererror').length > 0) return [];
+  const styles = new Set<string>();
+  for (const layer of Array.from(doc.getElementsByTagName('Layer'))) {
+    const name = layer.getElementsByTagName('Name')[0]?.textContent?.trim();
+    if (!name || !name.startsWith(prefix + ':')) continue;
+    const suffix = name.slice(prefix.length + 1);
+    if (EXCLUDED_STYLES.has(suffix)) continue;
+    styles.add(suffix);
+  }
+  return Array.from(styles).sort();
+}
+
+function readNationalCache(): string[] | null {
+  try {
+    const raw = localStorage.getItem(NATIONAL_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ts: number; styles: string[] };
+    if (Date.now() - parsed.ts > NATIONAL_TTL_MS) return null;
+    return parsed.styles;
+  } catch {
+    return null;
+  }
+}
+
+function writeNationalCache(styles: string[]) {
+  try {
+    localStorage.setItem(
+      NATIONAL_STORAGE_KEY,
+      JSON.stringify({ ts: Date.now(), styles }),
+    );
+  } catch {
+    /* quota / unavailable */
   }
 }

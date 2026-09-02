@@ -7,11 +7,11 @@ import {
 } from '../../../../shared/utils/urlUtils';
 import { mapAtom } from '../../../atoms';
 import { BackgroundLayerName, WMTSLayerName } from '../../backgroundLayers';
-import { elevationBackgroundLayers } from './elevation';
+import { buildNationalLidarConfig } from './elevation';
 import { KvCacheBackgroundLayers } from './kvCache';
 import {
   activeLidarProjectAtom,
-  DEFAULT_LIDAR_PROJECT_STYLE,
+  activeLidarStyleAtom,
   LIDAR_PROJECT_WMS_URL,
 } from './lidarProjects';
 import { retryBlankTileLoadFunction } from './loadFunctions';
@@ -43,10 +43,12 @@ const emptyBackgroundLayer: EmptyBackgroundLayer = {
   layerName: 'empty',
 };
 
+// 'lidarHillshade' (national mosaic) and 'lidarProject' are both handled
+// as dynamic branches in backgroundLayerAtomEffect below — their style
+// comes from activeLidarStyleAtom, so neither has a static entry here.
 export const allConfiguredBackgroundLayers = [
   emptyBackgroundLayer,
   ...KvCacheBackgroundLayers,
-  ...elevationBackgroundLayers,
 ];
 
 // Startup values the URL param may name directly. `lidarProject` is
@@ -77,12 +79,15 @@ export const backgroundLayerAtom = atom<BackgroundLayerName>(
   getDefaultBackgroundLayer(),
 );
 
-const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => ({
+const buildLidarProjectConfig = (
+  projectId: string,
+  style: string,
+): WMSBackgroundLayer => ({
   type: 'WMS',
   layerName: 'lidarProject',
   url: LIDAR_PROJECT_WMS_URL,
   props: {
-    LAYERS: `${projectId}:${DEFAULT_LIDAR_PROJECT_STYLE}`,
+    LAYERS: `${projectId}:${style}`,
     VERSION: '1.3.0',
   },
   tileLoadFunction: retryBlankTileLoadFunction,
@@ -90,9 +95,10 @@ const buildLidarProjectConfig = (projectId: string): WMSBackgroundLayer => ({
 
 export const backgroundLayerAtomEffect = atomEffect((get) => {
   const layerName = get(backgroundLayerAtom);
-  // Depend on the active lidar project so switching projects while
-  // 'lidarProject' is the background rebuilds the WMS layer.
+  // Depend on the active lidar project + style so switching either while
+  // a LiDAR layer is the background rebuilds the WMS layer.
   const activeLidarProject = get(activeLidarProjectAtom);
+  const activeLidarStyle = get(activeLidarStyleAtom);
 
   if (layerName === 'empty') {
     clearBackgroundLayer();
@@ -103,9 +109,11 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
   const layerConfig: BackgroundLayer | undefined =
     layerName === 'lidarProject'
       ? activeLidarProject
-        ? buildLidarProjectConfig(activeLidarProject.id)
+        ? buildLidarProjectConfig(activeLidarProject.id, activeLidarStyle)
         : undefined
-      : allConfiguredBackgroundLayers.find((l) => l.layerName === layerName);
+      : layerName === 'lidarHillshade'
+        ? buildNationalLidarConfig(activeLidarStyle)
+        : allConfiguredBackgroundLayers.find((l) => l.layerName === layerName);
 
   if (!layerConfig) {
     if (layerName === 'lidarProject') {

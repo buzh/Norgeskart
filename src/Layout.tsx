@@ -13,6 +13,7 @@ import { LocalityWorkspace } from './localities/LocalityWorkspace';
 import { useLocalityCreate } from './localities/useLocalityCreate';
 import { KulturminnerPopup } from './map/featureInfo/KulturminnerPopup';
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
+import { useLidarFootprintsLayer } from './map/lidarFootprintsLayer';
 import { MapComponent } from './map/MapComponent';
 import { MapToolCards } from './map/overlay/MapToolCards';
 import { useSearchEffects } from './search/atoms';
@@ -45,6 +46,7 @@ export const Layout = () => {
   useFunnLayer();
   useLocalityClick();
   useLocalityCreate();
+  useLidarFootprintsLayer();
   // Subscribe to PB authStore changes → currentUserAtom.
   useAtom(pbAuthSyncEffect);
 
