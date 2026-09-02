@@ -329,6 +329,7 @@
     "workspace": {
       "back": "Back",
       "zoom": "Zoom to the locality",
+      "adjust": "Adjust the area (move it or drag the corners)",
       "deleteLocality": "Delete the locality",
       "confirmDelete": "Delete \"{{name}}\" with all its finds and images? This cannot be undone.",
       "name": "Name",
@@ -349,6 +350,7 @@
       "saveFailed": "Could not save the find. Try again.",
       "draft": {
         "instructions": "Draw the find on the map with the tools below, and give it a title.",
+        "instructionsEdit": "Change the drawing on the map, the title, or the note – save to update the find.",
         "titlePlaceholder": "E.g. burial mound?",
         "notePlaceholder": "Why do you think something is here?",
         "save": "Save find",
@@ -365,8 +367,10 @@
       "actions": {
         "zoom": "Zoom to the find",
         "edit": "Edit",
+        "editGeometry": "Edit the drawing",
         "delete": "Delete"
-      }
+      },
+      "growConfirm": "The find extends beyond the locality's area. Grow the area so it covers the find?"
     }
   },
   "helpPage": {

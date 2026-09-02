@@ -334,6 +334,7 @@
     "workspace": {
       "back": "Tilbake",
       "zoom": "Zoom til lokaliteten",
+      "adjust": "Juster området (flytt eller dra i hjørna)",
       "deleteLocality": "Slett lokaliteten",
       "confirmDelete": "Slette «{{name}}» med alle funn og bilete? Handlinga kan ikkje angrast.",
       "name": "Namn",
@@ -354,6 +355,7 @@
       "saveFailed": "Kunne ikkje lagre funnet. Prøv igjen.",
       "draft": {
         "instructions": "Teikn funnet på kartet med verktøya under, og gjev det ein tittel.",
+        "instructionsEdit": "Endre teikninga på kartet, tittelen eller notatet – lagre for å oppdatere funnet.",
         "titlePlaceholder": "T.d. gravhaug?",
         "notePlaceholder": "Kvifor trur du det er noko her?",
         "save": "Lagre funn",
@@ -370,8 +372,10 @@
       "actions": {
         "zoom": "Zoom til funnet",
         "edit": "Rediger",
+        "editGeometry": "Rediger teikninga",
         "delete": "Slett"
-      }
+      },
+      "growConfirm": "Funnet ligg utanfor lokaliteten sitt område. Utvide området slik at det dekkjer funnet?"
     }
   },
   "helpPage": {

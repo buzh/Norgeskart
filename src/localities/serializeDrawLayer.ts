@@ -1,7 +1,10 @@
 import type { FeatureCollection } from 'geojson';
+import { createEmpty, extend, isEmpty } from 'ol/extent';
 import { GeoJSON } from 'ol/format';
 import { Circle as CircleGeom } from 'ol/geom';
 import { fromCircle } from 'ol/geom/Polygon';
+import { transformExtent } from 'ol/proj';
+import { LocalityBbox } from '../api/localities';
 import { getDrawLayer } from '../draw/drawControls/hooks/mapLayers';
 import { getFeaturePropertiesForExport } from '../draw/utils/featureUtils';
 
@@ -44,4 +47,19 @@ export const serializeDrawLayer = (
     return null;
   }
   return JSON.parse(geoJsonString) as FeatureCollection;
+};
+
+// Union extent of everything on the draw layer, in EPSG:4326 — used to
+// check whether a drawn funn fits inside its lokalitet's rectangle.
+export const getDrawLayerExtent4326 = (
+  mapProjection: string,
+): LocalityBbox | null => {
+  const features = getDrawLayer()?.getSource()?.getFeatures() ?? [];
+  const extent = createEmpty();
+  for (const f of features) {
+    const g = f.getGeometry();
+    if (g) extend(extent, g.getExtent());
+  }
+  if (isEmpty(extent)) return null;
+  return transformExtent(extent, mapProjection, 'EPSG:4326') as LocalityBbox;
 };

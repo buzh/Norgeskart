@@ -128,6 +128,16 @@ export const setLocalityHighlight = (id: string | null) => {
   getLocalitiesLayer()?.changed();
 };
 
+// Hide a rectangle while the adjust interaction shows its own editable
+// copy on a temp layer. Restore by re-upserting the record.
+export const hideLocalityOnLayer = (id: string) => {
+  const source = getLocalitiesLayer()?.getSource();
+  if (!source) return;
+  for (const f of source.getFeatures()) {
+    if (f.get(LOCALITY_ID_PROPERTY) === id) f.setStyle(new Style(undefined));
+  }
+};
+
 // Mount from Layout. Everything is behind sign-in: signed out, the layer
 // stays empty and we never hit PB.
 export const useLocalitiesLayer = () => {

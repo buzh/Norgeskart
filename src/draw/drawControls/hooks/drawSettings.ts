@@ -16,7 +16,6 @@ import {
   showMeasurementsAtom,
 } from '../../../settings/draw/atoms';
 import { useDrawActionsState } from '../../../settings/draw/drawActions/drawActionsHooks';
-import { removeUrlParameter } from '../../../shared/utils/urlUtils';
 import {
   clearStaticOverlaysForFeature,
   enableFeatureMeasurementOverlay,
@@ -321,7 +320,6 @@ const useDrawSettings = () => {
     const source = drawLayer.getSource() as VectorSource;
     source.clear();
     resetActions();
-    removeUrlParameter('drawing');
   };
 
   const abortDrawing = () => {

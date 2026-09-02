@@ -10,6 +10,7 @@ import {
   Spinner,
   Stack,
   Text,
+  Tooltip,
 } from '@kvib/react';
 import { useAtom, useAtomValue } from 'jotai';
 import { transformExtent } from 'ol/proj';
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   deleteLocality,
+  LocalityBbox,
   LocalityRecord,
   LocalityVisibility,
   updateLocality,
@@ -33,11 +35,17 @@ import {
 } from '../api/localityFinds';
 import { currentUserAtom } from '../auth/atoms';
 import { DrawControls } from '../draw/drawControls/DrawControls';
+import { useDrawSettings } from '../draw/drawControls/hooks/drawSettings';
 import { getDrawLayer } from '../draw/drawControls/hooks/mapLayers';
 import { mapAtom } from '../map/atoms';
-import { activeLocalityAtom, funnDraftActiveAtom } from './atoms';
+import {
+  activeLocalityAtom,
+  adjustingLocalityAtom,
+  funnDraftActiveAtom,
+} from './atoms';
 import {
   getFunnExtentOnLayer,
+  hideFunnOnLayer,
   removeFunnFromLayer,
   upsertFunnOnLayer,
 } from './funnLayer';
@@ -46,7 +54,24 @@ import {
   setLocalityHighlight,
   upsertLocalityOnLayer,
 } from './localityLayer';
-import { serializeDrawLayer } from './serializeDrawLayer';
+import {
+  getDrawLayerExtent4326,
+  serializeDrawLayer,
+} from './serializeDrawLayer';
+import { useLocalityAdjust } from './useLocalityAdjust';
+
+const bboxContains = (outer: LocalityBbox, inner: LocalityBbox): boolean =>
+  inner[0] >= outer[0] &&
+  inner[1] >= outer[1] &&
+  inner[2] <= outer[2] &&
+  inner[3] <= outer[3];
+
+const bboxUnion = (a: LocalityBbox, b: LocalityBbox): LocalityBbox => [
+  Math.min(a[0], b[0]),
+  Math.min(a[1], b[1]),
+  Math.max(a[2], b[2]),
+  Math.max(a[3], b[3]),
+];
 
 const NATIVE_INPUT_STYLE: CSSProperties = {
   width: '100%',
@@ -107,6 +132,7 @@ const FunnRow = ({
   onZoom,
   onStatus,
   onSaveMeta,
+  onEditGeometry,
   onDelete,
 }: {
   funn: LocalityFindRecord;
@@ -114,6 +140,7 @@ const FunnRow = ({
   onZoom: (f: LocalityFindRecord) => void;
   onStatus: (f: LocalityFindRecord, s: LocalityFindStatus) => void;
   onSaveMeta: (f: LocalityFindRecord, title: string, note: string) => void;
+  onEditGeometry: (f: LocalityFindRecord) => void;
   onDelete: (f: LocalityFindRecord) => void;
 }) => {
   const { t } = useTranslation();
@@ -210,6 +237,15 @@ const FunnRow = ({
           )}
           {editable && (
             <IconButton
+              icon="draw"
+              size="xs"
+              variant="ghost"
+              aria-label={t('localities.funn.actions.editGeometry')}
+              onClick={stop(() => onEditGeometry(funn))}
+            />
+          )}
+          {editable && (
+            <IconButton
               icon="delete"
               size="xs"
               variant="ghost"
@@ -234,8 +270,14 @@ export const LocalityWorkspace = ({
   const user = useAtomValue(currentUserAtom);
   const [, setActiveLocality] = useAtom(activeLocalityAtom);
   const [draftActive, setDraftActive] = useAtom(funnDraftActiveAtom);
+  const [adjusting, setAdjusting] = useAtom(adjustingLocalityAtom);
+  const { setDrawLayerFeatures } = useDrawSettings();
 
   const isMine = user != null && user.id === locality.owner;
+
+  // Mounts the move/resize interactions while adjustingLocalityAtom is
+  // set; persists the bbox after every finished gesture.
+  useLocalityAdjust(locality);
 
   // Lokalitet metadata form.
   const [name, setName] = useState(locality.name);
@@ -246,8 +288,10 @@ export const LocalityWorkspace = ({
   const [savingMeta, setSavingMeta] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Funn list + draft form.
+  // Funn list + draft form. editingFunnId non-null means the draft is
+  // re-editing an existing funn's drawing rather than creating one.
   const [items, setItems] = useState<LocalityFindRecord[] | null>(null);
+  const [editingFunnId, setEditingFunnId] = useState<string | null>(null);
   const [funnTitle, setFunnTitle] = useState('');
   const [funnNote, setFunnNote] = useState('');
   const [savingFunn, setSavingFunn] = useState(false);
@@ -264,13 +308,14 @@ export const LocalityWorkspace = ({
   // selected (creation flow: drag first, name after).
   const isFreshRecord = locality.name === t('localities.defaultName');
 
-  // Draft cleanup when the workspace closes or swaps lokalitet.
+  // Draft/adjust cleanup when the workspace closes or swaps lokalitet.
   useEffect(() => {
     return () => {
       setDraftActive(false);
+      setAdjusting(false);
       getDrawLayer()?.getSource()?.clear();
     };
-  }, [locality.id, setDraftActive]);
+  }, [locality.id, setDraftActive, setAdjusting]);
 
   const loadFunn = useCallback(async () => {
     try {
@@ -341,14 +386,34 @@ export const LocalityWorkspace = ({
     // Leftovers on the shared draw layer can only be an abandoned draft;
     // drop them so the new funn starts clean.
     getDrawLayer()?.getSource()?.clear();
+    setAdjusting(false);
+    setEditingFunnId(null);
     setFunnTitle('');
     setFunnNote('');
     setFunnError(null);
     setDraftActive(true);
   };
 
+  const startGeometryEdit = (f: LocalityFindRecord) => {
+    getDrawLayer()?.getSource()?.clear();
+    setAdjusting(false);
+    setDrawLayerFeatures(f.geometry, 'EPSG:4326', true);
+    hideFunnOnLayer(f.id);
+    setEditingFunnId(f.id);
+    setFunnTitle(f.title);
+    setFunnNote(f.note ?? '');
+    setFunnError(null);
+    setDraftActive(true);
+  };
+
   const cancelDraft = () => {
     getDrawLayer()?.getSource()?.clear();
+    if (editingFunnId) {
+      // Restore the hidden persisted copy.
+      const rec = items?.find((it) => it.id === editingFunnId);
+      if (rec) upsertFunnOnLayer(rec);
+      setEditingFunnId(null);
+    }
     setDraftActive(false);
   };
 
@@ -361,21 +426,55 @@ export const LocalityWorkspace = ({
       return;
     }
     if (!user) return;
+
+    // A lokalitet holds the entire extent of its funn — offer to grow
+    // the rectangle when the drawing sticks out.
+    const drawnBbox = getDrawLayerExtent4326(projection);
+    let currentLocality = locality;
+    if (drawnBbox && !bboxContains(currentLocality.bbox, drawnBbox)) {
+      const grow = window.confirm(t('localities.funn.growConfirm'));
+      if (!grow) return;
+      try {
+        currentLocality = await updateLocality(locality.id, {
+          bbox: bboxUnion(currentLocality.bbox, drawnBbox),
+        });
+        upsertLocalityOnLayer(currentLocality);
+        setActiveLocality(currentLocality);
+      } catch (e) {
+        console.warn('[LocalityWorkspace] grow-to-fit failed', e);
+        setFunnError(t('localities.workspace.saveFailed'));
+        return;
+      }
+    }
+
     setSavingFunn(true);
     try {
-      const saved = await createLocalityFind(
-        {
-          locality: locality.id,
+      let saved: LocalityFindRecord;
+      if (editingFunnId) {
+        saved = await updateLocalityFind(editingFunnId, {
           title: funnTitle.trim(),
-          note: funnNote.trim() || undefined,
+          note: funnNote.trim(),
           geometry,
-        },
-        user.id,
-      );
+        });
+        setItems((prev) =>
+          prev ? prev.map((it) => (it.id === saved.id ? saved : it)) : prev,
+        );
+      } else {
+        saved = await createLocalityFind(
+          {
+            locality: locality.id,
+            title: funnTitle.trim(),
+            note: funnNote.trim() || undefined,
+            geometry,
+          },
+          user.id,
+        );
+        setItems((prev) => (prev ? [...prev, saved] : [saved]));
+      }
       upsertFunnOnLayer(saved);
       getDrawLayer()?.getSource()?.clear();
+      setEditingFunnId(null);
       setDraftActive(false);
-      setItems((prev) => (prev ? [...prev, saved] : [saved]));
     } catch (e) {
       console.warn('[LocalityWorkspace] funn save failed', e);
       setFunnError(t('localities.funn.saveFailed'));
@@ -468,6 +567,21 @@ export const LocalityWorkspace = ({
           aria-label={t('localities.workspace.zoom')}
           onClick={zoomToLocality}
         />
+        {isMine && (
+          <Tooltip content={t('localities.workspace.adjust')}>
+            <IconButton
+              icon="transform"
+              variant={adjusting ? 'primary' : 'ghost'}
+              colorPalette="green"
+              size="sm"
+              aria-label={t('localities.workspace.adjust')}
+              onClick={() => {
+                if (!adjusting && draftActive) cancelDraft();
+                setAdjusting(!adjusting);
+              }}
+            />
+          </Tooltip>
+        )}
         {isMine && (
           <IconButton
             icon="delete"
@@ -585,7 +699,11 @@ export const LocalityWorkspace = ({
             p={2}
           >
             <Text fontSize="xs" color="gray.600">
-              {t('localities.funn.draft.instructions')}
+              {t(
+                editingFunnId
+                  ? 'localities.funn.draft.instructionsEdit'
+                  : 'localities.funn.draft.instructions',
+              )}
             </Text>
             <DrawControls />
             <Input
@@ -652,6 +770,7 @@ export const LocalityWorkspace = ({
             onZoom={zoomToFunn}
             onStatus={changeStatus}
             onSaveMeta={saveFunnMeta}
+            onEditGeometry={startGeometryEdit}
             onDelete={removeFunn}
           />
         ))}

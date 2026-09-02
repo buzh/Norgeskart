@@ -118,6 +118,17 @@ export const removeFunnFromLayer = (id: string) => {
   if (source) removeById(source, id);
 };
 
+// Hide a funn while its geometry is being edited on the draw layer, so
+// the persisted copy doesn't double-render underneath. Restore by
+// re-upserting the record (save and cancel both do).
+export const hideFunnOnLayer = (id: string) => {
+  const source = getFunnLayer()?.getSource();
+  if (!source) return;
+  for (const f of source.getFeatures()) {
+    if (f.get(FUNN_ID_PROPERTY) === id) f.setStyle(new Style(undefined));
+  }
+};
+
 // Union extent of a funn's rendered features, in map coordinates — for
 // zoom-to-funn in the workspace. Null when nothing is on the layer.
 export const getFunnExtentOnLayer = (

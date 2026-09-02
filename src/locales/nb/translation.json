@@ -334,6 +334,7 @@
     "workspace": {
       "back": "Tilbake",
       "zoom": "Zoom til lokaliteten",
+      "adjust": "Juster området (flytt eller dra i hjørnene)",
       "deleteLocality": "Slett lokaliteten",
       "confirmDelete": "Slette «{{name}}» med alle funn og bilder? Handlingen kan ikke angres.",
       "name": "Navn",
@@ -354,6 +355,7 @@
       "saveFailed": "Kunne ikke lagre funnet. Prøv igjen.",
       "draft": {
         "instructions": "Tegn funnet på kartet med verktøyene under, og gi det en tittel.",
+        "instructionsEdit": "Endre tegningen på kartet, tittelen eller notatet – lagre for å oppdatere funnet.",
         "titlePlaceholder": "F.eks. gravhaug?",
         "notePlaceholder": "Hvorfor tror du det er noe her?",
         "save": "Lagre funn",
@@ -370,8 +372,10 @@
       "actions": {
         "zoom": "Zoom til funnet",
         "edit": "Rediger",
+        "editGeometry": "Rediger tegningen",
         "delete": "Slett"
-      }
+      },
+      "growConfirm": "Funnet ligger utenfor lokalitetens område. Utvide området slik at det dekker funnet?"
     }
   },
   "helpPage": {

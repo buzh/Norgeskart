@@ -15,3 +15,8 @@ export const creatingLocalityAtom = atom<boolean>(false);
 // this to mount the mobile bottom draw toolbar (the standalone 'draw'
 // MapTool no longer exists).
 export const funnDraftActiveAtom = atom<boolean>(false);
+
+// "Juster området": the open lokalitet's rectangle is move/resizable on
+// a temp layer (see useLocalityAdjust). Mutually exclusive with the
+// funn draft — the workspace enforces that.
+export const adjustingLocalityAtom = atom<boolean>(false);
