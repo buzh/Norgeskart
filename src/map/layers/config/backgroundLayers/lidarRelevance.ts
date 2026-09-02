@@ -52,10 +52,10 @@ export const meetsSizeBar = (
   filters: LidarFilterSettings,
 ): boolean => areaRatio >= filters.minAreaRatio;
 
-// How many entries (primary + secondary combined) ever get a footprint
-// rendered and a list row. Applied after the WFS response is in, so it
-// bounds drawing and list length only — download and parse cost is
-// bounded by the extent guard in map/lidarFootprintsLayer.ts. Not
+// How many entries (primary + secondary combined) ever get a list row —
+// and, by extension, a hoverable footprint. Applied after the WFS
+// response is in, so it bounds list length only; download and parse cost
+// is bounded by the extent guard in map/lidarFootprintsLayer.ts. Not
 // user-adjustable: a performance bound, not a relevance preference.
 export const RENDER_CAP = 25;
 
@@ -130,3 +130,10 @@ export const lidarViewportAtom = atom<LidarViewportState>(
 // the drawn shapes hang off this, and go away the moment the pulldown
 // closes (selecting a dataset closes it).
 export const lidarPickerOpenAtom = atom(false);
+
+// The pulldown row the pointer (or keyboard focus) is currently on. Only
+// that one project's footprint is drawn, alongside the active dataset's —
+// drawing all of them at once turned the map into an unreadable stack of
+// overlapping outlines, and the whole point of the overlay is answering
+// "where is *this* row" while the user runs down the list.
+export const hoveredLidarProjectIdAtom = atom<string | null>(null);

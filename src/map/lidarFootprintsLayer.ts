@@ -1,8 +1,9 @@
-// Draws color-coded LiDAR project footprints on top of the current
-// background while the TopBar's dataset pulldown is open, and lets the
-// user click one to activate that project — the map-side half of that
-// picker, which is why it lives and dies with it rather than staying up
-// for the whole LiDAR session.
+// Shows where a LiDAR project actually lies while the TopBar's dataset
+// pulldown is open: the footprint of the row the pointer is on, plus the
+// dataset currently in use. Picking happens in the list, not here — this
+// is the "you are pointing at *that* valley" half of it, which is why it
+// lives and dies with the pulldown rather than staying up for the whole
+// LiDAR session.
 //
 // Fetching + relevance classification happens here and is written to
 // lidarViewportAtom, which the TopBar popover also reads — one WFS call
@@ -27,15 +28,14 @@ import {
 } from './layers/config/backgroundLayers/lidarFootprints';
 import {
   activeLidarProjectAtom,
-  activeLidarStyleAtom,
   bboxIntersects,
   fetchLidarProjects,
-  resolveLidarStyle,
   sortProjectsByRelevance,
 } from './layers/config/backgroundLayers/lidarProjects';
 import {
   classifyRelevance,
   emptyLidarViewport,
+  hoveredLidarProjectIdAtom,
   lidarFilterSettingsAtom,
   lidarPickerOpenAtom,
   lidarViewportAtom,
@@ -43,10 +43,6 @@ import {
 } from './layers/config/backgroundLayers/lidarRelevance';
 
 export const LIDAR_FOOTPRINTS_LAYER_ID = 'lidarFootprintsLayer';
-const PROJECT_ID_PROPERTY = '__lidarProjectId';
-// How far the pointer may travel between down and up and still count as
-// a pick rather than the start of a pan.
-const DRAG_SLOP_PX = 4;
 
 // Widest viewport (longer side, in metres) we'll ask the Prosjekt-
 // avgrensning WFS about. Measured against the live service: a 20 km box
@@ -57,29 +53,37 @@ const DRAG_SLOP_PX = 4;
 // spinner ending in an empty list.
 const MAX_FOOTPRINT_EXTENT_M = 50_000;
 
-type Tier = 'primary' | 'secondary' | 'active';
+type Tier = 'hover' | 'active';
 
-const styleForTier = (tier: Tier): Style => {
-  if (tier === 'active') {
-    return new Style({
-      stroke: new Stroke({ color: '#E0A600', width: 3 }),
-      fill: new Fill({ color: 'rgba(224, 166, 0, 0.15)' }),
-    });
-  }
-  if (tier === 'secondary') {
-    return new Style({
-      stroke: new Stroke({ color: '#8A8F98', width: 1, lineDash: [4, 4] }),
-      fill: new Fill({ color: 'rgba(138, 143, 152, 0.05)' }),
-    });
-  }
-  return new Style({
-    stroke: new Stroke({ color: '#2F9E44', width: 2 }),
-    fill: new Fill({ color: 'rgba(47, 158, 68, 0.10)' }),
-  });
-};
+// At most two footprints are on screen at a time, so the styles can
+// afford to be loud. Both draw a white casing under a saturated core:
+// the base underneath is either green topo or grey-brown hillshade, and
+// a plain coloured outline disappears into one or the other — an earlier
+// green outline over green topo was effectively invisible.
+const casing = (width: number) =>
+  new Stroke({ color: 'rgba(255, 255, 255, 0.85)', width });
 
-const styleFor = (feature: FeatureLike): Style =>
-  styleForTier(feature.get('tier') as Tier);
+const HOVER_STYLE = [
+  new Style({ stroke: casing(7), zIndex: 2 }),
+  new Style({
+    stroke: new Stroke({ color: '#D6336C', width: 3 }),
+    fill: new Fill({ color: 'rgba(214, 51, 108, 0.12)' }),
+    zIndex: 3,
+  }),
+];
+
+// No fill: the active dataset is usually the one being read, and tinting
+// the terrain it covers defeats the purpose.
+const ACTIVE_STYLE = [
+  new Style({ stroke: casing(5), zIndex: 0 }),
+  new Style({
+    stroke: new Stroke({ color: '#1C6FE0', width: 2, lineDash: [7, 5] }),
+    zIndex: 1,
+  }),
+];
+
+const styleFor = (feature: FeatureLike): Style[] =>
+  feature.get('tier') === 'hover' ? HOVER_STYLE : ACTIVE_STYLE;
 
 const getOrCreateLayer = (map: OlMap): VectorLayer => {
   const existing = map
@@ -104,13 +108,12 @@ export const useLidarFootprintsLayer = () => {
   const map = useAtomValue(mapAtom);
   const backgroundLayer = useAtomValue(backgroundLayerAtom);
   const activeLidarProject = useAtomValue(activeLidarProjectAtom);
-  const setActiveLidarProject = useSetAtom(activeLidarProjectAtom);
-  const setActiveLidarStyle = useSetAtom(activeLidarStyleAtom);
-  const setBackgroundLayer = useSetAtom(backgroundLayerAtom);
   const filters = useAtomValue(lidarFilterSettingsAtom);
   const viewport = useAtomValue(lidarViewportAtom);
   const setViewport = useSetAtom(lidarViewportAtom);
   const pickerOpen = useAtomValue(lidarPickerOpenAtom);
+  const hoveredProjectId = useAtomValue(hoveredLidarProjectIdAtom);
+  const setHoveredProjectId = useSetAtom(hoveredLidarProjectIdAtom);
 
   const isLidarMode =
     backgroundLayer === 'lidarProject' || backgroundLayer === 'lidarHillshade';
@@ -119,10 +122,13 @@ export const useLidarFootprintsLayer = () => {
   const picking = isLidarMode && pickerOpen;
 
   // Layer lifecycle: created lazily, visibility follows the pulldown.
+  // Hover is cleared on the way out so a row the pointer happened to be
+  // over when the pulldown closed doesn't flash back on reopen.
   useEffect(() => {
     const layer = getOrCreateLayer(map);
     layer.setVisible(picking);
-  }, [map, picking]);
+    if (!picking) setHoveredProjectId(null);
+  }, [map, picking, setHoveredProjectId]);
 
   // Fetch + classify on viewport change while the pulldown is open.
   useEffect(() => {
@@ -213,84 +219,35 @@ export const useLidarFootprintsLayer = () => {
     };
   }, [map, picking, filters, setViewport]);
 
-  // Render: sync features from lidarViewportAtom.
+  // Render: the hovered row's footprint plus the active dataset's, and
+  // nothing else. Both come out of the same viewport lists the pulldown
+  // renders, so a row can only light up terrain that's actually been
+  // fetched and classified.
   useEffect(() => {
     const layer = getOrCreateLayer(map);
     const source = layer.getSource();
     if (!source) return;
     source.clear();
-    const addEntries = (entries: LidarViewportEntry[], tier: Tier) => {
-      for (const entry of entries) {
-        const effectiveTier: Tier =
-          activeLidarProject?.id === entry.project.id ? 'active' : tier;
-        for (const geometry of entry.geometries) {
-          const feature = new Feature({ geometry });
-          feature.set(PROJECT_ID_PROPERTY, entry.project.id);
-          feature.set('tier', effectiveTier);
-          source.addFeature(feature);
-        }
+
+    const entries = [...viewport.primary, ...viewport.secondary];
+    const byId = (id: string | null | undefined) =>
+      id ? entries.find((e) => e.project.id === id) : undefined;
+
+    const draw = (entry: LidarViewportEntry | undefined, tier: Tier) => {
+      if (!entry) return;
+      for (const geometry of entry.geometries) {
+        const feature = new Feature({ geometry });
+        feature.set('tier', tier);
+        source.addFeature(feature);
       }
     };
-    addEntries(viewport.primary, 'primary');
-    addEntries(viewport.secondary, 'secondary');
-  }, [map, viewport, activeLidarProject]);
 
-  // Click a footprint → activate that project, same as picking it from
-  // the pulldown.
-  //
-  // Hit-tested on pointerdown rather than OL's singleclick, because that
-  // same click dismisses the pulldown: React then tears this handler
-  // down and clears the features a good 250 ms before singleclick would
-  // fire, so a singleclick listener would never see the footprint. The
-  // pointerup half is registered one-shot from inside pointerdown so it
-  // still runs after that teardown.
-  useEffect(() => {
-    if (!picking) return;
-
-    const layer = getOrCreateLayer(map);
-    const viewportElement = map.getViewport();
-    const allEntries = [...viewport.primary, ...viewport.secondary];
-
-    const onPointerDown = (downEvent: PointerEvent) => {
-      if (downEvent.button !== 0) return;
-      const hitId = map.forEachFeatureAtPixel(
-        map.getEventPixel(downEvent),
-        (feature) => feature.get(PROJECT_ID_PROPERTY) as string | undefined,
-        { hitTolerance: 3, layerFilter: (candidate) => candidate === layer },
-      );
-      if (!hitId) return;
-      const entry = allEntries.find((e) => e.project.id === hitId);
-      if (!entry) return;
-
-      window.addEventListener(
-        'pointerup',
-        (upEvent: PointerEvent) => {
-          // Panning the map from on top of a footprint isn't a pick.
-          const moved = Math.hypot(
-            upEvent.clientX - downEvent.clientX,
-            upEvent.clientY - downEvent.clientY,
-          );
-          if (moved > DRAG_SLOP_PX) return;
-          setActiveLidarProject(entry.project);
-          setActiveLidarStyle((prev) =>
-            resolveLidarStyle(entry.project.styles, prev),
-          );
-          setBackgroundLayer('lidarProject');
-        },
-        { once: true },
-      );
-    };
-
-    viewportElement.addEventListener('pointerdown', onPointerDown);
-    return () => {
-      viewportElement.removeEventListener('pointerdown', onPointerDown);
-    };
-  }, [
-    map,
-    picking,
-    viewport,
-    setActiveLidarProject,
-    setActiveLidarStyle,
-    setBackgroundLayer,
-  ]);
+    // Hovering the active dataset's own row should read as hover — it's
+    // the row the user is asking about.
+    const activeEntry = byId(activeLidarProject?.id);
+    if (activeEntry && activeEntry.project.id !== hoveredProjectId) {
+      draw(activeEntry, 'active');
+    }
+    draw(byId(hoveredProjectId), 'hover');
+  }, [map, viewport, activeLidarProject, hoveredProjectId]);
 };

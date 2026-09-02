@@ -41,9 +41,11 @@ import {
 } from './map/layers/config/backgroundLayers/lidarProjects';
 import {
   DEFAULT_LIDAR_FILTERS,
+  hoveredLidarProjectIdAtom,
   lidarFilterSettingsAtom,
   lidarPickerOpenAtom,
   lidarViewportAtom,
+  LidarViewportEntry,
 } from './map/layers/config/backgroundLayers/lidarRelevance';
 import { ThemeLayerName } from './map/layers/themeWMS';
 import { mapToolAtom } from './map/overlay/atoms';
@@ -158,46 +160,112 @@ const ToolButton = ({
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+// One dataset per line, name truncated, year/density right-aligned.
+// Deliberately single-line and borderless: a viewport can turn up
+// RENDER_CAP entries, and the earlier two-line bordered card ran the
+// list off the bottom of the screen. Selection is a left rule rather
+// than a full border so rows still scan as a column.
+//
+// `onHover` fires for pointer *and* focus, so tabbing the list lights up
+// the same footprint on the map that mousing it would.
 const LidarPulldownItem = ({
   label,
   meta,
   active,
-  onClick,
+  onActivate,
+  onHover,
 }: {
   label: string;
   meta?: string;
   active: boolean;
-  onClick: () => void;
+  onActivate: () => void;
+  onHover?: (hovering: boolean) => void;
 }) => (
-  <Box
+  <Flex
     as="button"
-    onClick={onClick}
-    textAlign="left"
+    onClick={onActivate}
+    onMouseEnter={() => onHover?.(true)}
+    onMouseLeave={() => onHover?.(false)}
+    onFocus={() => onHover?.(true)}
+    onBlur={() => onHover?.(false)}
+    title={label}
+    align="center"
+    gap={2}
     w="full"
-    py={1.5}
-    px={2}
-    borderRadius="md"
-    borderWidth="1px"
-    borderColor={active ? 'green.500' : 'transparent'}
-    bg={active ? 'green.50' : 'white'}
-    _hover={{ bg: active ? 'green.100' : 'gray.50' }}
+    textAlign="left"
+    py={1}
+    pl={2}
+    pr={2}
+    borderLeft="3px solid"
+    borderLeftColor={active ? 'green.500' : 'transparent'}
+    bg={active ? 'green.50' : 'transparent'}
+    _hover={{ bg: active ? 'green.100' : 'gray.100' }}
     cursor="pointer"
   >
     <Text
-      fontSize="sm"
+      fontSize="xs"
       fontWeight={active ? 'semibold' : 'normal'}
-      wordBreak="break-word"
-      lineClamp={2}
+      flex="1"
+      minW={0}
+      whiteSpace="nowrap"
+      overflow="hidden"
+      textOverflow="ellipsis"
     >
       {label}
     </Text>
     {meta && (
-      <Text fontSize="xs" color="gray.600" mt={0.5}>
+      <Text
+        fontSize="10px"
+        color="gray.500"
+        flexShrink={0}
+        whiteSpace="nowrap"
+      >
         {meta}
       </Text>
     )}
-  </Box>
+  </Flex>
 );
+
+// Row that opens/closes an overflow group, chevron first — same shape as
+// the theme layer picker's subtheme trigger.
+const LidarDisclosure = ({
+  open,
+  label,
+  onToggle,
+}: {
+  open: boolean;
+  label: string;
+  onToggle: () => void;
+}) => (
+  <Flex
+    as="button"
+    onClick={onToggle}
+    align="center"
+    gap={1}
+    w="full"
+    textAlign="left"
+    py={1}
+    px={2}
+    _hover={{ bg: 'gray.100' }}
+    cursor="pointer"
+  >
+    <Box
+      display="flex"
+      transform={open ? 'rotate(90deg)' : 'none'}
+      color="gray.600"
+    >
+      <Icon icon="chevron_forward" size={16} />
+    </Box>
+    <Text fontSize="xs" color="gray.600">
+      {label}
+    </Text>
+  </Flex>
+);
+
+const projectMeta = (p: LidarProject): string =>
+  [p.year != null ? String(p.year) : null, p.pointDensity]
+    .filter((s): s is string => !!s && s.length > 0)
+    .join(' · ');
 
 export const TopBar = () => {
   const { t } = useTranslation();
@@ -220,8 +288,10 @@ export const TopBar = () => {
   );
 
   // Shared, not local state: the map-side footprint overlay is drawn
-  // only while this pulldown is open (see lidarFootprintsLayer).
+  // only while this pulldown is open, and only for the row under the
+  // pointer (see lidarFootprintsLayer).
   const [lidarOpen, setLidarOpen] = useAtom(lidarPickerOpenAtom);
+  const setHoveredLidarProjectId = useSetAtom(hoveredLidarProjectIdAtom);
   const [styleOpen, setStyleOpen] = useState(false);
   const [moreProjectsOpen, setMoreProjectsOpen] = useState(false);
   const [moreStylesOpen, setMoreStylesOpen] = useState(false);
@@ -350,6 +420,19 @@ export const TopBar = () => {
     setLidarOpen(false);
   };
 
+  const renderProjectRow = (entry: LidarViewportEntry) => (
+    <LidarPulldownItem
+      key={entry.project.id}
+      label={entry.project.projectName}
+      meta={projectMeta(entry.project)}
+      active={isLidarProject && activeLidarProject?.id === entry.project.id}
+      onActivate={() => activateProject(entry.project)}
+      onHover={(hovering) =>
+        setHoveredLidarProjectId(hovering ? entry.project.id : null)
+      }
+    />
+  );
+
   const isLidarProject = backgroundLayer === 'lidarProject';
   const isNationalMosaic = backgroundLayer === 'lidarHillshade';
   const isLidarMode = isLidarProject || isNationalMosaic;
@@ -471,7 +554,7 @@ export const TopBar = () => {
               </Text>
             </Button>
           </PopoverTrigger>
-          <PopoverContent width="300px" p={0} borderRadius="lg">
+          <PopoverContent width="320px" p={0} borderRadius="lg">
           <PopoverArrow />
           <PopoverBody p={2}>
             <Stack gap={1}>
@@ -565,9 +648,9 @@ export const TopBar = () => {
 
               <LidarPulldownItem
                 label="Nasjonal mosaikk"
-                meta="Kartverket høydedata (hele Norge)"
+                meta="hele Norge"
                 active={isNationalMosaic}
-                onClick={activateNational}
+                onActivate={activateNational}
               />
               <Box
                 borderTop="1px solid"
@@ -576,108 +659,70 @@ export const TopBar = () => {
                 mx={1}
               />
               <Text fontSize="10px" color="gray.500" px={2}>
-                LiDAR-prosjekter som dekker dette punktet
+                Prosjekter i utsnittet — hold over for å se dekningen
               </Text>
-              {/* 'idle' is reachable here for the tick between the
-                  pulldown opening and the fetch effect starting. */}
-              {(allProjects === null ||
-                viewport.status === 'loading' ||
-                viewport.status === 'idle') && (
-                <Flex align="center" gap={2} p={2}>
-                  <Spinner size="xs" />
-                  <Text fontSize="xs" color="gray.500">
-                    {allProjects === null
-                      ? 'Henter katalog…'
-                      : 'Henter omriss…'}
-                  </Text>
-                </Flex>
-              )}
-              {/* Coverage can't be answered for a whole-country viewport —
-                  the boundary WFS times out rather than replying, so say
-                  so instead of spinning into an empty list. */}
-              {viewport.status === 'zoomedOut' && (
-                <Text fontSize="xs" color="gray.500" px={2} py={1}>
-                  Zoom inn for å se hvilke LiDAR-prosjekter som dekker
-                  området.
-                </Text>
-              )}
-              {viewport.status === 'error' && (
-                <Text fontSize="xs" color="gray.500" px={2} py={1}>
-                  Fikk ikke hentet prosjektomriss akkurat nå. Prøv igjen, eller
-                  zoom litt inn.
-                </Text>
-              )}
-              {allProjects != null &&
-                viewport.status === 'ready' &&
-                viewport.primary.length === 0 &&
-                viewport.secondary.length === 0 && (
+              {/* The list is the only part that grows without bound, so
+                  it — not the whole popover — is what scrolls; the
+                  header, filter panel and mosaic row stay put. */}
+              <Box
+                maxH="min(45vh, 300px)"
+                overflowY="auto"
+                onMouseLeave={() => setHoveredLidarProjectId(null)}
+              >
+                {/* 'idle' is reachable here for the tick between the
+                    pulldown opening and the fetch effect starting. */}
+                {(allProjects === null ||
+                  viewport.status === 'loading' ||
+                  viewport.status === 'idle') && (
+                  <Flex align="center" gap={2} p={2}>
+                    <Spinner size="xs" />
+                    <Text fontSize="xs" color="gray.500">
+                      {allProjects === null
+                        ? 'Henter katalog…'
+                        : 'Henter omriss…'}
+                    </Text>
+                  </Flex>
+                )}
+                {/* Coverage can't be answered for a whole-country
+                    viewport — the boundary WFS times out rather than
+                    replying, so say so instead of spinning into an empty
+                    list. */}
+                {viewport.status === 'zoomedOut' && (
                   <Text fontSize="xs" color="gray.500" px={2} py={1}>
-                    Ingen LiDAR-datasett dekker dette punktet. Prøv et annet
-                    sted.
+                    Zoom inn for å se hvilke LiDAR-prosjekter som dekker
+                    området.
                   </Text>
                 )}
-              {viewport.status === 'ready' &&
-                viewport.primary.map((entry) => {
-                  const p = entry.project;
-                  const active =
-                    isLidarProject && activeLidarProject?.id === p.id;
-                  const meta = [
-                    p.year != null ? String(p.year) : null,
-                    p.pointDensity,
-                  ]
-                    .filter((s): s is string => !!s && s.length > 0)
-                    .join(' · ');
-                  return (
-                    <LidarPulldownItem
-                      key={p.id}
-                      label={p.projectName}
-                      meta={meta}
-                      active={active}
-                      onClick={() => activateProject(p)}
-                    />
-                  );
-                })}
-              {viewport.status === 'ready' && viewport.secondary.length > 0 && (
-                <>
-                  <Box
-                    as="button"
-                    onClick={() => setMoreProjectsOpen(!moreProjectsOpen)}
-                    textAlign="left"
-                    w="full"
-                    py={1}
-                    px={2}
-                    borderRadius="md"
-                    _hover={{ bg: 'gray.50' }}
-                    cursor="pointer"
-                  >
-                    <Text fontSize="xs" color="gray.600">
-                      {moreProjectsOpen ? '▾' : '▸'} {viewport.secondary.length}{' '}
-                      flere lag
+                {viewport.status === 'error' && (
+                  <Text fontSize="xs" color="gray.500" px={2} py={1}>
+                    Fikk ikke hentet prosjektomriss akkurat nå. Prøv igjen,
+                    eller zoom litt inn.
+                  </Text>
+                )}
+                {allProjects != null &&
+                  viewport.status === 'ready' &&
+                  viewport.primary.length === 0 &&
+                  viewport.secondary.length === 0 && (
+                    <Text fontSize="xs" color="gray.500" px={2} py={1}>
+                      Ingen LiDAR-datasett dekker dette punktet. Prøv et
+                      annet sted.
                     </Text>
-                  </Box>
-                  {moreProjectsOpen &&
-                    viewport.secondary.map((entry) => {
-                      const p = entry.project;
-                      const active =
-                        isLidarProject && activeLidarProject?.id === p.id;
-                      const meta = [
-                        p.year != null ? String(p.year) : null,
-                        p.pointDensity,
-                      ]
-                        .filter((s): s is string => !!s && s.length > 0)
-                        .join(' · ');
-                      return (
-                        <LidarPulldownItem
-                          key={p.id}
-                          label={p.projectName}
-                          meta={meta}
-                          active={active}
-                          onClick={() => activateProject(p)}
-                        />
-                      );
-                    })}
-                </>
-              )}
+                  )}
+                {viewport.status === 'ready' &&
+                  viewport.primary.map(renderProjectRow)}
+                {viewport.status === 'ready' &&
+                  viewport.secondary.length > 0 && (
+                    <>
+                      <LidarDisclosure
+                        open={moreProjectsOpen}
+                        label={`${viewport.secondary.length} mindre relevante`}
+                        onToggle={() => setMoreProjectsOpen(!moreProjectsOpen)}
+                      />
+                      {moreProjectsOpen &&
+                        viewport.secondary.map(renderProjectRow)}
+                    </>
+                  )}
+              </Box>
             </Stack>
           </PopoverBody>
           </PopoverContent>
@@ -730,7 +775,7 @@ export const TopBar = () => {
                     key={style}
                     label={style}
                     active={activeLidarStyle === style}
-                    onClick={() => {
+                    onActivate={() => {
                       setActiveLidarStyle(style);
                       setStyleOpen(false);
                     }}
@@ -738,29 +783,18 @@ export const TopBar = () => {
                 ))}
                 {tierBStyles.length > 0 && (
                   <>
-                    <Box
-                      as="button"
-                      onClick={() => setMoreStylesOpen(!moreStylesOpen)}
-                      textAlign="left"
-                      w="full"
-                      py={1}
-                      px={2}
-                      borderRadius="md"
-                      _hover={{ bg: 'gray.50' }}
-                      cursor="pointer"
-                    >
-                      <Text fontSize="xs" color="gray.600">
-                        {moreStylesOpen ? '▾' : '▸'} {tierBStyles.length}{' '}
-                        flere lag
-                      </Text>
-                    </Box>
+                    <LidarDisclosure
+                      open={moreStylesOpen}
+                      label={`${tierBStyles.length} flere stiler`}
+                      onToggle={() => setMoreStylesOpen(!moreStylesOpen)}
+                    />
                     {moreStylesOpen &&
                       tierBStyles.map((style) => (
                         <LidarPulldownItem
                           key={style}
                           label={style}
                           active={activeLidarStyle === style}
-                          onClick={() => {
+                          onActivate={() => {
                             setActiveLidarStyle(style);
                             setStyleOpen(false);
                           }}
