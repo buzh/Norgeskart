@@ -94,7 +94,12 @@ export const Layout = () => {
           >
             {activeLocality ? (
               <ErrorBoundary fallback={undefined} name="LocalityWorkspace">
-                <LocalityWorkspace locality={activeLocality} />
+                {/* Keyed so swapping lokalitet remounts with fresh form
+                    state (and autoFocus re-applies for new records). */}
+                <LocalityWorkspace
+                  key={activeLocality.id}
+                  locality={activeLocality}
+                />
               </ErrorBoundary>
             ) : (
               <>

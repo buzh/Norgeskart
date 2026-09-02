@@ -13,8 +13,8 @@ import {
 } from '@kvib/react';
 import { useAtom, useAtomValue } from 'jotai';
 import { transformExtent } from 'ol/proj';
-import type { ChangeEvent, CSSProperties, MouseEvent } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ChangeEvent, CSSProperties, FocusEvent, MouseEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   deleteLocality,
@@ -253,26 +253,16 @@ export const LocalityWorkspace = ({
   const [savingFunn, setSavingFunn] = useState(false);
   const [funnError, setFunnError] = useState<string | null>(null);
 
-  const nameInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Re-seed the form when another lokalitet is opened.
-  useEffect(() => {
-    setName(locality.name);
-    setDescription(locality.description ?? '');
-    setVisibility(locality.visibility);
-    setError(null);
-  }, [locality.id, locality.name, locality.description, locality.visibility]);
-
-  // Heavier frame on the open rectangle; fresh records get the name
-  // field focused (creation flow: drag first, name after).
+  // The component is keyed by locality.id in Layout, so state initializers
+  // above seed fresh on every open. Heavier frame on the open rectangle:
   useEffect(() => {
     setLocalityHighlight(locality.id);
-    if (locality.name === t('localities.defaultName')) {
-      nameInputRef.current?.focus();
-      nameInputRef.current?.select();
-    }
     return () => setLocalityHighlight(null);
-  }, [locality.id, t, locality.name]);
+  }, [locality.id]);
+
+  // Fresh records get the name field focused with the placeholder name
+  // selected (creation flow: drag first, name after).
+  const isFreshRecord = locality.name === t('localities.defaultName');
 
   // Draft cleanup when the workspace closes or swaps lokalitet.
   useEffect(() => {
@@ -497,10 +487,13 @@ export const LocalityWorkspace = ({
             {t('localities.workspace.name')}
           </Text>
           <Input
-            ref={nameInputRef}
             size="sm"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onFocus={(e: FocusEvent<HTMLInputElement>) =>
+              isFreshRecord && e.target.select()
+            }
+            autoFocus={isFreshRecord}
             placeholder={t('localities.workspace.namePlaceholder')}
             maxLength={200}
             disabled={!isMine}
