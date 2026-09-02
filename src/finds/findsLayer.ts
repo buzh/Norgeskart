@@ -76,9 +76,6 @@ const hydrateFeatures = (
     f.set(FIND_ID_PROPERTY, rec.id);
     f.setStyle(findsStyle);
   }
-  console.info(
-    `[findsLayer] hydrated ${features.length} feature(s) for "${rec.title}" (${rec.id})`,
-  );
   return features;
 };
 
@@ -124,9 +121,6 @@ export const upsertFindOnLayer = (rec: FindRecord) => {
   const map = getDefaultStore().get(mapAtom);
   const projection = map.getView().getProjection().getCode();
   upsert(source, rec, projection);
-  console.info(
-    `[findsLayer] upsert done, source now has ${source.getFeatures().length} feature(s)`,
-  );
 };
 
 export const removeFindFromLayer = (id: string) => {
@@ -169,7 +163,6 @@ export const useFindsLayer = () => {
         properties: { id: FINDS_LAYER_ID },
       });
       map.addLayer(layer);
-      console.info('[findsLayer] created layer, zIndex=5');
     }
 
     const source = layer.getSource()!;
@@ -177,27 +170,19 @@ export const useFindsLayer = () => {
     let cancelled = false;
 
     source.clear();
-    console.info(
-      `[findsLayer] loading, user=${user?.id ?? 'guest'} projection=${projection}`,
-    );
     listFinds()
       .then((records) => {
         if (cancelled) return;
-        console.info(`[findsLayer] listFinds returned ${records.length} record(s)`);
         for (const rec of records) {
           const features = hydrateFeatures(rec, projection);
           if (features.length > 0) source.addFeatures(features);
         }
-        console.info(
-          `[findsLayer] initial load done, source has ${source.getFeatures().length} feature(s)`,
-        );
       })
       .catch((e) => {
         console.warn('[findsLayer] initial load failed', e);
       });
 
     const unsub = subscribeFinds((action, rec) => {
-      console.info(`[findsLayer] realtime ${action} ${rec.id}`);
       if (action === 'delete') {
         removeByFindId(source, rec.id);
       } else {

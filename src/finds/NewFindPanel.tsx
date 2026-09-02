@@ -92,9 +92,6 @@ const serializeDrawLayer = (
     return null;
   }
   const featureCollection = JSON.parse(geoJsonString) as FeatureCollection;
-  console.info(
-    `[NewFindPanel] serialized ${featureCollection.features.length} feature(s) in ${mapProjection} → EPSG:4326`,
-  );
 
   const extent = createEmpty();
   for (const f of cloned) {
@@ -261,11 +258,6 @@ export const NewFindPanel = () => {
       // Push to findsLayer immediately — realtime is best-effort, and
       // the record is what we actually want on-screen. Also un-hides the
       // edited record (upsert re-adds it with the normal style).
-      console.info('[NewFindPanel] saved record', {
-        id: saved.id,
-        geometryType: typeof saved.geometry,
-        bbox: saved.bbox,
-      });
       upsertFindOnLayer(saved);
       // If the persisted find didn't produce any renderable features on
       // findsLayer, keep the sketch visible so the user can see their
