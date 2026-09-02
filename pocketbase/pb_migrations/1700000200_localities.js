@@ -44,10 +44,11 @@ migrate(
       id: 'localities',
       name: 'localities',
       type: 'base',
+      // Everything is behind sign-in — no guest reads, even for public.
       listRule:
-        'visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin"',
+        '@request.auth.id != "" && (visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin")',
       viewRule:
-        'visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin"',
+        '@request.auth.id != "" && (visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin")',
       createRule: '@request.auth.id != "" && @request.auth.id = owner',
       updateRule:
         'owner = @request.auth.id || @request.auth.role = "admin"',
@@ -115,9 +116,9 @@ migrate(
       name: 'finds',
       type: 'base',
       listRule:
-        'locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin"',
+        '@request.auth.id != "" && (locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin")',
       viewRule:
-        'locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin"',
+        '@request.auth.id != "" && (locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin")',
       // Only the lokalitet's owner adds funn to it (collaboration is a
       // later, deliberate rule change).
       createRule:
@@ -196,9 +197,9 @@ migrate(
       name: 'attachments',
       type: 'base',
       listRule:
-        'locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin"',
+        '@request.auth.id != "" && (locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin")',
       viewRule:
-        'locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin"',
+        '@request.auth.id != "" && (locality.visibility = "public" || owner = @request.auth.id || @request.auth.role = "admin")',
       createRule:
         '@request.auth.id != "" && @request.auth.id = owner && locality.owner = @request.auth.id',
       updateRule:

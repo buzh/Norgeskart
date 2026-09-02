@@ -3,11 +3,17 @@ import { useAtom, useAtomValue } from 'jotai';
 import { AuthDialog } from './auth/AuthDialog';
 import { pbAuthSyncEffect } from './auth/atoms';
 import { BottomDrawToolSelector } from './draw/BottomDrawToolSelector';
-import { useFindsLayer } from './finds/findsLayer';
+import { activeLocalityAtom, funnDraftActiveAtom } from './localities/atoms';
+import { useFunnLayer } from './localities/funnLayer';
+import {
+  useLocalitiesLayer,
+  useLocalityClick,
+} from './localities/localityLayer';
+import { LocalityWorkspace } from './localities/LocalityWorkspace';
+import { useLocalityCreate } from './localities/useLocalityCreate';
 import { KulturminnerPopup } from './map/featureInfo/KulturminnerPopup';
 import { useFeatureInfoClick } from './map/featureInfo/useFeatureInfo';
 import { MapComponent } from './map/MapComponent';
-import { mapToolAtom } from './map/overlay/atoms';
 import { MapToolCards } from './map/overlay/MapToolCards';
 import { useSearchEffects } from './search/atoms';
 import { useMapClickSearch } from './search/hooks';
@@ -20,25 +26,29 @@ import { TopBar } from './TopBar';
 // Values referenced by the mapToolAtom in map/overlay/atoms.ts and by the
 // tool-card renderer in map/overlay/MapToolCards.tsx. Kept in this file
 // so any TopBar / other module that toggles the atom uses the same type.
+// Drawing and the lokalitet workspace are NOT MapTools — the workspace is
+// driven by activeLocalityAtom so it never fights the card slot.
 export type MapTool =
   | 'layers'
-  | 'draw'
   | 'measure'
   | 'lidarExtract'
-  | 'myFinds'
-  | 'newFind'
+  | 'localities'
   | null;
 
 export const Layout = () => {
   const isMobile = useIsMobileScreen();
-  const currentMapTool = useAtomValue(mapToolAtom);
+  const activeLocality = useAtomValue(activeLocalityAtom);
+  const funnDraftActive = useAtomValue(funnDraftActiveAtom);
 
   useFeatureInfoClick();
   useSearchEffects();
   useMapClickSearch();
-  // Mounts the finds VectorLayer and hydrates it from PocketBase. Cheap
-  // no-op when signed out (PB rules return an empty list for guests).
-  useFindsLayer();
+  // Lokaliteter: rectangle layer (all visible records), funn layer (open
+  // lokalitet only), click-to-open, and the "Ny lokalitet" box drag.
+  useLocalitiesLayer();
+  useFunnLayer();
+  useLocalityClick();
+  useLocalityCreate();
   // Subscribe to PB authStore changes → currentUserAtom.
   useAtom(pbAuthSyncEffect);
 
@@ -60,15 +70,20 @@ export const Layout = () => {
             <MapComponent />
           </ErrorBoundary>
 
-          {/* Left column: search results + any tool card that opens as a
-              panel (Kartlag / Draw / LiDAR extract). Absolute-positioned
-              so it floats over the map. */}
+          {/* Left column: the lokalitet workspace when one is open,
+              otherwise search results + any tool card (Kartlag /
+              LiDAR-uttrekk / Mine lokaliteter). Absolute-positioned so
+              it floats over the map. */}
           <Box
             position="absolute"
             top={0}
             left={0}
             bottom={0}
-            w={{ base: '100%', md: '360px', lg: '400px' }}
+            w={
+              activeLocality
+                ? { base: '100%', md: '400px', lg: '440px' }
+                : { base: '100%', md: '360px', lg: '400px' }
+            }
             maxW="100%"
             pt={3}
             pl={3}
@@ -77,12 +92,20 @@ export const Layout = () => {
             zIndex={2}
             overflowY="auto"
           >
-            <ErrorBoundary fallback={undefined} name="SearchComponent">
-              <SearchComponent />
-            </ErrorBoundary>
-            <ErrorBoundary fallback={undefined} name="MapToolCards">
-              <MapToolCards />
-            </ErrorBoundary>
+            {activeLocality ? (
+              <ErrorBoundary fallback={undefined} name="LocalityWorkspace">
+                <LocalityWorkspace locality={activeLocality} />
+              </ErrorBoundary>
+            ) : (
+              <>
+                <ErrorBoundary fallback={undefined} name="SearchComponent">
+                  <SearchComponent />
+                </ErrorBoundary>
+                <ErrorBoundary fallback={undefined} name="MapToolCards">
+                  <MapToolCards />
+                </ErrorBoundary>
+              </>
+            )}
           </Box>
 
           {/* Right column: coordinate-info / search-result infobox */}
@@ -104,7 +127,7 @@ export const Layout = () => {
         </Box>
       </Flex>
 
-      {isMobile && currentMapTool === 'draw' && (
+      {isMobile && funnDraftActive && (
         <ErrorBoundary fallback={undefined} name="BottomDrawToolSelector">
           <BottomDrawToolSelector />
         </ErrorBoundary>

@@ -306,55 +306,70 @@
       "signInWith": "Fortsett med {{provider}}"
     }
   },
-  "finds": {
+  "localities": {
+    "defaultName": "Uten navn",
     "byOwner": "av {{name}}",
     "visibility": {
       "private": "Privat",
       "limited": "Begrenset",
       "public": "Offentlig",
-      "limitedHint": "Begrenset deling kommer når brukergrupper er på plass. Frem til da oppfører den seg som privat.",
-      "cycleHint": "Klikk for å bytte synlighet"
+      "limitedHint": "Begrenset deling kommer når brukergrupper er på plass. Frem til da oppfører den seg som privat."
     },
-    "actions": {
-      "zoom": "Zoom til",
-      "edit": "Rediger",
-      "delete": "Slett"
+    "topbar": {
+      "myLocalities": "Mine lokaliteter",
+      "newLocality": "Ny lokalitet"
     },
-    "mineFunn": {
-      "tabHeading": "Mine funn",
-      "loading": "Henter funn…",
-      "empty": "Du har ikke lagret noen funn enda. Bruk «Nytt objekt» for å komme i gang.",
-      "signInPrompt": "Logg inn for å se dine funn.",
-      "confirmDelete": "Slette «{{title}}»? Handlingen kan ikke angres.",
+    "panel": {
+      "tabHeading": "Mine lokaliteter",
+      "openHint": "Åpne lokaliteten",
+      "loading": "Henter lokaliteter…",
+      "empty": "Ingen lokaliteter enda. Bruk «Ny lokalitet» og dra et rektangel over et område du vil utforske.",
+      "signInPrompt": "Logg inn for å se dine lokaliteter.",
       "filter": {
         "mine": "Mine",
         "all": "Alle (admin)"
       }
     },
-    "newFind": {
-      "tabHeading": "Nytt objekt",
-      "tabHeadingEdit": "Rediger funn",
-      "instructions": "Tegn på kartet – bruk verktøyene under. Gi objektet en tittel og velg hvem som skal se det.",
-      "instructionsEdit": "Endre tegning, tittel, beskrivelse eller synlighet – lagre for å oppdatere funnet.",
-      "confirmDiscardDraft": "Du har en usikret tegning i tegneverktøyet. Vil du forkaste den for å redigere dette funnet?",
-      "signInPrompt": "Logg inn for å lagre funn.",
-      "form": {
-        "title": "Tittel",
-        "titlePlaceholder": "Kort navn på funnet",
-        "description": "Beskrivelse",
-        "descriptionPlaceholder": "Notater, observasjoner, referanser…",
-        "visibility": "Synlighet"
+    "workspace": {
+      "back": "Tilbake",
+      "zoom": "Zoom til lokaliteten",
+      "deleteLocality": "Slett lokaliteten",
+      "confirmDelete": "Slette «{{name}}» med alle funn og bilder? Handlingen kan ikke angres.",
+      "name": "Navn",
+      "namePlaceholder": "Navn på lokaliteten",
+      "description": "Beskrivelse",
+      "descriptionPlaceholder": "Hva vil du undersøke her? Notater, referanser…",
+      "visibility": "Synlighet",
+      "save": "Lagre",
+      "saving": "Lagrer…",
+      "saveFailed": "Kunne ikke lagre. Prøv igjen."
+    },
+    "funn": {
+      "heading": "Funn",
+      "new": "Nytt funn",
+      "loading": "Henter funn…",
+      "empty": "Ingen funn enda. Tegn det du ser i terrenget.",
+      "confirmDelete": "Slette funnet «{{title}}»?",
+      "saveFailed": "Kunne ikke lagre funnet. Prøv igjen.",
+      "draft": {
+        "instructions": "Tegn funnet på kartet med verktøyene under, og gi det en tittel.",
+        "titlePlaceholder": "F.eks. gravhaug?",
+        "notePlaceholder": "Hvorfor tror du det er noe her?",
+        "save": "Lagre funn",
+        "cancel": "Avbryt",
+        "noGeometry": "Tegn noe på kartet før du lagrer."
+      },
+      "status": {
+        "mulig": "Mulig",
+        "sannsynlig": "Sannsynlig",
+        "avkreftet": "Avkreftet",
+        "rapportert": "Rapportert",
+        "cycleHint": "Klikk for å endre status"
       },
       "actions": {
-        "cancel": "Avbryt",
-        "save": "Lagre funn",
-        "saveEdit": "Lagre endringer",
-        "saving": "Lagrer…"
-      },
-      "errors": {
-        "noGeometry": "Tegn noe på kartet før du lagrer.",
-        "saveFailed": "Kunne ikke lagre funnet. Prøv igjen.",
-        "loadFailed": "Klarte ikke å hente funnet. Prøv igjen."
+        "zoom": "Zoom til funnet",
+        "edit": "Rediger",
+        "delete": "Slett"
       }
     }
   },

@@ -44,8 +44,8 @@ import {
   getDrawOverlayLayer,
 } from '../../draw/drawControls/hooks/mapLayers';
 import { getHighestZIndex } from '../../draw/drawControls/hooks/verticalMove';
+import { funnDraftActiveAtom } from '../../localities/atoms';
 import { mapAtom } from '../../map/atoms';
-import { mapToolAtom } from '../../map/overlay/atoms';
 import { addDrawAction } from './drawActions/drawActionsHooks';
 
 export const DEFAULT_PRIMARY_COLOR = '#0e5aa0ff';
@@ -115,9 +115,10 @@ export const textStyleReadAtom = atom((get) => {
   });
 });
 
+// Drawing exists only inside a lokalitet workspace: enabled exactly
+// while a funn draft is open (the standalone 'draw' MapTool is gone).
 export const drawEnabledAtom = atom<boolean>((get) => {
-  const currentMapTool = get(mapToolAtom);
-  return currentMapTool === 'draw';
+  return get(funnDraftActiveAtom);
 });
 
 export const selectedFeatureAtom = atom<Feature<Geometry> | null>(null);

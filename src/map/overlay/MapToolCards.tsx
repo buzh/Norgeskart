@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   Flex,
   Heading,
   HStack,
@@ -10,20 +9,14 @@ import {
   VStack,
 } from '@kvib/react';
 
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useEffect } from 'react';
+import { useAtom } from 'jotai';
 import { useTranslation } from 'react-i18next';
-import { DrawControls } from '../../draw/drawControls/DrawControls';
-import { useDrawSettings } from '../../draw/drawControls/hooks/drawSettings';
-import { editingFindIdAtom } from '../../finds/atoms';
-import { setFindHiddenOnLayer } from '../../finds/findsLayer';
-import { MyFindsPanel } from '../../finds/MyFindsPanel';
-import { NewFindPanel } from '../../finds/NewFindPanel';
 import { LidarExtractPanel } from '../../lidarExtract/LidarExtractPanel';
+import { LocalitiesPanel } from '../../localities/LocalitiesPanel';
 import { MapThemes } from '../../settings/map/themes/MapThemes';
 import { useIsMobileScreen } from '../../shared/hooks';
 import { activeThemeLayersAtom } from '../layers/atoms';
-import { drawPanelCollapsedAtom, mapToolAtom } from './atoms';
+import { mapToolAtom } from './atoms';
 
 const MapLayersCardHeader = () => {
   const { t } = useTranslation();
@@ -83,62 +76,21 @@ const MapToolCardHeader = ({ label }: { label: string | React.ReactNode }) => {
 };
 
 export const MapToolCards = () => {
-  const currentMapTool = useAtomValue(mapToolAtom);
-  const [collapsed, setCollapsed] = useAtom(drawPanelCollapsedAtom);
-  useEffect(() => {
-    if (currentMapTool !== 'draw') {
-      setCollapsed(false);
-    }
-  }, [currentMapTool, setCollapsed]);
   return (
-    <Box
-      display={currentMapTool === 'draw' && collapsed ? 'none' : 'block'}
-      pointerEvents={'none'}
-      w="100%"
-    >
+    <Box pointerEvents={'none'} w="100%">
       <MapToolCardsBody />
     </Box>
   );
 };
+
 const MapToolCardsBody = () => {
   const { t } = useTranslation();
-  const isMobile = useIsMobileScreen();
-  const [, setCollapsed] = useAtom(drawPanelCollapsedAtom);
-  const { drawType } = useDrawSettings();
   const [currentMapTool, setCurrentMapTool] = useAtom(mapToolAtom);
-  const editingFindId = useAtomValue(editingFindIdAtom);
-  const setEditingFindId = useSetAtom(editingFindIdAtom);
-
-  const drawTypeLabels: Record<string, string> = {
-    Move: t('draw.controls.tool.label.edit'),
-    Polygon: t('draw.controls.tool.label.polygon'),
-    Point: t('draw.controls.tool.label.point'),
-    LineString: t('draw.controls.tool.label.linestring'),
-    Circle: t('draw.controls.tool.label.circle'),
-    Text: t('draw.controls.tool.label.text'),
-  };
-
-  const activeToolLabel = drawType
-    ? drawTypeLabels[drawType]
-    : t('draw.tabHeading');
 
   const onClose = () => {
     setCurrentMapTool(null);
-    setCollapsed(true);
   };
 
-  if (currentMapTool === 'draw') {
-    return (
-      <MapToolCard
-        label={isMobile ? activeToolLabel : t('draw.tabHeading')}
-        onClose={onClose}
-        showCollapse={isMobile}
-        onCollapse={() => setCollapsed(true)}
-      >
-        <DrawControls />
-      </MapToolCard>
-    );
-  }
   if (currentMapTool === 'layers') {
     return (
       <MapToolCard label={<MapLayersCardHeader />} onClose={onClose}>
@@ -155,29 +107,10 @@ const MapToolCardsBody = () => {
     );
   }
 
-  if (currentMapTool === 'myFinds') {
+  if (currentMapTool === 'localities') {
     return (
-      <MapToolCard label={t('finds.mineFunn.tabHeading')} onClose={onClose}>
-        <MyFindsPanel />
-      </MapToolCard>
-    );
-  }
-
-  if (currentMapTool === 'newFind') {
-    const label = editingFindId
-      ? t('finds.newFind.tabHeadingEdit')
-      : t('finds.newFind.tabHeading');
-    // Close via the card's × must also unhide the persisted find and
-    // drop edit state, otherwise the map stays with a gap where the
-    // hidden record used to render.
-    const onCloseEdit = () => {
-      if (editingFindId) setFindHiddenOnLayer(editingFindId, false);
-      setEditingFindId(null);
-      onClose();
-    };
-    return (
-      <MapToolCard label={label} onClose={onCloseEdit}>
-        <NewFindPanel />
+      <MapToolCard label={t('localities.panel.tabHeading')} onClose={onClose}>
+        <LocalitiesPanel />
       </MapToolCard>
     );
   }
@@ -188,18 +121,13 @@ interface MapToolCardProps {
   children: React.ReactNode | React.ReactNode[] | undefined;
   onClose: () => void;
   hideHeader?: boolean;
-  showCollapse?: boolean;
-  onCollapse?: () => void;
 }
 const MapToolCard = ({
   label,
   children,
   onClose,
   hideHeader,
-  showCollapse,
-  onCollapse,
 }: MapToolCardProps) => {
-  const { t } = useTranslation();
   const isMobile = useIsMobileScreen();
 
   return (
@@ -221,26 +149,14 @@ const MapToolCard = ({
       <Flex justify="space-between" gap="2" w="100%" align="center">
         {!hideHeader ? <MapToolCardHeader label={label} /> : <Box />}
 
-        <HStack>
-          {showCollapse && onCollapse && (
-            <Button
-              variant="ghost"
-              leftIcon="bottom_panel_close"
-              size="sm"
-              onClick={onCollapse}
-            >
-              {t('controller.hide')}
-            </Button>
-          )}
-          <IconButton
-            variant="ghost"
-            icon="close"
-            aria-label="Lukk"
-            colorPalette="red"
-            onClick={onClose}
-            size={{ base: 'xs', md: 'sm' }}
-          />
-        </HStack>
+        <IconButton
+          variant="ghost"
+          icon="close"
+          aria-label="Lukk"
+          colorPalette="red"
+          onClick={onClose}
+          size={{ base: 'xs', md: 'sm' }}
+        />
       </Flex>
 
       <Box w="100%" overflowY="auto" maxHeight="90%">

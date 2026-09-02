@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthButton } from './auth/AuthButton';
 import { isSignedInAtom } from './auth/atoms';
+import { creatingLocalityAtom } from './localities/atoms';
 import { mapAtom } from './map/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
 import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
@@ -237,6 +238,10 @@ export const TopBar = () => {
   const [backgroundLayer, setBackgroundLayer] = useAtom(backgroundLayerAtom);
   const [activeLidarProject, setActiveLidarProject] = useAtom(
     activeLidarProjectAtom,
+  );
+
+  const [creatingLocality, setCreatingLocality] = useAtom(
+    creatingLocalityAtom,
   );
 
   const [lidarOpen, setLidarOpen] = useState(false);
@@ -559,34 +564,29 @@ export const TopBar = () => {
         onClick={openInNorgeIBilder}
       />
 
-      <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
-
-      <ToolButton
-        icon="edit"
-        label={t('controller.draw.text')}
-        active={currentMapTool === 'draw'}
-        onClick={() => toggleTool('draw')}
-      />
-
       <MeasurePopover />
 
-      {/* Signed-in-only annotation controls. Hidden entirely for guests
+      {/* Signed-in-only lokalitet controls. Hidden entirely for guests
           rather than shown-disabled — the AuthButton at the right is
-          the discoverable path in. */}
+          the discoverable path in. Drawing and LiDAR keeps happen inside
+          a lokalitet's workspace, not from here. */}
       {isSignedIn && (
         <>
           <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
           <ToolButton
             icon="bookmark"
-            label={t('finds.mineFunn.tabHeading')}
-            active={currentMapTool === 'myFinds'}
-            onClick={() => toggleTool('myFinds')}
+            label={t('localities.topbar.myLocalities')}
+            active={currentMapTool === 'localities'}
+            onClick={() => toggleTool('localities')}
           />
           <ToolButton
             icon="add_location_alt"
-            label={t('finds.newFind.tabHeading')}
-            active={currentMapTool === 'newFind'}
-            onClick={() => toggleTool('newFind')}
+            label={t('localities.topbar.newLocality')}
+            active={creatingLocality}
+            onClick={() => {
+              setCreatingLocality(!creatingLocality);
+              setCurrentMapTool(null);
+            }}
           />
         </>
       )}
