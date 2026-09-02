@@ -36,10 +36,14 @@ const AttachmentThumb = ({
 }) => {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
+  // PB can't always generate thumbs for the huge stitched extract PNGs;
+  // when the thumb 404s/errors, fall back to the original (the browser
+  // downscales it fine).
+  const [thumbFailed, setThumbFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    getAttachmentUrl(rec, '200x200')
+    getAttachmentUrl(rec, thumbFailed ? undefined : '200x200')
       .then((u) => {
         if (!cancelled) setUrl(u);
       })
@@ -47,7 +51,7 @@ const AttachmentThumb = ({
     return () => {
       cancelled = true;
     };
-  }, [rec.id, rec.file]);
+  }, [rec.id, rec.file, thumbFailed]);
 
   const openFull = () => {
     getAttachmentUrl(rec)
@@ -74,6 +78,9 @@ const AttachmentThumb = ({
           <img
             src={url}
             alt={rec.caption || rec.kind}
+            onError={() => {
+              if (!thumbFailed) setThumbFailed(true);
+            }}
             style={{
               width: '100%',
               height: '100%',

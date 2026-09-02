@@ -51,7 +51,10 @@ export const getWMTSLayer = async (
     }
 
     const layer = new TileLayer({
-      source: new WMTS({ ...layerOptions }),
+      // crossOrigin keeps the map canvas untainted so the lokalitet
+      // skjermbilde can toBlob() it — cache.kartverket.no sends ACAO:*.
+      // Every other raster source is same-origin via the /wms/* proxies.
+      source: new WMTS({ ...layerOptions, crossOrigin: 'anonymous' }),
       properties: { id: `bg.${layerConfig.layerName}` },
       preload: 2,
     });
