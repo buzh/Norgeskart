@@ -123,3 +123,10 @@ export const emptyLidarViewport = (
 export const lidarViewportAtom = atom<LidarViewportState>(
   emptyLidarViewport('idle'),
 );
+
+// Whether the TopBar's LiDAR dataset pulldown is open. The footprint
+// polygons are a picking aid, not a persistent overlay — they'd only
+// clutter the terrain the user came to read — so both the WFS fetch and
+// the drawn shapes hang off this, and go away the moment the pulldown
+// closes (selecting a dataset closes it).
+export const lidarPickerOpenAtom = atom(false);

@@ -42,6 +42,7 @@ import {
 import {
   DEFAULT_LIDAR_FILTERS,
   lidarFilterSettingsAtom,
+  lidarPickerOpenAtom,
   lidarViewportAtom,
 } from './map/layers/config/backgroundLayers/lidarRelevance';
 import { ThemeLayerName } from './map/layers/themeWMS';
@@ -218,7 +219,9 @@ export const TopBar = () => {
     creatingLocalityAtom,
   );
 
-  const [lidarOpen, setLidarOpen] = useState(false);
+  // Shared, not local state: the map-side footprint overlay is drawn
+  // only while this pulldown is open (see lidarFootprintsLayer).
+  const [lidarOpen, setLidarOpen] = useAtom(lidarPickerOpenAtom);
   const [styleOpen, setStyleOpen] = useState(false);
   const [moreProjectsOpen, setMoreProjectsOpen] = useState(false);
   const [moreStylesOpen, setMoreStylesOpen] = useState(false);
@@ -350,6 +353,14 @@ export const TopBar = () => {
   const isLidarProject = backgroundLayer === 'lidarProject';
   const isNationalMosaic = backgroundLayer === 'lidarHillshade';
   const isLidarMode = isLidarProject || isNationalMosaic;
+
+  // Leaving LiDAR mode unmounts the pulldown without it ever firing
+  // onOpenChange, so clear the shared flag by hand — otherwise the map
+  // would draw footprints again the next time LiDAR is switched on.
+  useEffect(() => {
+    if (!isLidarMode) setLidarOpen(false);
+  }, [isLidarMode, setLidarOpen]);
+
   const lidarChipLabel = isLidarProject && activeLidarProject
     ? activeLidarProject.projectName
     : 'Nasjonal mosaikk';
@@ -567,7 +578,11 @@ export const TopBar = () => {
               <Text fontSize="10px" color="gray.500" px={2}>
                 LiDAR-prosjekter som dekker dette punktet
               </Text>
-              {(allProjects === null || viewport.status === 'loading') && (
+              {/* 'idle' is reachable here for the tick between the
+                  pulldown opening and the fetch effect starting. */}
+              {(allProjects === null ||
+                viewport.status === 'loading' ||
+                viewport.status === 'idle') && (
                 <Flex align="center" gap={2} p={2}>
                   <Spinner size="xs" />
                   <Text fontSize="xs" color="gray.500">

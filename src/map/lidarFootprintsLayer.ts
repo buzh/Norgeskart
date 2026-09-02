@@ -1,14 +1,15 @@
 // Draws color-coded LiDAR project footprints on top of the current
-// background while LiDAR mode is active, and lets the user click one to
-// activate that project — the map-side half of the TopBar picker.
+// background while the TopBar's dataset pulldown is open, and lets the
+// user click one to activate that project — the map-side half of that
+// picker, which is why it lives and dies with it rather than staying up
+// for the whole LiDAR session.
 //
 // Fetching + relevance classification happens here and is written to
 // lidarViewportAtom, which the TopBar popover also reads — one WFS call
 // and one classification pass serve both the drawn shapes and the list.
 
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Feature, MapBrowserEvent } from 'ol';
-import BaseEvent from 'ol/events/Event';
+import { Feature } from 'ol';
 import type { FeatureLike } from 'ol/Feature';
 import { fromExtent as polygonFromExtent } from 'ol/geom/Polygon';
 import VectorLayer from 'ol/layer/Vector';
@@ -36,12 +37,16 @@ import {
   classifyRelevance,
   emptyLidarViewport,
   lidarFilterSettingsAtom,
+  lidarPickerOpenAtom,
   lidarViewportAtom,
   LidarViewportEntry,
 } from './layers/config/backgroundLayers/lidarRelevance';
 
 export const LIDAR_FOOTPRINTS_LAYER_ID = 'lidarFootprintsLayer';
 const PROJECT_ID_PROPERTY = '__lidarProjectId';
+// How far the pointer may travel between down and up and still count as
+// a pick rather than the start of a pan.
+const DRAG_SLOP_PX = 4;
 
 // Widest viewport (longer side, in metres) we'll ask the Prosjekt-
 // avgrensning WFS about. Measured against the live service: a 20 km box
@@ -105,19 +110,23 @@ export const useLidarFootprintsLayer = () => {
   const filters = useAtomValue(lidarFilterSettingsAtom);
   const viewport = useAtomValue(lidarViewportAtom);
   const setViewport = useSetAtom(lidarViewportAtom);
+  const pickerOpen = useAtomValue(lidarPickerOpenAtom);
 
   const isLidarMode =
     backgroundLayer === 'lidarProject' || backgroundLayer === 'lidarHillshade';
+  // The pulldown only exists in LiDAR mode, but check both — the atom
+  // can be left true if the popover unmounts without closing itself.
+  const picking = isLidarMode && pickerOpen;
 
-  // Layer lifecycle: created lazily, visibility follows LiDAR mode.
+  // Layer lifecycle: created lazily, visibility follows the pulldown.
   useEffect(() => {
     const layer = getOrCreateLayer(map);
-    layer.setVisible(isLidarMode);
-  }, [map, isLidarMode]);
+    layer.setVisible(picking);
+  }, [map, picking]);
 
-  // Fetch + classify on viewport change while LiDAR mode is active.
+  // Fetch + classify on viewport change while the pulldown is open.
   useEffect(() => {
-    if (!isLidarMode) {
+    if (!picking) {
       setViewport(emptyLidarViewport('idle'));
       return;
     }
@@ -202,7 +211,7 @@ export const useLidarFootprintsLayer = () => {
       cancelled = true;
       map.un('moveend', refresh);
     };
-  }, [map, isLidarMode, filters, setViewport]);
+  }, [map, picking, filters, setViewport]);
 
   // Render: sync features from lidarViewportAtom.
   useEffect(() => {
@@ -228,43 +237,57 @@ export const useLidarFootprintsLayer = () => {
 
   // Click a footprint → activate that project, same as picking it from
   // the pulldown.
+  //
+  // Hit-tested on pointerdown rather than OL's singleclick, because that
+  // same click dismisses the pulldown: React then tears this handler
+  // down and clears the features a good 250 ms before singleclick would
+  // fire, so a singleclick listener would never see the footprint. The
+  // pointerup half is registered one-shot from inside pointerdown so it
+  // still runs after that teardown.
   useEffect(() => {
-    if (!isLidarMode) return;
+    if (!picking) return;
 
+    const layer = getOrCreateLayer(map);
+    const viewportElement = map.getViewport();
     const allEntries = [...viewport.primary, ...viewport.secondary];
-    const onClick = (e: Event | BaseEvent) => {
-      if (!(e instanceof MapBrowserEvent)) return;
-      let hitId: string | null = null;
-      map.forEachFeatureAtPixel(
-        e.pixel as [number, number],
-        (feature, layer) => {
-          if (layer?.get('id') !== LIDAR_FOOTPRINTS_LAYER_ID) return undefined;
-          const id = feature.get(PROJECT_ID_PROPERTY) as string | undefined;
-          if (id) {
-            hitId = id;
-            return true;
-          }
-          return undefined;
-        },
-        { hitTolerance: 3 },
+
+    const onPointerDown = (downEvent: PointerEvent) => {
+      if (downEvent.button !== 0) return;
+      const hitId = map.forEachFeatureAtPixel(
+        map.getEventPixel(downEvent),
+        (feature) => feature.get(PROJECT_ID_PROPERTY) as string | undefined,
+        { hitTolerance: 3, layerFilter: (candidate) => candidate === layer },
       );
       if (!hitId) return;
-      const entry = allEntries.find((e2) => e2.project.id === hitId);
+      const entry = allEntries.find((e) => e.project.id === hitId);
       if (!entry) return;
-      setActiveLidarProject(entry.project);
-      setActiveLidarStyle((prev) =>
-        resolveLidarStyle(entry.project.styles, prev),
+
+      window.addEventListener(
+        'pointerup',
+        (upEvent: PointerEvent) => {
+          // Panning the map from on top of a footprint isn't a pick.
+          const moved = Math.hypot(
+            upEvent.clientX - downEvent.clientX,
+            upEvent.clientY - downEvent.clientY,
+          );
+          if (moved > DRAG_SLOP_PX) return;
+          setActiveLidarProject(entry.project);
+          setActiveLidarStyle((prev) =>
+            resolveLidarStyle(entry.project.styles, prev),
+          );
+          setBackgroundLayer('lidarProject');
+        },
+        { once: true },
       );
-      setBackgroundLayer('lidarProject');
     };
 
-    map.on('singleclick', onClick);
+    viewportElement.addEventListener('pointerdown', onPointerDown);
     return () => {
-      map.un('singleclick', onClick);
+      viewportElement.removeEventListener('pointerdown', onPointerDown);
     };
   }, [
     map,
-    isLidarMode,
+    picking,
     viewport,
     setActiveLidarProject,
     setActiveLidarStyle,
