@@ -80,6 +80,10 @@ export const useLocalityCreate = () => {
         })
         .catch((e) => {
           console.warn('[useLocalityCreate] create failed', e);
+          // Surface it — a silent failure here looks like "the button
+          // does nothing" (classic cause: pocketbase not restarted after
+          // a migration change, so the collection doesn't exist).
+          window.alert(t('localities.createFailed'));
         })
         .finally(() => {
           setCreating(false);

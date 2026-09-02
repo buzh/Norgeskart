@@ -308,6 +308,7 @@
   },
   "localities": {
     "defaultName": "Utan namn",
+    "createFailed": "Kunne ikkje opprette lokaliteten. Sjekk at du er innlogga og at serveren køyrer oppdatert skjema (detaljar i nettlesarkonsollen).",
     "byOwner": "av {{name}}",
     "visibility": {
       "private": "Privat",

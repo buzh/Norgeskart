@@ -40,6 +40,20 @@ Symptom of forgetting this: same-origin proxy paths (e.g. `/wms/ra/...`)
 return nginx's default 404 page even though the Caddyfile and layer configs
 look correct.
 
+Same class of gotcha for **pocketbase**: `pocketbase/pb_migrations/` is
+bind-mounted, but PB only applies migrations at startup, and
+`docker compose up -d` doesn't recreate the container (image unchanged).
+After adding/changing a migration:
+
+```
+docker compose restart pocketbase
+docker compose logs pocketbase   # confirm the migration applied
+```
+
+Symptom of forgetting this: API calls against the new/changed collection
+404, which the SPA may surface only in the browser console (e.g. "Ny
+lokalitet" appearing to do nothing).
+
 Ports: Caddy inside the container listens on `:3000`; docker-compose maps host
 `3030 → container 3000`.
 

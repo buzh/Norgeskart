@@ -308,6 +308,7 @@
   },
   "localities": {
     "defaultName": "Uten navn",
+    "createFailed": "Kunne ikke opprette lokaliteten. Sjekk at du er innlogget og at serveren kjører oppdatert skjema (detaljer i nettleserkonsollen).",
     "byOwner": "av {{name}}",
     "visibility": {
       "private": "Privat",

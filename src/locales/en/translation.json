@@ -303,6 +303,7 @@
   },
   "localities": {
     "defaultName": "Untitled",
+    "createFailed": "Could not create the locality. Check that you are signed in and the server runs the current schema (details in the browser console).",
     "byOwner": "by {{name}}",
     "visibility": {
       "private": "Private",
