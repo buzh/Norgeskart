@@ -105,6 +105,46 @@ const isBackgroundLayer = (layer: BaseLayer): boolean => {
   return !layerId || String(layerId).startsWith('bg.');
 };
 
+// Identity of what a background layer is showing: equal signatures mean
+// equal pixels. Cycling styles or datasets rebuilds the whole stack on
+// every keypress, but the topo base and the faded LiDAR fallback under
+// the active dataset are nearly always unchanged between steps —
+// rebuilding those throws away a screenful of loaded tiles and refetches
+// them for no visible difference.
+const layerSignature = (
+  config: BackgroundLayer,
+  projection: string,
+): string | null => {
+  if (config.type === 'WMTS') return `wmts|${config.layerName}|${projection}`;
+  if (config.type === 'WMS') {
+    return `wms|${config.url}|${JSON.stringify(config.props)}|${projection}`;
+  }
+  return null;
+};
+
+// The layer for this config, reusing the one already on the map when it
+// would render identically. Callers must set opacity explicitly on what
+// comes back: a reused layer may still be carrying the fade from an
+// earlier swap.
+export const buildOrReuseBackgroundLayer = async (
+  config: BackgroundLayer,
+  projection: string,
+): Promise<TileLayer | null> => {
+  const store = getDefaultStore();
+  const map = store.get(mapAtom);
+  const signature = layerSignature(config, projection);
+  if (signature) {
+    const existing = map
+      .getLayers()
+      .getArray()
+      .find((l) => l.get('sig') === signature);
+    if (existing) return existing as TileLayer;
+  }
+  const layer = await getLayerFromConfig(config, projection);
+  if (layer && signature) layer.set('sig', signature);
+  return layer;
+};
+
 // How long the outgoing stack may hang around waiting for a render that
 // never comes — a tile stuck loading, a backgrounded tab. Generous,
 // because the LiDAR tile loader retries blank responses with backoff
@@ -112,27 +152,29 @@ const isBackgroundLayer = (layer: BaseLayer): boolean => {
 // gapless; the only cost of waiting is two background stacks in memory.
 const SWAP_TIMEOUT_MS = 8000;
 
+// What a layer on its way out is dimmed to, immediately, for as long as
+// it hangs around. A per-project dataset usually covers only part of the
+// screen, and an outgoing full-screen layer at full opacity behind it is
+// indistinguishable from real coverage — the edge of what you just
+// selected has to be readable before its tiles are even in.
+const OUTGOING_OPACITY = 0.35;
+
 // Cancels the pending retirement of the previous swap, if any.
 let cancelPendingRetire: (() => void) | null = null;
 
-// Replace the background stack without ever showing a gap.
+// Replace the background stack without ever showing a gap. `layers` is
+// bottom-first; the last entry is the dataset being featured.
 //
 // Removing the old layers first — which is what this used to do — means
 // the map has nothing but the topo base to draw while the new LiDAR
 // tiles load, so cycling styles or datasets flashes topo between every
-// step. Instead the outgoing layers stay put, and are removed only once
-// the map reports a complete render with the incoming ones in.
-//
-// The incoming base goes to the *bottom* of the stack rather than on
-// top: a freshly built topo base added above the outgoing hillshade
-// would paint over it as soon as its (cached, so near-instant) tiles
-// land, reintroducing the same flash from the other direction.
-export const swapBackgroundLayers = (
-  base: TileLayer | null,
-  top: TileLayer,
-) => {
+// step. Instead the outgoing layers stay put (faded, see above) and are
+// removed only once the map reports a complete render with the incoming
+// ones in.
+export const swapBackgroundLayers = (layers: TileLayer[]) => {
   const store = getDefaultStore();
   const map = store.get(mapAtom);
+  if (layers.length === 0) return;
 
   // A swap arriving while an earlier one is still retiring: cancel that
   // retirement rather than running it. Its layers are part of this
@@ -140,9 +182,23 @@ export const swapBackgroundLayers = (
   // very gap the deferral exists to avoid.
   cancelPendingRetire?.();
 
-  const outgoing = map.getLayers().getArray().filter(isBackgroundLayer);
-  if (base) map.getLayers().insertAt(0, base);
-  map.addLayer(top);
+  const collection = map.getLayers();
+  const outgoing = collection
+    .getArray()
+    .filter((l) => isBackgroundLayer(l) && !layers.includes(l as TileLayer));
+
+  // Reposition rather than just add: everything but the featured layer
+  // goes to the bottom of the collection in order, the featured one on
+  // top. Layers that were reused are already somewhere in the
+  // collection, and the outgoing ones have to end up *between* the two
+  // groups — under the incoming dataset, over the incoming base.
+  layers.forEach((layer, i) => {
+    collection.remove(layer);
+    if (i === layers.length - 1) collection.push(layer);
+    else collection.insertAt(i, layer);
+  });
+
+  for (const layer of outgoing) layer.setOpacity(OUTGOING_OPACITY);
 
   const retire = () => {
     cancelPendingRetire?.();

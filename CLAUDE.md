@@ -158,16 +158,32 @@ and would loop forever otherwise).
 Key CSP dependencies for this path: `img-src` must include `blob:`
 (because the loader hands blob URLs to `<img>`).
 
-### Background swaps are gapless
+### The background stack
 
-`swapBackgroundLayers` in `backgroundLayers/utils.ts` adds the incoming
-layers and removes the outgoing ones only on the next map
-`rendercomplete` (8 s timeout as a backstop). Switching LiDAR style or
-project rebuilds the whole stack, and the topo base underneath comes
-back from cache long before the new hillshade tiles do — tearing down
-first meant every step of a W/S or A/D cycle flashed topo. For the same
-reason the incoming topo base is inserted at the *bottom* of the layer
-collection rather than added on top.
+`backgroundLayerAtomEffect` builds a stack, bottom-first, not a single
+layer:
+
+1. topo base (both LiDAR modes — the LiDAR WMS returns transparent PNGs
+   outside coverage);
+2. the national mosaic at `LIDAR_FALLBACK_OPACITY`, when a *per-project*
+   dataset is active, so the area the project doesn't cover keeps its
+   relief instead of dropping to plain topo;
+3. the active dataset.
+
+`swapBackgroundLayers` (`backgroundLayers/utils.ts`) then swaps that
+stack in without ever showing a gap:
+
+- Outgoing layers are **not** removed up front — they're dimmed to
+  `OUTGOING_OPACITY` immediately and removed on the next map
+  `rendercomplete` (8 s timeout as a backstop). Tearing down first meant
+  every step of a W/S or A/D cycle flashed topo while the new hillshade
+  loaded; the instant dim is what makes the incoming dataset's coverage
+  edge readable before its tiles are in.
+- `buildOrReuseBackgroundLayer` keeps an existing layer whose signature
+  (url + params + projection) matches what's being asked for, so cycling
+  only rebuilds the layer that actually changed. Reused layers may still
+  carry an earlier fade, so the effect sets opacity explicitly on every
+  layer it passes in.
 
 ### Keyboard cycling of the LiDAR pulldowns
 

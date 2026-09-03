@@ -12,6 +12,7 @@ import { KvCacheBackgroundLayers } from './kvCache';
 import {
   activeLidarProjectAtom,
   activeLidarStyleAtom,
+  DEFAULT_LIDAR_PROJECT_STYLE,
   LIDAR_PROJECT_WMS_URL,
 } from './lidarProjects';
 import { retryBlankTileLoadFunction } from './loadFunctions';
@@ -21,10 +22,8 @@ import {
   WMSBackgroundLayer,
 } from './types';
 import {
+  buildOrReuseBackgroundLayer,
   clearBackgroundLayer,
-  getLayerFromConfig,
-  getWMSLayer,
-  getWMTSLayer,
   swapBackgroundLayers,
 } from './utils';
 
@@ -38,6 +37,15 @@ const NEEDS_TOPO_BASE = new Set<BackgroundLayerName>([
   'lidarProject',
   'lidarHillshade',
 ]);
+
+// How far the national mosaic is dimmed when it's playing backdrop to a
+// per-project dataset: strong enough to read relief outside the
+// project's footprint, weak enough that the project is obviously the
+// layer in focus. The topo base still sits under it, so the uncovered
+// area also picks up a green cast — which turns out to be useful, the
+// coverage edge reads as a change in hue as well as in contrast. Turn
+// this up towards 1 if the blend is too soft to read terrain in.
+const LIDAR_FALLBACK_OPACITY = 0.6;
 
 const emptyBackgroundLayer: EmptyBackgroundLayer = {
   type: 'Empty',
@@ -131,28 +139,49 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
       const map = store.get(mapAtom);
       const projection = map.getView().getProjection().getCode();
 
-      // Build the topo base in parallel with the top layer when the
-      // requested layer needs a fallback underneath — cheaper than doing
-      // them sequentially and keeps the swap atomic (both built before
-      // swapBackgroundLayers runs).
+      // Everything the requested layer sits on top of, built in parallel
+      // with it — cheaper than sequentially, and it keeps the swap atomic
+      // (the whole stack is ready before swapBackgroundLayers runs).
       const baseTopoConfig = NEEDS_TOPO_BASE.has(layerName)
         ? allConfiguredBackgroundLayers.find((l) => l.layerName === 'topo')
         : undefined;
 
-      const [baseLayer, topLayer] = await Promise.all([
+      // A per-project dataset typically covers a fraction of the screen.
+      // Dropping to topo outside its footprint reads as "the terrain
+      // stopped", and while cycling projects it's the loudest thing on
+      // screen. The national mosaic underneath instead keeps relief
+      // everywhere, and faded it stays clearly subordinate to the
+      // project — the coverage edge is the contrast step, not a switch
+      // to a different kind of map. Fixed to the mosaic's own style:
+      // it publishes skyggerelieff and nothing else.
+      const lidarFallbackConfig =
+        layerName === 'lidarProject'
+          ? buildNationalLidarConfig(DEFAULT_LIDAR_PROJECT_STYLE)
+          : undefined;
+
+      const [baseLayer, lidarFallback, topLayer] = await Promise.all([
         baseTopoConfig
-          ? getLayerFromConfig(baseTopoConfig, projection)
+          ? buildOrReuseBackgroundLayer(baseTopoConfig, projection)
           : Promise.resolve(null),
-        layerConfig.type === 'WMTS'
-          ? getWMTSLayer(layerConfig, projection)
-          : layerConfig.type === 'WMS'
-            ? Promise.resolve(getWMSLayer(layerConfig))
-            : Promise.resolve<TileLayer | null>(null),
+        lidarFallbackConfig
+          ? buildOrReuseBackgroundLayer(lidarFallbackConfig, projection)
+          : Promise.resolve(null),
+        buildOrReuseBackgroundLayer(layerConfig, projection),
       ]);
 
       if (!topLayer) return;
 
-      swapBackgroundLayers(baseLayer, topLayer);
+      // Always set opacity explicitly: any of these may be a reused
+      // layer still carrying the fade from an earlier swap.
+      baseLayer?.setOpacity(1);
+      lidarFallback?.setOpacity(LIDAR_FALLBACK_OPACITY);
+      topLayer.setOpacity(1);
+
+      swapBackgroundLayers(
+        [baseLayer, lidarFallback, topLayer].filter(
+          (l): l is TileLayer => l != null,
+        ),
+      );
       setUrlParameter('backgroundLayer', layerName);
 
       if (layerConfig.moveToExtent) {
