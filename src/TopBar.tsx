@@ -360,11 +360,11 @@ export const TopBar = () => {
     };
   }, []);
 
-  // Badge on the LiDAR button: how many catalogued projects intersect the
-  // current viewport. Cheap (pure array filter over the already-loaded
-  // catalogue, no network) so it runs continuously regardless of whether
-  // LiDAR mode is even on — the amount of available data should be
-  // discoverable before the user ever clicks in.
+  // Badge on the dataset pulldown: how many catalogued projects
+  // intersect the current viewport, i.e. how much that pulldown has to
+  // offer here. Cheap (pure array filter over the already-loaded
+  // catalogue, no network), so it keeps running even outside LiDAR mode
+  // — the count is then ready the instant the pulldown appears.
   const [relevantCount, setRelevantCount] = useState(0);
   useEffect(() => {
     if (!allProjects) return;
@@ -645,7 +645,6 @@ export const TopBar = () => {
         label="LiDAR"
         tooltip="LiDAR (nasjonal mosaikk / per-prosjekt)"
         active={isLidarMode}
-        badge={relevantCount}
         onClick={() => {
           if (!isLidarMode) activateNational();
         }}
@@ -662,27 +661,32 @@ export const TopBar = () => {
           positioning={{ placement: 'bottom-start', offset: { mainAxis: 8 } }}
         >
           <PopoverTrigger asChild>
-            <Button
-              variant="secondary"
-              colorPalette="green"
-              size="sm"
-              rightIcon={cyclingPending ? undefined : 'arrow_drop_down'}
-              maxW="240px"
-              overflow="hidden"
-            >
-              <Text
-                fontSize="xs"
-                lineHeight="short"
-                whiteSpace="nowrap"
-                textOverflow="ellipsis"
+            <Box position="relative" display="inline-block">
+              <Button
+                variant="secondary"
+                colorPalette="green"
+                size="sm"
+                rightIcon={cyclingPending ? undefined : 'arrow_drop_down'}
+                maxW="240px"
                 overflow="hidden"
               >
-                {lidarChipLabel}
-              </Text>
-              {/* First W/S press after a pause only kicks off the
-                  footprint fetch; without this the key looks dead. */}
-              {cyclingPending && <Spinner size="xs" />}
-            </Button>
+                <Text
+                  fontSize="xs"
+                  lineHeight="short"
+                  whiteSpace="nowrap"
+                  textOverflow="ellipsis"
+                  overflow="hidden"
+                >
+                  {lidarChipLabel}
+                </Text>
+                {/* First W/S press after a pause only kicks off the
+                    footprint fetch; without this the key looks dead. */}
+                {cyclingPending && <Spinner size="xs" />}
+              </Button>
+              {/* How many catalogued projects intersect the viewport —
+                  i.e. how much this pulldown has to offer here. */}
+              <CountBadge value={relevantCount} />
+            </Box>
           </PopoverTrigger>
           <PopoverContent width="320px" p={0} borderRadius="lg">
           <PopoverArrow />
