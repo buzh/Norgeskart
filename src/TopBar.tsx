@@ -507,9 +507,21 @@ export const TopBar = () => {
       return true;
     }
 
+    // The project ring is whatever the pulldown lists, and that list
+    // only exists while the pulldown is open: the footprint WFS is
+    // fetched on open and lidarViewportAtom is reset to 'idle' on close
+    // (see lidarFootprintsLayer). So W/S opens the picker first and
+    // starts walking once the fetch lands — cycling against an empty
+    // list would just pin the selection to the national mosaic.
+    if (!lidarOpen) {
+      setLidarOpen(true);
+      return true;
+    }
+    if (viewport.status !== 'ready') return true;
+
     // Index 0 is the national mosaic, then the primary projects — same
     // order the pulldown lists them in.
-    const entries = viewport.status === 'ready' ? viewport.primary : [];
+    const entries = viewport.primary;
     const ring = entries.length + 1;
     const at = entries.findIndex(
       (e) => e.project.id === activeLidarProject?.id,
