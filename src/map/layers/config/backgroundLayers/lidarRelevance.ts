@@ -146,10 +146,19 @@ export const lidarViewportAtom = atom<LidarViewportState>(
 
 // Whether the TopBar's LiDAR dataset pulldown is open. The footprint
 // polygons are a picking aid, not a persistent overlay — they'd only
-// clutter the terrain the user came to read — so both the WFS fetch and
-// the drawn shapes hang off this, and go away the moment the pulldown
-// closes (selecting a dataset closes it).
+// clutter the terrain the user came to read — so the drawn shapes hang
+// off this, and go away the moment the pulldown closes (selecting a
+// dataset closes it).
 export const lidarPickerOpenAtom = atom(false);
+
+// Set while the user is cycling datasets from the keyboard (W/S). That
+// walks the same viewport list the pulldown shows, so it needs the same
+// WFS fetch — but with no pulldown and no polygons on the map, which is
+// the whole point of cycling from the keyboard. Hence two atoms: this
+// one keeps the *data* current, lidarPickerOpenAtom decides whether
+// anything is *drawn*. TopBar clears it after an idle period so panning
+// around long after the last keypress doesn't keep refetching.
+export const lidarCyclingAtom = atom(false);
 
 // The pulldown row the pointer (or keyboard focus) is currently on. Only
 // that one project's footprint is drawn, alongside the active dataset's —

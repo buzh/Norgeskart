@@ -34,6 +34,7 @@ import {
   classifyRelevance,
   emptyLidarViewport,
   hoveredLidarProjectIdAtom,
+  lidarCyclingAtom,
   lidarFilterSettingsAtom,
   lidarPickerOpenAtom,
   lidarViewportAtom,
@@ -111,6 +112,7 @@ export const useLidarFootprintsLayer = () => {
   const viewport = useAtomValue(lidarViewportAtom);
   const setViewport = useSetAtom(lidarViewportAtom);
   const pickerOpen = useAtomValue(lidarPickerOpenAtom);
+  const cycling = useAtomValue(lidarCyclingAtom);
   const hoveredProjectId = useAtomValue(hoveredLidarProjectIdAtom);
   const setHoveredProjectId = useSetAtom(hoveredLidarProjectIdAtom);
 
@@ -119,6 +121,9 @@ export const useLidarFootprintsLayer = () => {
   // The pulldown only exists in LiDAR mode, but check both — the atom
   // can be left true if the popover unmounts without closing itself.
   const picking = isLidarMode && pickerOpen;
+  // Keyboard cycling walks the same list without opening anything, so it
+  // needs the fetch but not the drawing.
+  const wantsViewport = picking || (isLidarMode && cycling);
 
   // Layer lifecycle: created lazily, visibility follows the pulldown.
   // Hover is cleared on the way out so a row the pointer happened to be
@@ -129,9 +134,10 @@ export const useLidarFootprintsLayer = () => {
     if (!picking) setHoveredProjectId(null);
   }, [map, picking, setHoveredProjectId]);
 
-  // Fetch + classify on viewport change while the pulldown is open.
+  // Fetch + classify on viewport change while the pulldown is open or
+  // the keyboard is cycling datasets.
   useEffect(() => {
-    if (!picking) {
+    if (!wantsViewport) {
       setViewport(emptyLidarViewport('idle'));
       return;
     }
@@ -218,7 +224,7 @@ export const useLidarFootprintsLayer = () => {
       cancelled = true;
       map.un('moveend', refresh);
     };
-  }, [map, picking, filters, setViewport]);
+  }, [map, wantsViewport, filters, setViewport]);
 
   // Render: the hovered row's footprint plus the active dataset's, and
   // nothing else. Both come out of the same viewport lists the pulldown
@@ -229,6 +235,9 @@ export const useLidarFootprintsLayer = () => {
     const source = layer.getSource();
     if (!source) return;
     source.clear();
+    // Cycling keeps the viewport list current with the pulldown shut;
+    // building features it would never show is pure waste.
+    if (!picking) return;
 
     const entries = [...viewport.primary, ...viewport.secondary];
     const byId = (id: string | null | undefined) =>
@@ -250,5 +259,5 @@ export const useLidarFootprintsLayer = () => {
       draw(activeEntry, 'active');
     }
     draw(byId(hoveredProjectId), 'hover');
-  }, [map, viewport, activeLidarProject, hoveredProjectId]);
+  }, [map, picking, viewport, activeLidarProject, hoveredProjectId]);
 };

@@ -43,6 +43,7 @@ import {
 import {
   DEFAULT_LIDAR_FILTERS,
   hoveredLidarProjectIdAtom,
+  lidarCyclingAtom,
   lidarFilterSettingsAtom,
   lidarPickerOpenAtom,
   lidarViewportAtom,
@@ -160,6 +161,9 @@ const ToolButton = ({
 );
 
 const CURRENT_YEAR = new Date().getFullYear();
+
+// How long after the last W/S press the dataset list stays warm.
+const CYCLING_IDLE_MS = 90_000;
 
 // One dataset per line, name truncated, year/density right-aligned.
 // Deliberately single-line and borderless: a viewport can turn up
@@ -316,6 +320,8 @@ export const TopBar = () => {
   // lidarFootprintsLayer.ts, mounted from Layout) and shared with the map
   // footprint overlay so both read off a single WFS call.
   const viewport = useAtomValue(lidarViewportAtom);
+  const [cycling, setCycling] = useAtom(lidarCyclingAtom);
+  const cyclingTimerRef = useRef<number | undefined>(undefined);
   const extractViewerOpen = useAtomValue(lidarExtractViewerOpenAtom);
 
   // Fetch the full LiDAR project catalogue once (WMS GetCapabilities,
@@ -459,9 +465,14 @@ export const TopBar = () => {
   // Leaving LiDAR mode unmounts the pulldown without it ever firing
   // onOpenChange, so clear the shared flag by hand — otherwise the map
   // would draw footprints again the next time LiDAR is switched on.
+  // Same for the cycling flag: no LiDAR background, nothing to cycle,
+  // so stop paying for the footprint fetch.
   useEffect(() => {
-    if (!isLidarMode) setLidarOpen(false);
-  }, [isLidarMode, setLidarOpen]);
+    if (isLidarMode) return;
+    setLidarOpen(false);
+    window.clearTimeout(cyclingTimerRef.current);
+    setCycling(false);
+  }, [isLidarMode, setLidarOpen, setCycling]);
 
   const lidarChipLabel = isLidarProject && activeLidarProject
     ? activeLidarProject.projectName
@@ -478,6 +489,25 @@ export const TopBar = () => {
     (s) => !TIER_A_STYLES.includes(s),
   );
   const showStylePicker = activeDatasetStyles.length > 1;
+
+  // Armed by a keypress, list not back yet — 'idle' covers the tick
+  // between arming and the fetch effect starting.
+  const cyclingPending =
+    cycling && (viewport.status === 'loading' || viewport.status === 'idle');
+
+  // Keeps the viewport list warm for W/S without opening the pulldown —
+  // opening it is what paints footprint polygons on the map, and the
+  // point of cycling from the keyboard is to keep the terrain clean.
+  // Expires on idle so panning around minutes after the last keypress
+  // doesn't keep the footprint WFS refetching on every moveend.
+  const armCycling = () => {
+    setCycling(true);
+    window.clearTimeout(cyclingTimerRef.current);
+    cyclingTimerRef.current = window.setTimeout(
+      () => setCycling(false),
+      CYCLING_IDLE_MS,
+    );
+  };
 
   // Keyboard cycling: A/D steps the style pulldown, W/S the dataset
   // pulldown. Both walk the top tier only — the entries the pulldowns
@@ -507,16 +537,15 @@ export const TopBar = () => {
       return true;
     }
 
-    // The project ring is whatever the pulldown lists, and that list
-    // only exists while the pulldown is open: the footprint WFS is
-    // fetched on open and lidarViewportAtom is reset to 'idle' on close
-    // (see lidarFootprintsLayer). So W/S opens the picker first and
-    // starts walking once the fetch lands — cycling against an empty
-    // list would just pin the selection to the national mosaic.
-    if (!lidarOpen) {
-      setLidarOpen(true);
-      return true;
-    }
+    // The project ring is the same viewport list the pulldown shows, and
+    // that list is only kept current while something asks for it (see
+    // lidarFootprintsLayer — the footprint WFS is expensive enough that
+    // it isn't run for the whole LiDAR session). Arming the cycling flag
+    // starts it without opening the pulldown or drawing footprints, so
+    // the first press after a pause is a no-op that fetches and the next
+    // one walks the list. Cycling against an empty list would silently
+    // pin the selection to the national mosaic.
+    armCycling();
     if (viewport.status !== 'ready') return true;
 
     // Index 0 is the national mosaic, then the primary projects — same
@@ -637,7 +666,7 @@ export const TopBar = () => {
               variant="secondary"
               colorPalette="green"
               size="sm"
-              rightIcon="arrow_drop_down"
+              rightIcon={cyclingPending ? undefined : 'arrow_drop_down'}
               maxW="240px"
               overflow="hidden"
             >
@@ -650,6 +679,9 @@ export const TopBar = () => {
               >
                 {lidarChipLabel}
               </Text>
+              {/* First W/S press after a pause only kicks off the
+                  footprint fetch; without this the key looks dead. */}
+              {cyclingPending && <Spinner size="xs" />}
             </Button>
           </PopoverTrigger>
           <PopoverContent width="320px" p={0} borderRadius="lg">

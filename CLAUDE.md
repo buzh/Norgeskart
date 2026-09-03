@@ -173,10 +173,17 @@ collection rather than added on top.
 
 `TopBar.tsx` binds A/D to the style pulldown and W/S to the dataset
 pulldown, top-tier entries only (i.e. not what's behind "flere
-stiler"/"mindre relevante"), wrapping at both ends. W/S opens the
-dataset pulldown first if it's closed: the project list comes from
-`lidarViewportAtom`, which only holds data while the pulldown is open
-(`lidarFootprintsLayer` resets it to `idle` on close).
+stiler"/"mindre relevante"), wrapping at both ends. Neither opens a
+pulldown — cycling should leave the terrain unobstructed, which also
+means no footprint polygons.
+
+That splits what used to be one flag in two:
+`lidarPickerOpenAtom` decides whether footprints are *drawn*, while
+`lidarCyclingAtom` (armed by W/S, expires 90 s after the last press or
+on leaving LiDAR mode) keeps the viewport list *fetched*. The project
+ring is that list, so the first W/S press after a pause only starts the
+WFS fetch — the dataset chip shows a spinner meanwhile — and the next
+press walks it.
 
 ## nginx cache behavior (wmscache)
 
