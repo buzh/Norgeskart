@@ -1,5 +1,6 @@
 import { getDefaultStore } from 'jotai';
 import { WMTSCapabilities } from 'ol/format';
+import type BaseLayer from 'ol/layer/Base';
 import TileLayer from 'ol/layer/Tile';
 import TileWMS from 'ol/source/TileWMS';
 import WMTS, { optionsFromCapabilities } from 'ol/source/WMTS';
@@ -99,14 +100,75 @@ export const getLayerFromConfig = async (
   return null;
 };
 
+const isBackgroundLayer = (layer: BaseLayer): boolean => {
+  const layerId = layer.get('id');
+  return !layerId || String(layerId).startsWith('bg.');
+};
+
+// How long the outgoing stack may hang around waiting for a render that
+// never comes — a tile stuck loading, a backgrounded tab. Generous,
+// because the LiDAR tile loader retries blank responses with backoff
+// (see loadFunctions.ts) and a slow-but-real swap should still be
+// gapless; the only cost of waiting is two background stacks in memory.
+const SWAP_TIMEOUT_MS = 8000;
+
+// Cancels the pending retirement of the previous swap, if any.
+let cancelPendingRetire: (() => void) | null = null;
+
+// Replace the background stack without ever showing a gap.
+//
+// Removing the old layers first — which is what this used to do — means
+// the map has nothing but the topo base to draw while the new LiDAR
+// tiles load, so cycling styles or datasets flashes topo between every
+// step. Instead the outgoing layers stay put, and are removed only once
+// the map reports a complete render with the incoming ones in.
+//
+// The incoming base goes to the *bottom* of the stack rather than on
+// top: a freshly built topo base added above the outgoing hillshade
+// would paint over it as soon as its (cached, so near-instant) tiles
+// land, reintroducing the same flash from the other direction.
+export const swapBackgroundLayers = (
+  base: TileLayer | null,
+  top: TileLayer,
+) => {
+  const store = getDefaultStore();
+  const map = store.get(mapAtom);
+
+  // A swap arriving while an earlier one is still retiring: cancel that
+  // retirement rather than running it. Its layers are part of this
+  // swap's outgoing set anyway, and dropping them now would open the
+  // very gap the deferral exists to avoid.
+  cancelPendingRetire?.();
+
+  const outgoing = map.getLayers().getArray().filter(isBackgroundLayer);
+  if (base) map.getLayers().insertAt(0, base);
+  map.addLayer(top);
+
+  const retire = () => {
+    cancelPendingRetire?.();
+    for (const layer of outgoing) map.removeLayer(layer);
+  };
+  const timer = setTimeout(retire, SWAP_TIMEOUT_MS);
+  cancelPendingRetire = () => {
+    cancelPendingRetire = null;
+    clearTimeout(timer);
+    map.un('rendercomplete', retire);
+  };
+  map.on('rendercomplete', retire);
+};
+
 export const clearBackgroundLayer = () => {
   const store = getDefaultStore();
   const map = store.get(mapAtom);
-  const allLayers = map.getLayers().getArray();
+  // Nothing is coming in to hide behind, so any deferred removal should
+  // just happen now.
+  cancelPendingRetire?.();
+  // Snapshot: getArray() is the live collection array, and removing
+  // while iterating it skips every other entry.
+  const allLayers = [...map.getLayers().getArray()];
   allLayers.forEach((layer) => {
     try {
-      const layerId = layer.get('id');
-      if (!layerId || layerId.startsWith('bg.')) {
+      if (isBackgroundLayer(layer)) {
         map.removeLayer(layer);
       }
     } catch (error) {

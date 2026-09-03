@@ -25,6 +25,7 @@ import {
   getLayerFromConfig,
   getWMSLayer,
   getWMTSLayer,
+  swapBackgroundLayers,
 } from './utils';
 
 // Kartverket's LiDAR WMS layers return transparent PNGs outside their
@@ -132,8 +133,8 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
 
       // Build the topo base in parallel with the top layer when the
       // requested layer needs a fallback underneath — cheaper than doing
-      // them sequentially and keeps the swap atomic (both ready before
-      // clearBackgroundLayer runs).
+      // them sequentially and keeps the swap atomic (both built before
+      // swapBackgroundLayers runs).
       const baseTopoConfig = NEEDS_TOPO_BASE.has(layerName)
         ? allConfiguredBackgroundLayers.find((l) => l.layerName === 'topo')
         : undefined;
@@ -151,9 +152,7 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
 
       if (!topLayer) return;
 
-      clearBackgroundLayer();
-      if (baseLayer) map.addLayer(baseLayer);
-      map.addLayer(topLayer);
+      swapBackgroundLayers(baseLayer, topLayer);
       setUrlParameter('backgroundLayer', layerName);
 
       if (layerConfig.moveToExtent) {

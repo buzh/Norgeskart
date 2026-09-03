@@ -158,6 +158,26 @@ and would loop forever otherwise).
 Key CSP dependencies for this path: `img-src` must include `blob:`
 (because the loader hands blob URLs to `<img>`).
 
+### Background swaps are gapless
+
+`swapBackgroundLayers` in `backgroundLayers/utils.ts` adds the incoming
+layers and removes the outgoing ones only on the next map
+`rendercomplete` (8 s timeout as a backstop). Switching LiDAR style or
+project rebuilds the whole stack, and the topo base underneath comes
+back from cache long before the new hillshade tiles do — tearing down
+first meant every step of a W/S or A/D cycle flashed topo. For the same
+reason the incoming topo base is inserted at the *bottom* of the layer
+collection rather than added on top.
+
+### Keyboard cycling of the LiDAR pulldowns
+
+`TopBar.tsx` binds A/D to the style pulldown and W/S to the dataset
+pulldown, top-tier entries only (i.e. not what's behind "flere
+stiler"/"mindre relevante"), wrapping at both ends. W/S opens the
+dataset pulldown first if it's closed: the project list comes from
+`lidarViewportAtom`, which only holds data while the pulldown is open
+(`lidarFootprintsLayer` resets it to `idle` on close).
+
 ## nginx cache behavior (wmscache)
 
 Split across two files:
