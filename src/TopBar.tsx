@@ -20,10 +20,11 @@ import {
 } from '@kvib/react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { transformExtent } from 'ol/proj';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthButton } from './auth/AuthButton';
 import { isSignedInAtom } from './auth/atoms';
+import { lidarExtractViewerOpenAtom } from './lidarExtract/atoms';
 import { creatingLocalityAtom } from './localities/atoms';
 import { mapAtom } from './map/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
@@ -315,6 +316,7 @@ export const TopBar = () => {
   // lidarFootprintsLayer.ts, mounted from Layout) and shared with the map
   // footprint overlay so both read off a single WFS call.
   const viewport = useAtomValue(lidarViewportAtom);
+  const extractViewerOpen = useAtomValue(lidarExtractViewerOpenAtom);
 
   // Fetch the full LiDAR project catalogue once (WMS GetCapabilities,
   // ~1900 rows, cached in localStorage for a week by fetchLidarProjects
@@ -417,15 +419,23 @@ export const TopBar = () => {
   // actually publishes (see resolveLidarStyle) — the national mosaic
   // publishes only skyggerelieff, so carrying e.g. helning_prosent over
   // from a project would render an empty background.
-  const activateNational = () => {
+  const selectNational = () => {
     setBackgroundLayer('lidarHillshade');
     setActiveLidarStyle((prev) => resolveLidarStyle(nationalStyles, prev));
-    setLidarOpen(false);
   };
-  const activateProject = (p: LidarProject) => {
+  const selectProject = (p: LidarProject) => {
     setActiveLidarProject(p);
     setBackgroundLayer('lidarProject');
     setActiveLidarStyle((prev) => resolveLidarStyle(p.styles, prev));
+  };
+  // Clicking a row picks *and* dismisses; the keyboard path below picks
+  // without closing, so you can watch the selection walk the open list.
+  const activateNational = () => {
+    selectNational();
+    setLidarOpen(false);
+  };
+  const activateProject = (p: LidarProject) => {
+    selectProject(p);
     setLidarOpen(false);
   };
 
@@ -468,6 +478,73 @@ export const TopBar = () => {
     (s) => !TIER_A_STYLES.includes(s),
   );
   const showStylePicker = activeDatasetStyles.length > 1;
+
+  // Keyboard cycling: A/D steps the style pulldown, W/S the dataset
+  // pulldown. Both walk the top tier only — the entries the pulldowns
+  // show without expanding "flere lag" — and wrap at both ends. Reading
+  // terrain means flipping the same handful of styles back and forth
+  // over one spot; going via the mouse every time breaks that rhythm.
+  //
+  // Held through a ref rather than an effect dependency: the lists it
+  // closes over are rebuilt on every render, so the alternative is
+  // re-attaching the document listener continuously.
+  const cycleRef = useRef<(key: string) => boolean>(() => false);
+  cycleRef.current = (key: string): boolean => {
+    // The extract viewer covers the map: swapping the background behind
+    // it would be invisible and still cost a full round of WMS loads.
+    if (!isLidarMode || extractViewerOpen) return false;
+    const step = key === 'd' || key === 's' ? 1 : -1;
+
+    if (key === 'a' || key === 'd') {
+      if (tierAStyles.length === 0) return false;
+      const at = tierAStyles.indexOf(activeLidarStyle);
+      // A "flere stiler" entry is active and so isn't on this ring —
+      // enter the ring from whichever end the key is heading towards.
+      const from = at >= 0 ? at : step > 0 ? -1 : 0;
+      setActiveLidarStyle(
+        tierAStyles[(from + step + tierAStyles.length) % tierAStyles.length],
+      );
+      return true;
+    }
+
+    // Index 0 is the national mosaic, then the primary projects — same
+    // order the pulldown lists them in.
+    const entries = viewport.status === 'ready' ? viewport.primary : [];
+    const ring = entries.length + 1;
+    const at = entries.findIndex(
+      (e) => e.project.id === activeLidarProject?.id,
+    );
+    const from = isNationalMosaic ? 0 : at >= 0 ? at + 1 : step > 0 ? -1 : 0;
+    const next = (from + step + ring) % ring;
+    if (next === 0) selectNational();
+    else selectProject(entries[next - 1].project);
+    return true;
+  };
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      // e.repeat: a leaned-on key would otherwise queue a full WMS
+      // reload per frame.
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      ) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key !== 'a' && key !== 'd' && key !== 'w' && key !== 's') return;
+      if (cycleRef.current(key)) event.preventDefault();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
 
   return (
     <Flex
@@ -569,7 +646,7 @@ export const TopBar = () => {
             <Stack gap={1}>
               <Flex align="center" justify="space-between" px={1}>
                 <Text fontSize="10px" color="gray.500">
-                  LiDAR-datasett
+                  LiDAR-datasett · W/S
                 </Text>
                 <Tooltip content="Filter" positioning={{ placement: 'top' }}>
                   <IconButton
@@ -777,7 +854,7 @@ export const TopBar = () => {
             <PopoverBody p={2}>
               <Stack gap={1}>
                 <Text fontSize="10px" color="gray.500" px={2}>
-                  Visningsstil
+                  Visningsstil · A/D
                 </Text>
                 {tierAStyles.map((style) => (
                   <LidarPulldownItem
