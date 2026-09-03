@@ -213,13 +213,51 @@ Notes for anyone changing this: `cache.kartverket.no`'s WMTS has no
 transparent overlay layer (only the full basemaps), `wms.topo4` is dead,
 and NiB needs an API token — `wms.topo` is the one that works.
 
+### DTM vs DOM
+
+Both the national mosaic and the per-project service exist in a terrain
+(DTM, vegetation and buildings filtered out) and a surface (DOM,
+everything the laser hit) flavour. `activeLidarModelAtom`
+(`lidarProjects.ts`) picks between them; persisted as `?lidarModel=dom`,
+absent means DTM. A `DTM | DOM` segment next to the style chip, bound to
+`E`, switches it — like hybrid it's a modifier on the LiDAR background,
+not a fourth mode, so the dataset picker and W/S cycling are unaffected.
+
+The two URL pairs live in `LIDAR_PROJECT_WMS_URL` and `NATIONAL_WMS`
+(`wms.hoyde-dom-prosjekt` / `wms.hoyde-dom-nhm-25833`, layer prefix
+`NHM_DOM_25833`). Both go through `wmscache` like everything else.
+
+Two things make this smaller than it looks:
+
+- The DTM and DOM per-project catalogues are **identical** — same 1936
+  project names, verified by diffing both GetCapabilities. So
+  `fetchLidarProjects()` stays a single fetch and the footprint,
+  relevance and picker machinery is model-independent.
+- DOM publishes exactly one usable style, `skyggerelieff`, for every
+  project. `DOM_STYLES` is therefore a hard-coded constant rather than
+  another capabilities fetch, and `stylesForModel` / `effectiveLidarStyle`
+  clamp to it.
+
+The style clamp isn't cosmetic: asking a DOM layer for a DTM-only style
+(`helning_prosent`, say) hits the same silent failure as a blank tile —
+HTTP 200, `Content-Type: image/png`, a ~100-byte JSON error body that
+`retryBlankTileLoadFunction` eventually accepts — i.e. a blank map with
+nothing in the console. `activeLidarStyleAtom` keeps holding the user's
+DTM pick while in DOM mode so it comes back on the way out, which is
+also why A/D is a deliberate no-op there instead of walking a one-entry
+ring over the top of it.
+
+The LiDAR *extract* tool stays DTM-only (`lidarExtract/sources.ts`
+pins `LIDAR_PROJECT_WMS_URL.dtm`): an extract is meant to be read as
+terrain.
+
 ### Keyboard cycling of the LiDAR pulldowns
 
 `TopBar.tsx` binds A/D to the style pulldown and W/S to the dataset
 pulldown, top-tier entries only (i.e. not what's behind "flere
-stiler"/"mindre relevante"), wrapping at both ends. Neither opens a
-pulldown — cycling should leave the terrain unobstructed, which also
-means no footprint polygons.
+stiler"/"mindre relevante"), wrapping at both ends, plus E for the
+DTM/DOM segment. None of them open a pulldown — cycling should leave
+the terrain unobstructed, which also means no footprint polygons.
 
 That splits what used to be one flag in two:
 `lidarPickerOpenAtom` decides whether footprints are *drawn*, while

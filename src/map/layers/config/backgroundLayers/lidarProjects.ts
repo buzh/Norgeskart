@@ -6,6 +6,16 @@
 // keep a week-long localStorage cache to avoid re-parsing on every load.
 
 import { atom } from 'jotai';
+import { getUrlParameter } from '../../../../shared/utils/urlUtils';
+
+// Terrengmodell vs overflatemodell: the same acquisitions with
+// vegetation and buildings stripped away (DTM) or left standing (DOM).
+// Kartverket publishes them as parallel services whose project sets are
+// *identical* — 1936 names on each side, no difference either way — so a
+// model is nothing but a different URL and layer prefix for the same
+// dataset identity. Catalogue, footprints, relevance tiering and the
+// picker are all model-independent as a result.
+export type LidarModel = 'dtm' | 'dom';
 
 export type LidarProject = {
   // Full WMS layer-name prefix, e.g. "Vestfold 10pkt 2025".
@@ -32,10 +42,42 @@ export const activeLidarProjectAtom = atom<LidarProject | null>(null);
 // The styled variant (skyggerelieff, multiskyggerelieff, ...) currently
 // shown for whichever dataset is active (national mosaic or a project).
 // Read by the background-layer effect alongside activeLidarProjectAtom.
+//
+// This holds what the user *picked*, which is a DTM style: DOM has only
+// the one style, so it overrides rather than overwrites (see
+// effectiveLidarStyle) and a DTM choice survives a trip through DOM.
 export const activeLidarStyleAtom = atom<string>('skyggerelieff');
 
-export const LIDAR_PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
+export const activeLidarModelAtom = atom<LidarModel>(
+  getUrlParameter('lidarModel') === 'dom' ? 'dom' : 'dtm',
+);
+
+export const LIDAR_PROJECT_WMS_URL: Record<LidarModel, string> = {
+  dtm: '/wms/geonorge/wms.hoyde-dtm-prosjekt',
+  dom: '/wms/geonorge/wms.hoyde-dom-prosjekt',
+};
 export const DEFAULT_LIDAR_PROJECT_STYLE = 'skyggerelieff';
+
+// Every DOM layer, national and per-project alike, publishes
+// skyggerelieff and dynamisk_farget_hoyde — and the latter is excluded
+// everywhere (see EXCLUDED_STYLES). Verified across all 1936 entries in
+// both capabilities documents, so this is a constant rather than
+// something worth a second 4 MB GetCapabilities fetch to discover.
+const DOM_STYLES = [DEFAULT_LIDAR_PROJECT_STYLE];
+
+// What the style pulldown may offer for a dataset under a given model.
+export const stylesForModel = (
+  styles: string[],
+  model: LidarModel,
+): string[] => (model === 'dom' ? DOM_STYLES : styles);
+
+// The style actually requested from the WMS. Asking a DOM layer for
+// multiskyggerelieff doesn't fail loudly — see resolveLidarStyle below
+// for that failure mode — so the model gets the final say.
+export const effectiveLidarStyle = (
+  style: string,
+  model: LidarModel,
+): string => (model === 'dom' ? DOM_STYLES[0] : style);
 
 // The three most diagnostic variants for reading archaeology in terrain —
 // shown first, in this order, in the style pulldown. Anything else
@@ -260,12 +302,26 @@ export const bboxIntersects = (
 // re-exports it) so the TopBar style pulldown and the LiDAR-uttrekk tool
 // share one fetch/cache instead of hitting GetCapabilities twice.
 
-export const NATIONAL_WMS_URL =
-  '/wms/geonorge/wms.hoyde-dtm-nhm-topobathy-25833';
-export const NATIONAL_LAYER_PREFIX = 'NHM_DTM_TOPOBATHY_25833';
+// One service per model, each with its own layer prefix. The DOM mosaic
+// is plain terrain — no bathymetry counterpart is published.
+export const NATIONAL_WMS: Record<
+  LidarModel,
+  { url: string; prefix: string }
+> = {
+  dtm: {
+    url: '/wms/geonorge/wms.hoyde-dtm-nhm-topobathy-25833',
+    prefix: 'NHM_DTM_TOPOBATHY_25833',
+  },
+  dom: {
+    url: '/wms/geonorge/wms.hoyde-dom-nhm-25833',
+    prefix: 'NHM_DOM_25833',
+  },
+};
 
+// Only the DTM mosaic's styles are discovered at runtime; the DOM side
+// is the DOM_STYLES constant above.
 const NATIONAL_CAPS_URL =
-  `${NATIONAL_WMS_URL}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`;
+  `${NATIONAL_WMS.dtm.url}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`;
 // Bump when the parser filter changes so stale cached lists (e.g. still
 // including the `None` pseudo-style) get discarded on next load.
 const NATIONAL_STORAGE_KEY = 'lidarProjects.nationalStyles.v1';
@@ -285,7 +341,7 @@ export function fetchNationalLidarStyles(): Promise<string[]> {
       const res = await fetch(NATIONAL_CAPS_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const xml = await res.text();
-      const styles = parseStylesForPrefix(xml, NATIONAL_LAYER_PREFIX);
+      const styles = parseStylesForPrefix(xml, NATIONAL_WMS.dtm.prefix);
       const out = styles.length > 0 ? styles : NATIONAL_FALLBACK_STYLES;
       writeNationalCache(out);
       return out;

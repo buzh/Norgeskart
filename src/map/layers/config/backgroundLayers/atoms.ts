@@ -11,9 +11,12 @@ import { BackgroundLayerName, WMTSLayerName } from '../../backgroundLayers';
 import { buildNationalLidarConfig } from './elevation';
 import { KvCacheBackgroundLayers } from './kvCache';
 import {
+  activeLidarModelAtom,
   activeLidarProjectAtom,
   activeLidarStyleAtom,
   DEFAULT_LIDAR_PROJECT_STYLE,
+  effectiveLidarStyle,
+  LidarModel,
   LIDAR_PROJECT_WMS_URL,
 } from './lidarProjects';
 import { retryBlankTileLoadFunction } from './loadFunctions';
@@ -103,10 +106,11 @@ export const hybridOverlayAtom = atom<boolean>(
 const buildLidarProjectConfig = (
   projectId: string,
   style: string,
+  model: LidarModel,
 ): WMSBackgroundLayer => ({
   type: 'WMS',
   layerName: 'lidarProject',
-  url: LIDAR_PROJECT_WMS_URL,
+  url: LIDAR_PROJECT_WMS_URL[model],
   props: {
     LAYERS: `${projectId}:${style}`,
     VERSION: '1.3.0',
@@ -120,7 +124,11 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
   // a LiDAR layer is the background rebuilds the WMS layer.
   const activeLidarProject = get(activeLidarProjectAtom);
   const activeLidarStyle = get(activeLidarStyleAtom);
+  const activeLidarModel = get(activeLidarModelAtom);
   const hybridOverlay = get(hybridOverlayAtom);
+  // DOM publishes one style, so the model has the last word — and the
+  // user's DTM pick stays in the atom, waiting for them to switch back.
+  const lidarStyle = effectiveLidarStyle(activeLidarStyle, activeLidarModel);
 
   if (layerName === 'empty') {
     clearBackgroundLayer();
@@ -131,10 +139,14 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
   const layerConfig: BackgroundLayer | undefined =
     layerName === 'lidarProject'
       ? activeLidarProject
-        ? buildLidarProjectConfig(activeLidarProject.id, activeLidarStyle)
+        ? buildLidarProjectConfig(
+            activeLidarProject.id,
+            lidarStyle,
+            activeLidarModel,
+          )
         : undefined
       : layerName === 'lidarHillshade'
-        ? buildNationalLidarConfig(activeLidarStyle)
+        ? buildNationalLidarConfig(lidarStyle, activeLidarModel)
         : allConfiguredBackgroundLayers.find((l) => l.layerName === layerName);
 
   if (!layerConfig) {
@@ -169,7 +181,10 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
       // it publishes skyggerelieff and nothing else.
       const lidarFallbackConfig =
         layerName === 'lidarProject'
-          ? buildNationalLidarConfig(DEFAULT_LIDAR_PROJECT_STYLE)
+          ? buildNationalLidarConfig(
+              DEFAULT_LIDAR_PROJECT_STYLE,
+              activeLidarModel,
+            )
           : undefined;
 
       // Only meaningful over terrain — on the plain topo map it would
@@ -208,10 +223,15 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
         [topLayer, overlayLayer].filter(notNull),
       );
       setUrlParameter('backgroundLayer', layerName);
-      // Keyed on the overlay actually being in the stack, not on the
-      // atom: a shared URL should reproduce what's on screen.
+      // Keyed on what's actually in the stack, not on the atoms: a
+      // shared URL should reproduce what's on screen.
       if (overlayConfig) setUrlParameter('hybrid', true);
       else removeUrlParameter('hybrid');
+      if (NEEDS_TOPO_BASE.has(layerName) && activeLidarModel === 'dom') {
+        setUrlParameter('lidarModel', 'dom');
+      } else {
+        removeUrlParameter('lidarModel');
+      }
 
       if (layerConfig.moveToExtent) {
         map.getView().fit(layerConfig.moveToExtent, { duration: 200 });

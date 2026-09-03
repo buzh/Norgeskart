@@ -11,8 +11,8 @@ import {
   fetchLidarProjects,
   fetchNationalLidarStyles,
   LidarProject,
-  NATIONAL_LAYER_PREFIX,
-  NATIONAL_WMS_URL,
+  LIDAR_PROJECT_WMS_URL,
+  NATIONAL_WMS,
   sortProjectsByRelevance,
 } from '../map/layers/config/backgroundLayers/lidarProjects';
 
@@ -29,7 +29,10 @@ export type LidarSource = {
   styles: string[];
 };
 
-export const PROJECT_WMS_URL = '/wms/geonorge/wms.hoyde-dtm-prosjekt';
+// The extract tool is DTM-only for now: the DOM services exist (the map
+// background can show either), but an extract is meant to be read as
+// terrain.
+export const PROJECT_WMS_URL = LIDAR_PROJECT_WMS_URL.dtm;
 
 // Produce the sortable, filtered list of sources for a selection bbox given
 // in EPSG:4326 (lon/lat). National mosaic is always first. Projects are
@@ -48,8 +51,8 @@ export async function enumerateLidarSources(
     label: 'Nasjonal mosaikk',
     year: null,
     pointDensity: null,
-    wmsUrl: NATIONAL_WMS_URL,
-    layerPrefix: NATIONAL_LAYER_PREFIX,
+    wmsUrl: NATIONAL_WMS.dtm.url,
+    layerPrefix: NATIONAL_WMS.dtm.prefix,
     styles: nationalStyles,
   };
 

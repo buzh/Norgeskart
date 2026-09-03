@@ -33,14 +33,18 @@ import {
   hybridOverlayAtom,
 } from './map/layers/config/backgroundLayers/atoms';
 import {
+  activeLidarModelAtom,
   activeLidarProjectAtom,
   activeLidarStyleAtom,
   bboxIntersects,
   DEFAULT_LIDAR_PROJECT_STYLE,
+  effectiveLidarStyle,
   fetchLidarProjects,
   fetchNationalLidarStyles,
+  LidarModel,
   LidarProject,
   resolveLidarStyle,
+  stylesForModel,
   TIER_A_STYLES,
 } from './map/layers/config/backgroundLayers/lidarProjects';
 import {
@@ -134,6 +138,54 @@ const LabelledToggleButton = ({
       </Button>
       <CountBadge value={badge} />
     </Box>
+  </Tooltip>
+);
+
+// Terrain model vs surface model, as a two-state segment rather than a
+// fourth mode button: like hybrid it modifies the LiDAR background
+// rather than replacing it, and the dataset and style pulldowns keep
+// working across it. DOM is mostly a cross-check — is that mound in the
+// DTM really ground, or a hedge the filtering didn't catch.
+const MODEL_LABELS: Record<LidarModel, string> = {
+  dtm: 'DTM',
+  dom: 'DOM',
+};
+
+const ModelToggle = ({
+  model,
+  onSelect,
+}: {
+  model: LidarModel;
+  onSelect: (model: LidarModel) => void;
+}) => (
+  <Tooltip
+    content="DTM = terreng (vegetasjon fjernet), DOM = overflate (bygg og trær). Bytt med E"
+    positioning={{ placement: 'bottom' }}
+  >
+    <Flex
+      gap={0}
+      borderRadius="md"
+      overflow="hidden"
+      border="1px solid"
+      borderColor="gray.200"
+    >
+      {(Object.keys(MODEL_LABELS) as LidarModel[]).map((m) => (
+        <Button
+          key={m}
+          variant={model === m ? 'primary' : 'tertiary'}
+          colorPalette="green"
+          size="xs"
+          borderRadius={0}
+          px={2}
+          onClick={() => onSelect(m)}
+          aria-pressed={model === m}
+        >
+          <Text fontSize="10px" fontWeight="bold">
+            {MODEL_LABELS[m]}
+          </Text>
+        </Button>
+      ))}
+    </Flex>
   </Tooltip>
 );
 
@@ -320,6 +372,7 @@ export const TopBar = () => {
   const [activeLidarStyle, setActiveLidarStyle] = useAtom(
     activeLidarStyleAtom,
   );
+  const [lidarModel, setLidarModel] = useAtom(activeLidarModelAtom);
   // Coverage-confirmed, tiered, capped viewport data — fetched once (in
   // lidarFootprintsLayer.ts, mounted from Layout) and shared with the map
   // footprint overlay so both read off a single WFS call.
@@ -482,10 +535,15 @@ export const TopBar = () => {
     ? activeLidarProject.projectName
     : 'Nasjonal mosaikk';
 
-  const activeDatasetStyles =
+  // In DOM mode this collapses to a single style, which takes the style
+  // pulldown off the bar entirely (showStylePicker below) — same as the
+  // national DTM mosaic, which has only ever published the one.
+  const activeDatasetStyles = stylesForModel(
     isLidarProject && activeLidarProject
       ? activeLidarProject.styles
-      : nationalStyles;
+      : nationalStyles,
+    lidarModel,
+  );
   const tierAStyles = TIER_A_STYLES.filter((s) =>
     activeDatasetStyles.includes(s),
   );
@@ -493,6 +551,9 @@ export const TopBar = () => {
     (s) => !TIER_A_STYLES.includes(s),
   );
   const showStylePicker = activeDatasetStyles.length > 1;
+  // What the pulldown should present as selected, which in DOM mode is
+  // the model's own style rather than the DTM pick being held for later.
+  const shownStyle = effectiveLidarStyle(activeLidarStyle, lidarModel);
 
   // Armed by a keypress, list not back yet — 'idle' covers the tick
   // between arming and the fetch effect starting.
@@ -527,9 +588,18 @@ export const TopBar = () => {
     // The extract viewer covers the map: swapping the background behind
     // it would be invisible and still cost a full round of WMS loads.
     if (!isLidarMode || extractViewerOpen) return false;
+
+    if (key === 'e') {
+      setLidarModel((prev) => (prev === 'dtm' ? 'dom' : 'dtm'));
+      return true;
+    }
+
     const step = key === 'd' || key === 's' ? 1 : -1;
 
     if (key === 'a' || key === 'd') {
+      // DOM has one style. Walking a one-entry ring would overwrite the
+      // DTM style being held for the trip back, for no visible change.
+      if (lidarModel === 'dom') return false;
       if (tierAStyles.length === 0) return false;
       const at = tierAStyles.indexOf(activeLidarStyle);
       // A "flere stiler" entry is active and so isn't on this ring —
@@ -582,7 +652,7 @@ export const TopBar = () => {
         return;
       }
       const key = event.key.toLowerCase();
-      if (key !== 'a' && key !== 'd' && key !== 'w' && key !== 's') return;
+      if (!['a', 'd', 'w', 's', 'e'].includes(key)) return;
       if (cycleRef.current(key)) event.preventDefault();
     };
     document.addEventListener('keydown', onKey);
@@ -915,7 +985,7 @@ export const TopBar = () => {
                   textOverflow="ellipsis"
                   overflow="hidden"
                 >
-                  {activeLidarStyle}
+                  {shownStyle}
                 </Text>
               </Button>
               <CountBadge value={activeDatasetStyles.length} />
@@ -932,7 +1002,7 @@ export const TopBar = () => {
                   <LidarPulldownItem
                     key={style}
                     label={style}
-                    active={activeLidarStyle === style}
+                    active={shownStyle === style}
                     onActivate={() => {
                       setActiveLidarStyle(style);
                       setStyleOpen(false);
@@ -951,7 +1021,7 @@ export const TopBar = () => {
                         <LidarPulldownItem
                           key={style}
                           label={style}
-                          active={activeLidarStyle === style}
+                          active={shownStyle === style}
                           onActivate={() => {
                             setActiveLidarStyle(style);
                             setStyleOpen(false);
@@ -964,6 +1034,13 @@ export const TopBar = () => {
             </PopoverBody>
           </PopoverContent>
         </Popover>
+      )}
+
+      {/* Outside the showStylePicker guard on purpose: DOM publishes a
+          single style, so the style chip disappears in DOM mode and the
+          toggle would take the way back with it. */}
+      {isLidarMode && (
+        <ModelToggle model={lidarModel} onSelect={setLidarModel} />
       )}
 
       <Box borderLeft="1px solid" borderColor="gray.200" h="36px" mx={1} />
