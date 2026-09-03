@@ -3,6 +3,7 @@ import { atomEffect } from 'jotai-effect';
 import TileLayer from 'ol/layer/Tile';
 import {
   getUrlParameter,
+  removeUrlParameter,
   setUrlParameter,
 } from '../../../../shared/utils/urlUtils';
 import { mapAtom } from '../../../atoms';
@@ -21,6 +22,7 @@ import {
   EmptyBackgroundLayer,
   WMSBackgroundLayer,
 } from './types';
+import { TOPO_OVERLAY_CONFIG } from './topoOverlay';
 import {
   buildOrReuseBackgroundLayer,
   clearBackgroundLayer,
@@ -88,6 +90,16 @@ export const backgroundLayerAtom = atom<BackgroundLayerName>(
   getDefaultBackgroundLayer(),
 );
 
+// Hybrid mode: the LiDAR relief with Kartverket's transparent
+// roads/railways/place-names overlay on top, so you can tell what
+// you're looking at without leaving the terrain. A modifier on the
+// background rather than a background of its own — it only has meaning
+// over a LiDAR layer, and toggling it doesn't disturb which dataset or
+// style is selected underneath.
+export const hybridOverlayAtom = atom<boolean>(
+  getUrlParameter('hybrid') === 'true',
+);
+
 const buildLidarProjectConfig = (
   projectId: string,
   style: string,
@@ -108,6 +120,7 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
   // a LiDAR layer is the background rebuilds the WMS layer.
   const activeLidarProject = get(activeLidarProjectAtom);
   const activeLidarStyle = get(activeLidarStyleAtom);
+  const hybridOverlay = get(hybridOverlayAtom);
 
   if (layerName === 'empty') {
     clearBackgroundLayer();
@@ -159,15 +172,26 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
           ? buildNationalLidarConfig(DEFAULT_LIDAR_PROJECT_STYLE)
           : undefined;
 
-      const [baseLayer, lidarFallback, topLayer] = await Promise.all([
-        baseTopoConfig
-          ? buildOrReuseBackgroundLayer(baseTopoConfig, projection)
-          : Promise.resolve(null),
-        lidarFallbackConfig
-          ? buildOrReuseBackgroundLayer(lidarFallbackConfig, projection)
-          : Promise.resolve(null),
-        buildOrReuseBackgroundLayer(layerConfig, projection),
-      ]);
+      // Only meaningful over terrain — on the plain topo map it would
+      // just redraw roads and names the base already has.
+      const overlayConfig =
+        hybridOverlay && NEEDS_TOPO_BASE.has(layerName)
+          ? TOPO_OVERLAY_CONFIG
+          : undefined;
+
+      const [baseLayer, lidarFallback, topLayer, overlayLayer] =
+        await Promise.all([
+          baseTopoConfig
+            ? buildOrReuseBackgroundLayer(baseTopoConfig, projection)
+            : Promise.resolve(null),
+          lidarFallbackConfig
+            ? buildOrReuseBackgroundLayer(lidarFallbackConfig, projection)
+            : Promise.resolve(null),
+          buildOrReuseBackgroundLayer(layerConfig, projection),
+          overlayConfig
+            ? buildOrReuseBackgroundLayer(overlayConfig, projection)
+            : Promise.resolve(null),
+        ]);
 
       if (!topLayer) return;
 
@@ -176,13 +200,18 @@ export const backgroundLayerAtomEffect = atomEffect((get) => {
       baseLayer?.setOpacity(1);
       lidarFallback?.setOpacity(LIDAR_FALLBACK_OPACITY);
       topLayer.setOpacity(1);
+      overlayLayer?.setOpacity(1);
 
+      const notNull = (l: TileLayer | null): l is TileLayer => l != null;
       swapBackgroundLayers(
-        [baseLayer, lidarFallback, topLayer].filter(
-          (l): l is TileLayer => l != null,
-        ),
+        [baseLayer, lidarFallback].filter(notNull),
+        [topLayer, overlayLayer].filter(notNull),
       );
       setUrlParameter('backgroundLayer', layerName);
+      // Keyed on the overlay actually being in the stack, not on the
+      // atom: a shared URL should reproduce what's on screen.
+      if (overlayConfig) setUrlParameter('hybrid', true);
+      else removeUrlParameter('hybrid');
 
       if (layerConfig.moveToExtent) {
         map.getView().fit(layerConfig.moveToExtent, { duration: 200 });

@@ -28,7 +28,10 @@ import { lidarExtractViewerOpenAtom } from './lidarExtract/atoms';
 import { creatingLocalityAtom } from './localities/atoms';
 import { mapAtom } from './map/atoms';
 import { activeThemeLayersAtom } from './map/layers/atoms';
-import { backgroundLayerAtom } from './map/layers/config/backgroundLayers/atoms';
+import {
+  backgroundLayerAtom,
+  hybridOverlayAtom,
+} from './map/layers/config/backgroundLayers/atoms';
 import {
   activeLidarProjectAtom,
   activeLidarStyleAtom,
@@ -293,6 +296,7 @@ export const TopBar = () => {
     activeThemeLayersAtom,
   );
   const [backgroundLayer, setBackgroundLayer] = useAtom(backgroundLayerAtom);
+  const [hybridOverlay, setHybridOverlay] = useAtom(hybridOverlayAtom);
   const [activeLidarProject, setActiveLidarProject] = useAtom(
     activeLidarProjectAtom,
   );
@@ -634,7 +638,10 @@ export const TopBar = () => {
         label="Standard"
         tooltip="Standardkart"
         active={backgroundLayer === 'topo'}
-        onClick={() => setBackgroundLayer('topo')}
+        onClick={() => {
+          setHybridOverlay(false);
+          setBackgroundLayer('topo');
+        }}
       />
 
       {/* LiDAR mode toggle. Activating it defaults to the national mosaic;
@@ -644,8 +651,25 @@ export const TopBar = () => {
         icon="landscape"
         label="LiDAR"
         tooltip="LiDAR (nasjonal mosaikk / per-prosjekt)"
-        active={isLidarMode}
+        active={isLidarMode && !hybridOverlay}
         onClick={() => {
+          setHybridOverlay(false);
+          if (!isLidarMode) activateNational();
+        }}
+      />
+
+      {/* Same LiDAR stack with roads, railways and place names drawn on
+          top — a third mode rather than a checkbox because that's how it
+          is used: you flip to it to work out where you are, then flip
+          back to read the terrain clean. Dataset, style and the W/S + A/D
+          cycling all keep working, since it's still LiDAR mode. */}
+      <LabelledToggleButton
+        icon="signpost"
+        label="Hybrid"
+        tooltip="LiDAR med veier og stedsnavn"
+        active={isLidarMode && hybridOverlay}
+        onClick={() => {
+          setHybridOverlay(true);
           if (!isLidarMode) activateNational();
         }}
       />

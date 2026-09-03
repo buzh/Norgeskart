@@ -44,14 +44,20 @@ import {
 
 export const LIDAR_FOOTPRINTS_LAYER_ID = 'lidarFootprintsLayer';
 
-// Widest viewport (longer side, in metres) we'll ask the Prosjekt-
-// avgrensning WFS about. Measured against the live service: a 20 km box
-// returns ~1 MB of GeoJSON, a county-sized 150 km box 7.7 MB, and a
-// whole-Norway box never answers at all — the upstream gives up with a
-// 504 after 30 s, which is also where the /wfs-skwms1/ proxy would cut
-// it. Past this width the honest answer is "zoom in", not a half-minute
-// spinner ending in an empty list.
-const MAX_FOOTPRINT_EXTENT_M = 50_000;
+// Furthest out we'll ask the Prosjektavgrensning WFS about the viewport.
+// Expressed as a zoom level rather than a viewport width because that's
+// what the cutoff feels like in use, and it doesn't move with the
+// browser window.
+//
+// It buys reach at a real cost: the responses are uncompressed GeoJSON
+// and grow with area — ~1 MB across a 20 km viewport, 7.7 MB across a
+// county, ~18 MB at zoom 7 on a wide screen (measured, ~3 s). Zoomed out
+// past this the request stops being answerable at all: the upstream
+// gives up with a 504 after 30 s on a whole-Norway box, which is also
+// where the /wfs-skwms1/ proxy would cut it. So the honest answer below
+// the threshold is "zoom in", not a half-minute spinner ending in an
+// empty list.
+const MIN_FOOTPRINT_ZOOM = 7;
 
 type Tier = 'hover' | 'active';
 
@@ -163,15 +169,16 @@ export const useLidarFootprintsLayer = () => {
         | undefined;
       if (!extentLonLat) return;
 
-      // Claimed before the extent check too, so a fetch started while
+      // Claimed before the zoom check too, so a fetch started while
       // zoomed in can't land afterwards and overwrite the guard state.
       const request = ++latestRequest;
       const isStale = () => cancelled || request !== latestRequest;
 
-      if (
-        Math.max(extent[2] - extent[0], extent[3] - extent[1]) >
-        MAX_FOOTPRINT_EXTENT_M
-      ) {
+      // getZoom() is a log2 of the resolution, so an integral zoom can
+      // come back a hair under itself — don't lock the user out of the
+      // threshold level they're standing on.
+      const zoom = map.getView().getZoom();
+      if (zoom == null || zoom < MIN_FOOTPRINT_ZOOM - 0.001) {
         setViewport((prev) =>
           prev.status === 'zoomedOut' ? prev : emptyLidarViewport('zoomedOut'),
         );

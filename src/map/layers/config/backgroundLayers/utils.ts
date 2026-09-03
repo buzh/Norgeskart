@@ -162,8 +162,13 @@ const OUTGOING_OPACITY = 0.35;
 // Cancels the pending retirement of the previous swap, if any.
 let cancelPendingRetire: (() => void) | null = null;
 
-// Replace the background stack without ever showing a gap. `layers` is
-// bottom-first; the last entry is the dataset being featured.
+// Replace the background stack without ever showing a gap. Both lists
+// are bottom-first and describe where the incoming layers sit relative
+// to the outgoing ones that are still fading out: `under` goes below
+// them (the topo base, the faded national mosaic — context that the
+// outgoing dataset should keep covering until it goes away), `over`
+// above them (the dataset being featured, and the hybrid overlay on top
+// of that, which must not be buried by a layer on its way out).
 //
 // Removing the old layers first — which is what this used to do — means
 // the map has nothing but the topo base to draw while the new LiDAR
@@ -171,9 +176,10 @@ let cancelPendingRetire: (() => void) | null = null;
 // step. Instead the outgoing layers stay put (faded, see above) and are
 // removed only once the map reports a complete render with the incoming
 // ones in.
-export const swapBackgroundLayers = (layers: TileLayer[]) => {
+export const swapBackgroundLayers = (under: TileLayer[], over: TileLayer[]) => {
   const store = getDefaultStore();
   const map = store.get(mapAtom);
+  const layers = [...under, ...over];
   if (layers.length === 0) return;
 
   // A swap arriving while an earlier one is still retiring: cancel that
@@ -187,16 +193,18 @@ export const swapBackgroundLayers = (layers: TileLayer[]) => {
     .getArray()
     .filter((l) => isBackgroundLayer(l) && !layers.includes(l as TileLayer));
 
-  // Reposition rather than just add: everything but the featured layer
-  // goes to the bottom of the collection in order, the featured one on
-  // top. Layers that were reused are already somewhere in the
-  // collection, and the outgoing ones have to end up *between* the two
-  // groups — under the incoming dataset, over the incoming base.
-  layers.forEach((layer, i) => {
+  // Reposition rather than just add: `under` goes to the bottom of the
+  // collection in order, `over` on top of everything. Layers that were
+  // reused are already somewhere in the collection, and the outgoing
+  // ones have to end up *between* the two groups.
+  under.forEach((layer, i) => {
     collection.remove(layer);
-    if (i === layers.length - 1) collection.push(layer);
-    else collection.insertAt(i, layer);
+    collection.insertAt(i, layer);
   });
+  for (const layer of over) {
+    collection.remove(layer);
+    collection.push(layer);
+  }
 
   for (const layer of outgoing) layer.setOpacity(OUTGOING_OPACITY);
 

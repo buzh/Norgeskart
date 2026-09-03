@@ -168,10 +168,14 @@ layer:
 2. the national mosaic at `LIDAR_FALLBACK_OPACITY`, when a *per-project*
    dataset is active, so the area the project doesn't cover keeps its
    relief instead of dropping to plain topo;
-3. the active dataset.
+3. the active dataset;
+4. the topo overlay, in hybrid mode (see below).
 
-`swapBackgroundLayers` (`backgroundLayers/utils.ts`) then swaps that
-stack in without ever showing a gap:
+`swapBackgroundLayers(under, over)` (`backgroundLayers/utils.ts`) then
+swaps that stack in without ever showing a gap. The split matters: 1–2
+go *under* the outgoing layers (they're context the fading dataset
+should keep covering), 3–4 go *over* them, or the layer on its way out
+would bury the one coming in.
 
 - Outgoing layers are **not** removed up front — they're dimmed to
   `OUTGOING_OPACITY` immediately and removed on the next map
@@ -184,6 +188,30 @@ stack in without ever showing a gap:
   only rebuilds the layer that actually changed. Reused layers may still
   carry an earlier fade, so the effect sets opacity explicitly on every
   layer it passes in.
+
+### Hybrid mode
+
+Third mode button next to Standard and LiDAR: the same LiDAR stack with
+Kartverket's roads/railways/place-names drawn transparently on top, for
+working out *where* a feature is without leaving the terrain. State is
+`hybridOverlayAtom` (a modifier on the background, not a background of
+its own — the dataset, style and W/S + A/D cycling all keep working),
+persisted as `?hybrid=true`.
+
+Config: `backgroundLayers/topoOverlay.ts` — `/wms/geonorge/wms.topo`
+with `LAYERS=kd_veger,kd_jernbane,kd_stedsnavn,fkb_samferdsel,`
+`fkb_presentasjonsdata` and `TRANSPARENT=TRUE`. Asking that WMS for a
+subset of its groups yields a real overlay: no terrain, no landcover,
+no background fill. Both families are needed — the generalized `kd_*`
+groups stop rendering around 1:25 000 and the `fkb_*` ones take over.
+
+Deliberately **no** `retryBlankTileLoadFunction` on this layer: a blank
+overlay tile is the normal case out in the woods, unlike a blank DTM
+tile, and retrying each one three times buys nothing.
+
+Notes for anyone changing this: `cache.kartverket.no`'s WMTS has no
+transparent overlay layer (only the full basemaps), `wms.topo4` is dead,
+and NiB needs an API token — `wms.topo` is the one that works.
 
 ### Keyboard cycling of the LiDAR pulldowns
 

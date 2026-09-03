@@ -12,9 +12,9 @@
 // api/kulturminnerWfs.ts).
 //
 // Responses are large and neither cached nor compressed on the way here
-// (~1 MB for a 20 km viewport, 7.7 MB for a county), so callers must
-// bound the extent they ask about — see MAX_FOOTPRINT_EXTENT_M in
-// map/lidarFootprintsLayer.ts.
+// (~1 MB for a 20 km viewport, 7.7 MB for a county, ~18 MB for a zoom-7
+// screenful), so callers must bound how far out they ask — see
+// MIN_FOOTPRINT_ZOOM in map/lidarFootprintsLayer.ts.
 
 import GeoJSON from 'ol/format/GeoJSON';
 import { Geometry } from 'ol/geom';
@@ -73,16 +73,83 @@ const epsgFromCrsMember = (doc: unknown): string | undefined => {
   return m ? `EPSG:${m[1]}` : undefined;
 };
 
-// Session-lived cache keyed by a coarse bucket of the requested extent —
-// re-opening the picker at a similar view shouldn't re-fetch. No TTL:
-// project boundaries are static for the lifetime of a tab.
-const BUCKET_METRES = 2000;
+// Session-lived cache keyed by the requested extent, quantized so that
+// panning a little re-uses the previous response. No TTL — project
+// boundaries are static for the lifetime of a tab — so what bounds it is
+// size instead, see MAX_CACHE_ENTRIES below.
+//
+// How much the map may move before the answer is refetched, as a
+// fraction of the viewport's longer side. A fixed distance (this was
+// 2 km) means the tolerance shrinks in screen terms the further you zoom
+// out: 2 km is ~90 px of a 30 km viewport but ~12 px of a 240 km one, so
+// out at MIN_FOOTPRINT_ZOOM every nudge refetched a response that
+// overlapped the last one almost entirely.
+const BUCKET_FRACTION = 0.05;
+
+// Two views can only share a key if they land on the same grid, so the
+// step can't be a raw fraction of the extent — a window resize, or the
+// browser's own rounding of the map size, would slide the grid and miss
+// every time. Snapping it to a power of two keeps it stable across
+// anything short of a zoom step, which busts the cache regardless.
+const bucketSize = (extent: [number, number, number, number]): number => {
+  const span = Math.max(extent[2] - extent[0], extent[3] - extent[1]);
+  return 2 ** Math.round(Math.log2(span * BUCKET_FRACTION));
+};
+
+// The extent we actually ask the WFS about: the viewport rounded
+// *outward* to the grid. Rounding to nearest would key a response by an
+// area it doesn't cover, and reusing it for a view shifted half a bucket
+// would silently drop the footprints along the new edge. Overshooting
+// costs one bucket per side — ~20% more payload — and the extra
+// features off-screen are dropped anyway, since callers filter against
+// the true viewport extent (touchesExtent / viewportCoverage).
+const snapExtent = (
+  extent: [number, number, number, number],
+): [number, number, number, number] => {
+  const step = bucketSize(extent);
+  return [
+    Math.floor(extent[0] / step) * step,
+    Math.floor(extent[1] / step) * step,
+    Math.ceil(extent[2] / step) * step,
+    Math.ceil(extent[3] / step) * step,
+  ];
+};
+
 const cache = new Map<string, Promise<Map<string, LidarFootprint>>>();
 
-const bucketKey = (extent: [number, number, number, number]): string =>
-  extent.map((v) => Math.round(v / BUCKET_METRES)).join(':');
+// How many responses to keep. An entry is a whole screenful of parsed
+// boundary geometry — a couple of hundred projects out at
+// MIN_FOOTPRINT_ZOOM — so this is a memory bound first and a hit-rate
+// knob second: enough for panning back and forth around one area and
+// stepping a zoom level or two, not for a session's worth of browsing.
+const MAX_CACHE_ENTRIES = 8;
 
-// Fetches every project boundary intersecting `extent` (in `projection`),
+// Map iterates in insertion order, so re-inserting on read is what makes
+// the eviction below least-*recently-used* rather than oldest-first.
+const readCache = (
+  key: string,
+): Promise<Map<string, LidarFootprint>> | undefined => {
+  const hit = cache.get(key);
+  if (!hit) return undefined;
+  cache.delete(key);
+  cache.set(key, hit);
+  return hit;
+};
+
+const writeCache = (
+  key: string,
+  value: Promise<Map<string, LidarFootprint>>,
+) => {
+  cache.set(key, value);
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    const oldest = cache.keys().next();
+    if (oldest.done) break;
+    cache.delete(oldest.value);
+  }
+};
+
+// Fetches every project boundary intersecting `extent` (in `projection`)
+// — or a little beyond it, see snapExtent — then
 // matches each one against `projects` (the wms.hoyde-dtm-prosjekt
 // catalogue) by normalized name — disambiguating same-name candidates by
 // year within ±2 — and returns a map keyed by LidarProject.id. Projects
@@ -92,8 +159,11 @@ export function fetchLidarFootprints(
   projection: string,
   projects: LidarProject[],
 ): Promise<Map<string, LidarFootprint>> {
-  const key = bucketKey(extent);
-  const cached = cache.get(key);
+  const fetchExtent = snapExtent(extent);
+  // Projection in the key too: the same numbers name different ground in
+  // EPSG:25833 and 25835.
+  const key = `${projection}|${fetchExtent.join(':')}`;
+  const cached = readCache(key);
   if (cached) return cached;
 
   const promise = (async () => {
@@ -105,7 +175,7 @@ export function fetchLidarFootprints(
       TYPENAMES: TYPE_NAME,
       OUTPUTFORMAT: 'geojson',
       COUNT: '500',
-      BBOX: urn ? `${extent.join(',')},${urn}` : extent.join(','),
+      BBOX: urn ? `${fetchExtent.join(',')},${urn}` : fetchExtent.join(','),
       ...(urn ? { SRSNAME: urn } : {}),
     });
     const res = await fetch(`${WFS_URL}?${params.toString()}`);
@@ -171,7 +241,7 @@ export function fetchLidarFootprints(
     return out;
   })();
 
-  cache.set(key, promise);
+  writeCache(key, promise);
   promise.catch(() => cache.delete(key));
   return promise;
 }

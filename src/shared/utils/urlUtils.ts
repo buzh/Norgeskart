@@ -115,6 +115,7 @@ export const transitionHashToQuery = (): void => {
 export type NKUrlParameter =
   | 'projection'
   | 'backgroundLayer'
+  | 'hybrid'
   | 'themeLayers'
   | 'rotation'
   | 'lat'
